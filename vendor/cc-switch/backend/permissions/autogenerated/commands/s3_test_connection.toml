@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-s3-test-connection"
+description = "Enables the s3_test_connection command without any pre-configured scope."
+commands.allow = ["s3_test_connection"]
+
+[[permission]]
+identifier = "deny-s3-test-connection"
+description = "Denies the s3_test_connection command without any pre-configured scope."
+commands.deny = ["s3_test_connection"]

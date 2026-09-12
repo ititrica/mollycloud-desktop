@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-disable-current-omo-slim"
+description = "Enables the disable_current_omo_slim command without any pre-configured scope."
+commands.allow = ["disable_current_omo_slim"]
+
+[[permission]]
+identifier = "deny-disable-current-omo-slim"
+description = "Denies the disable_current_omo_slim command without any pre-configured scope."
+commands.deny = ["disable_current_omo_slim"]

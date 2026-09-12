@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-models-dev-sync-config"
+description = "Enables the get_models_dev_sync_config command without any pre-configured scope."
+commands.allow = ["get_models_dev_sync_config"]
+
+[[permission]]
+identifier = "deny-get-models-dev-sync-config"
+description = "Denies the get_models_dev_sync_config command without any pre-configured scope."
+commands.deny = ["get_models_dev_sync_config"]

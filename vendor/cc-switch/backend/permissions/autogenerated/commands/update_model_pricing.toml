@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-update-model-pricing"
+description = "Enables the update_model_pricing command without any pre-configured scope."
+commands.allow = ["update_model_pricing"]
+
+[[permission]]
+identifier = "deny-update-model-pricing"
+description = "Denies the update_model_pricing command without any pre-configured scope."
+commands.deny = ["update_model_pricing"]

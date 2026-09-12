@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-copilot-poll-for-account"
+description = "Enables the copilot_poll_for_account command without any pre-configured scope."
+commands.allow = ["copilot_poll_for_account"]
+
+[[permission]]
+identifier = "deny-copilot-poll-for-account"
+description = "Denies the copilot_poll_for_account command without any pre-configured scope."
+commands.deny = ["copilot_poll_for_account"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-coding-plan-quota"
+description = "Enables the get_coding_plan_quota command without any pre-configured scope."
+commands.allow = ["get_coding_plan_quota"]
+
+[[permission]]
+identifier = "deny-get-coding-plan-quota"
+description = "Denies the get_coding_plan_quota command without any pre-configured scope."
+commands.deny = ["get_coding_plan_quota"]

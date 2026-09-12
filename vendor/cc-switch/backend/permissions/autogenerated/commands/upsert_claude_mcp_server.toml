@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-upsert-claude-mcp-server"
+description = "Enables the upsert_claude_mcp_server command without any pre-configured scope."
+commands.allow = ["upsert_claude_mcp_server"]
+
+[[permission]]
+identifier = "deny-upsert-claude-mcp-server"
+description = "Denies the upsert_claude_mcp_server command without any pre-configured scope."
+commands.deny = ["upsert_claude_mcp_server"]

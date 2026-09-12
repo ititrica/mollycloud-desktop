@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-claude-code-config-path"
+description = "Enables the get_claude_code_config_path command without any pre-configured scope."
+commands.allow = ["get_claude_code_config_path"]
+
+[[permission]]
+identifier = "deny-get-claude-code-config-path"
+description = "Denies the get_claude_code_config_path command without any pre-configured scope."
+commands.deny = ["get_claude_code_config_path"]

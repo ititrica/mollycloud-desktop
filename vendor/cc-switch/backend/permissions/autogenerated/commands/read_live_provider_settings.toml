@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-read-live-provider-settings"
+description = "Enables the read_live_provider_settings command without any pre-configured scope."
+commands.allow = ["read_live_provider_settings"]
+
+[[permission]]
+identifier = "deny-read-live-provider-settings"
+description = "Denies the read_live_provider_settings command without any pre-configured scope."
+commands.deny = ["read_live_provider_settings"]

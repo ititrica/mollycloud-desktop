@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-ensure-codex-official-provider"
+description = "Enables the ensure_codex_official_provider command without any pre-configured scope."
+commands.allow = ["ensure_codex_official_provider"]
+
+[[permission]]
+identifier = "deny-ensure-codex-official-provider"
+description = "Denies the ensure_codex_official_provider command without any pre-configured scope."
+commands.deny = ["ensure_codex_official_provider"]

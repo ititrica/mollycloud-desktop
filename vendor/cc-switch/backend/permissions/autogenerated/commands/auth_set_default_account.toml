@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-auth-set-default-account"
+description = "Enables the auth_set_default_account command without any pre-configured scope."
+commands.allow = ["auth_set_default_account"]
+
+[[permission]]
+identifier = "deny-auth-set-default-account"
+description = "Denies the auth_set_default_account command without any pre-configured scope."
+commands.deny = ["auth_set_default_account"]

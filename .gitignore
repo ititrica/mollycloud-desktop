@@ -1,0 +1,23 @@
+node_modules/
+*.bak
+
+# Generated application bundles and compiler caches.
+app/dist/
+app/src-tauri/target/
+app/third_party/Petra/target/
+app/public/ccswitch/
+app/public/image-workbench/
+vendor/cc-switch/frontend/dist/
+vendor/cc-switch/backend/target/
+
+# Local desktop state and visual-review output.
+.petra-upstream/
+artifacts/
+app/_disabled-models/
+output/
+
+# Secrets and machine-local diagnostics.
+.env
+.env.*
+!.env.example
+*.log

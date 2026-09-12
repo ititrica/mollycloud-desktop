@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-switch-proxy-provider"
+description = "Enables the switch_proxy_provider command without any pre-configured scope."
+commands.allow = ["switch_proxy_provider"]
+
+[[permission]]
+identifier = "deny-switch-proxy-provider"
+description = "Denies the switch_proxy_provider command without any pre-configured scope."
+commands.deny = ["switch_proxy_provider"]

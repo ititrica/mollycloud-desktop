@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-webdav-sync-fetch-remote-info"
+description = "Enables the webdav_sync_fetch_remote_info command without any pre-configured scope."
+commands.allow = ["webdav_sync_fetch_remote_info"]
+
+[[permission]]
+identifier = "deny-webdav-sync-fetch-remote-info"
+description = "Denies the webdav_sync_fetch_remote_info command without any pre-configured scope."
+commands.deny = ["webdav_sync_fetch_remote_info"]

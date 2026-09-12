@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-upsert-mcp-server-in-config"
+description = "Enables the upsert_mcp_server_in_config command without any pre-configured scope."
+commands.allow = ["upsert_mcp_server_in_config"]
+
+[[permission]]
+identifier = "deny-upsert-mcp-server-in-config"
+description = "Denies the upsert_mcp_server_in_config command without any pre-configured scope."
+commands.deny = ["upsert_mcp_server_in_config"]

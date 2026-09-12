@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-add-provider"
+description = "Enables the add_provider command without any pre-configured scope."
+commands.allow = ["add_provider"]
+
+[[permission]]
+identifier = "deny-add-provider"
+description = "Denies the add_provider command without any pre-configured scope."
+commands.deny = ["add_provider"]

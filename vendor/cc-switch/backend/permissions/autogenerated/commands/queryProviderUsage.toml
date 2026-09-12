@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-queryProviderUsage"
+description = "Enables the queryProviderUsage command without any pre-configured scope."
+commands.allow = ["queryProviderUsage"]
+
+[[permission]]
+identifier = "deny-queryProviderUsage"
+description = "Denies the queryProviderUsage command without any pre-configured scope."
+commands.deny = ["queryProviderUsage"]

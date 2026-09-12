@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-global-proxy-config"
+description = "Enables the get_global_proxy_config command without any pre-configured scope."
+commands.allow = ["get_global_proxy_config"]
+
+[[permission]]
+identifier = "deny-get-global-proxy-config"
+description = "Denies the get_global_proxy_config command without any pre-configured scope."
+commands.deny = ["get_global_proxy_config"]

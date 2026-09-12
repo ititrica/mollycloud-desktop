@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/brand/mollycloud-logo.png" />
+    <title>MollyCloud 助手</title>
+    <script src="/vendor/live2dcubismcore.min.js"></script>
+    <script src="/vendor/anime2dr/rigger.js"></script>
+    <script src="/vendor/anime2dr/genericparts.js"></script>
+    <link rel="stylesheet" href="/src/petra/style.css" />
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="balance-pill" class="balance-pill hidden" data-petra-interactive="balance-pill">
+      <button id="balance-pill-trigger" class="balance-pill__trigger" type="button" aria-expanded="false" aria-controls="balance-pill-usage">
+        <span>余额</span><strong id="balance-pill-value" aria-live="polite">--</strong>
+      </button>
+      <div id="balance-pill-usage" class="balance-pill__dropdown" data-petra-interactive="balance-usage" role="region" aria-label="今日 Token 消耗" hidden>
+        <div class="balance-pill__usage">
+          <span>今日消耗</span>
+          <strong id="balance-pill-tokens" aria-live="polite">暂无法获取今日用量</strong>
+        </div>
+      </div>
+    </div>
+    <div id="menu" class="pet-menu hidden"></div>
+    <div id="toasts"></div>
+    <script type="module" src="/src/petra/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-validate-mcp-command"
+description = "Enables the validate_mcp_command command without any pre-configured scope."
+commands.allow = ["validate_mcp_command"]
+
+[[permission]]
+identifier = "deny-validate-mcp-command"
+description = "Denies the validate_mcp_command command without any pre-configured scope."
+commands.deny = ["validate_mcp_command"]

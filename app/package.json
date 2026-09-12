@@ -1,0 +1,45 @@
+{
+  "name": "mollycloud",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:ccswitch && npm run build:image-workbench && vite",
+    "dev:desktop": "tauri dev",
+    "build": "node scripts/check-package-inputs.mjs && npm run build:ccswitch && npm run build:image-workbench && vue-tsc --noEmit && vite build && node scripts/check-package-inputs.mjs --built",
+    "build:image-workbench": "node scripts/build-image-workbench.mjs",
+    "build:ccswitch": "node scripts/build-ccswitch.mjs",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "import:model": "node scripts/import-live2d.mjs",
+    "test": "vitest run",
+    "check:design": "node scripts/verify-design.mjs"
+  },
+  "dependencies": {
+    "@pixi/unsafe-eval": "6.5.10",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-autostart": "^2.2.1",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-updater": "^2.10.1",
+    "ag-psd": "^31.0.2",
+    "naive-ui": "^2.45.3",
+    "pinia": "^3.0.3",
+    "pixi-live2d-display": "0.4.0",
+    "pixi.js": "6.5.10",
+    "vfonts": "^0.0.3",
+    "vue": "^3.5.13",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^24.3.1",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.0.0",
+    "vue-tsc": "^3.3.5"
+  },
+  "overrides": {
+    "gh-pages": "^6.3.0"
+  }
+}

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-hermes-live-provider"
+description = "Enables the get_hermes_live_provider command without any pre-configured scope."
+commands.allow = ["get_hermes_live_provider"]
+
+[[permission]]
+identifier = "deny-get-hermes-live-provider"
+description = "Denies the get_hermes_live_provider command without any pre-configured scope."
+commands.deny = ["get_hermes_live_provider"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-scan-unmanaged-skills"
+description = "Enables the scan_unmanaged_skills command without any pre-configured scope."
+commands.allow = ["scan_unmanaged_skills"]
+
+[[permission]]
+identifier = "deny-scan-unmanaged-skills"
+description = "Denies the scan_unmanaged_skills command without any pre-configured scope."
+commands.deny = ["scan_unmanaged_skills"]

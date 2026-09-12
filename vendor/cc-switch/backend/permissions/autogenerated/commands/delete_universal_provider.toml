@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-delete-universal-provider"
+description = "Enables the delete_universal_provider command without any pre-configured scope."
+commands.allow = ["delete_universal_provider"]
+
+[[permission]]
+identifier = "deny-delete-universal-provider"
+description = "Denies the delete_universal_provider command without any pre-configured scope."
+commands.deny = ["delete_universal_provider"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-list-pi-prompt-templates"
+description = "Enables the list_pi_prompt_templates command without any pre-configured scope."
+commands.allow = ["list_pi_prompt_templates"]
+
+[[permission]]
+identifier = "deny-list-pi-prompt-templates"
+description = "Denies the list_pi_prompt_templates command without any pre-configured scope."
+commands.deny = ["list_pi_prompt_templates"]

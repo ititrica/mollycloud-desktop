@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-openclaw-default-model"
+description = "Enables the get_openclaw_default_model command without any pre-configured scope."
+commands.allow = ["get_openclaw_default_model"]
+
+[[permission]]
+identifier = "deny-get-openclaw-default-model"
+description = "Denies the get_openclaw_default_model command without any pre-configured scope."
+commands.deny = ["get_openclaw_default_model"]

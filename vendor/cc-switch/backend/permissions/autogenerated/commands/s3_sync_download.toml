@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-s3-sync-download"
+description = "Enables the s3_sync_download command without any pre-configured scope."
+commands.allow = ["s3_sync_download"]
+
+[[permission]]
+identifier = "deny-s3-sync-download"
+description = "Denies the s3_sync_download command without any pre-configured scope."
+commands.deny = ["s3_sync_download"]

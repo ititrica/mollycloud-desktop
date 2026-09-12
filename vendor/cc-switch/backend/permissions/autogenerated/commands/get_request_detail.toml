@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-request-detail"
+description = "Enables the get_request_detail command without any pre-configured scope."
+commands.allow = ["get_request_detail"]
+
+[[permission]]
+identifier = "deny-get-request-detail"
+description = "Denies the get_request_detail command without any pre-configured scope."
+commands.deny = ["get_request_detail"]

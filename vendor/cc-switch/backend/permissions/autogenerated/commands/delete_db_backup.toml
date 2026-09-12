@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-delete-db-backup"
+description = "Enables the delete_db_backup command without any pre-configured scope."
+commands.allow = ["delete_db_backup"]
+
+[[permission]]
+identifier = "deny-delete-db-backup"
+description = "Denies the delete_db_backup command without any pre-configured scope."
+commands.deny = ["delete_db_backup"]

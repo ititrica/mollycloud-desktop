@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-remove-from-failover-queue"
+description = "Enables the remove_from_failover_queue command without any pre-configured scope."
+commands.allow = ["remove_from_failover_queue"]
+
+[[permission]]
+identifier = "deny-remove-from-failover-queue"
+description = "Denies the remove_from_failover_queue command without any pre-configured scope."
+commands.deny = ["remove_from_failover_queue"]

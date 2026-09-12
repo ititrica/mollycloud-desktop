@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-openclaw-agents-defaults"
+description = "Enables the get_openclaw_agents_defaults command without any pre-configured scope."
+commands.allow = ["get_openclaw_agents_defaults"]
+
+[[permission]]
+identifier = "deny-get-openclaw-agents-defaults"
+description = "Denies the get_openclaw_agents_defaults command without any pre-configured scope."
+commands.deny = ["get_openclaw_agents_defaults"]

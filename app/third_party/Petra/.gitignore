@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+
+# Vite
+*.local
+
+# 环境变量（API Key 等本地敏感配置不入库）
+.env
+.env.*
+
+# API Key 加密文件（本地敏感数据，即使在用户目录也不跟踪）
+api_key.bin
+
+# Logs
+*.log
+src-tauri/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Qoder 文档目录（本地使用，不跟踪）
+.qoder/
+
+# Runtime data
+public/models/*.psd
+!public/models/sample.psd
+!public/models/deepseek.psd
+!public/models/Elaina.psd
+
+# 打包产物
+Live2D-Pet_*.zip
+build.log
+Petra_*.zip
+
+# 本地发布暂存目录（release-package/ 仅供上传，不入库）
+release-package/
+
+# Tauri 打包资源（构建产物）
+src-tauri/resources/
+
+# release/ 目录只入库 latest.json（更新元数据），其余为构建产物
+release/*
+!release/latest.json
+
+# Tauri updater signing key (NEVER commit)
+.tauri/
+*.key

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-xai-oauth-quota"
+description = "Enables the get_xai_oauth_quota command without any pre-configured scope."
+commands.allow = ["get_xai_oauth_quota"]
+
+[[permission]]
+identifier = "deny-get-xai-oauth-quota"
+description = "Denies the get_xai_oauth_quota command without any pre-configured scope."
+commands.deny = ["get_xai_oauth_quota"]

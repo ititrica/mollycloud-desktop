@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-skill-repos"
+description = "Enables the get_skill_repos command without any pre-configured scope."
+commands.allow = ["get_skill_repos"]
+
+[[permission]]
+identifier = "deny-get-skill-repos"
+description = "Denies the get_skill_repos command without any pre-configured scope."
+commands.deny = ["get_skill_repos"]

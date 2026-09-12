@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-toggle-skill-app"
+description = "Enables the toggle_skill_app command without any pre-configured scope."
+commands.allow = ["toggle_skill_app"]
+
+[[permission]]
+identifier = "deny-toggle-skill-app"
+description = "Denies the toggle_skill_app command without any pre-configured scope."
+commands.deny = ["toggle_skill_app"]

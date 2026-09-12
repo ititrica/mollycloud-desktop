@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-import-prompt-from-file"
+description = "Enables the import_prompt_from_file command without any pre-configured scope."
+commands.allow = ["import_prompt_from_file"]
+
+[[permission]]
+identifier = "deny-import-prompt-from-file"
+description = "Denies the import_prompt_from_file command without any pre-configured scope."
+commands.deny = ["import_prompt_from_file"]

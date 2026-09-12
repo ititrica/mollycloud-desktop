@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-is-proxy-running"
+description = "Enables the is_proxy_running command without any pre-configured scope."
+commands.allow = ["is_proxy_running"]
+
+[[permission]]
+identifier = "deny-is-proxy-running"
+description = "Denies the is_proxy_running command without any pre-configured scope."
+commands.deny = ["is_proxy_running"]

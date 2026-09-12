@@ -1,0 +1,8 @@
+{
+  "name": "molly-live2d-artwork",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reference-faithful layered artwork and Cubism source project",
+  "scripts": { "build:layers": "node scripts/build-layers.cjs" },
+  "dependencies": { "ag-psd": "^30.0.0" }
+}

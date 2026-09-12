@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-reset-circuit-breaker"
+description = "Enables the reset_circuit_breaker command without any pre-configured scope."
+commands.allow = ["reset_circuit_breaker"]
+
+[[permission]]
+identifier = "deny-reset-circuit-breaker"
+description = "Denies the reset_circuit_breaker command without any pre-configured scope."
+commands.deny = ["reset_circuit_breaker"]

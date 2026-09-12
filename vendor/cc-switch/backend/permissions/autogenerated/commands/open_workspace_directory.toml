@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-open-workspace-directory"
+description = "Enables the open_workspace_directory command without any pre-configured scope."
+commands.allow = ["open_workspace_directory"]
+
+[[permission]]
+identifier = "deny-open-workspace-directory"
+description = "Denies the open_workspace_directory command without any pre-configured scope."
+commands.deny = ["open_workspace_directory"]

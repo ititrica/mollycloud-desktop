@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "ccswitch-console",
+  "description": "Native file dialogs for the embedded CC Switch in the MollyCloud console",
+  "windows": ["console"],
+  "permissions": ["dialog:default", "molly-ccswitch:default"]
+}

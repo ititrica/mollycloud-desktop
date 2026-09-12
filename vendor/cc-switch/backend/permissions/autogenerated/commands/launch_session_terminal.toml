@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-launch-session-terminal"
+description = "Enables the launch_session_terminal command without any pre-configured scope."
+commands.allow = ["launch_session_terminal"]
+
+[[permission]]
+identifier = "deny-launch-session-terminal"
+description = "Denies the launch_session_terminal command without any pre-configured scope."
+commands.deny = ["launch_session_terminal"]

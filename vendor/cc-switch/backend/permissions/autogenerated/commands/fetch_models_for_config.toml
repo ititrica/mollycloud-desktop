@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-fetch-models-for-config"
+description = "Enables the fetch_models_for_config command without any pre-configured scope."
+commands.allow = ["fetch_models_for_config"]
+
+[[permission]]
+identifier = "deny-fetch-models-for-config"
+description = "Denies the fetch_models_for_config command without any pre-configured scope."
+commands.deny = ["fetch_models_for_config"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-restore-skill-backup"
+description = "Enables the restore_skill_backup command without any pre-configured scope."
+commands.allow = ["restore_skill_backup"]
+
+[[permission]]
+identifier = "deny-restore-skill-backup"
+description = "Denies the restore_skill_backup command without any pre-configured scope."
+commands.deny = ["restore_skill_backup"]

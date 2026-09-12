@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-install-skills-from-zip"
+description = "Enables the install_skills_from_zip command without any pre-configured scope."
+commands.allow = ["install_skills_from_zip"]
+
+[[permission]]
+identifier = "deny-install-skills-from-zip"
+description = "Denies the install_skills_from_zip command without any pre-configured scope."
+commands.deny = ["install_skills_from_zip"]

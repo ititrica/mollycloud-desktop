@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-test-proxy-url"
+description = "Enables the test_proxy_url command without any pre-configured scope."
+commands.allow = ["test_proxy_url"]
+
+[[permission]]
+identifier = "deny-test-proxy-url"
+description = "Denies the test_proxy_url command without any pre-configured scope."
+commands.deny = ["test_proxy_url"]

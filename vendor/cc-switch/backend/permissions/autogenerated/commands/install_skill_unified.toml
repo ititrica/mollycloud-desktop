@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-install-skill-unified"
+description = "Enables the install_skill_unified command without any pre-configured scope."
+commands.allow = ["install_skill_unified"]
+
+[[permission]]
+identifier = "deny-install-skill-unified"
+description = "Denies the install_skill_unified command without any pre-configured scope."
+commands.deny = ["install_skill_unified"]

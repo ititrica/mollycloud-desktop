@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-skills-migration-result"
+description = "Enables the get_skills_migration_result command without any pre-configured scope."
+commands.allow = ["get_skills_migration_result"]
+
+[[permission]]
+identifier = "deny-get-skills-migration-result"
+description = "Denies the get_skills_migration_result command without any pre-configured scope."
+commands.deny = ["get_skills_migration_result"]

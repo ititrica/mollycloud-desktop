@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-is-live-takeover-active"
+description = "Enables the is_live_takeover_active command without any pre-configured scope."
+commands.allow = ["is_live_takeover_active"]
+
+[[permission]]
+identifier = "deny-is-live-takeover-active"
+description = "Denies the is_live_takeover_active command without any pre-configured scope."
+commands.deny = ["is_live_takeover_active"]

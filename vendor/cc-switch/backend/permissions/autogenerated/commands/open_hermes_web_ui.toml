@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-open-hermes-web-ui"
+description = "Enables the open_hermes_web_ui command without any pre-configured scope."
+commands.allow = ["open_hermes_web_ui"]
+
+[[permission]]
+identifier = "deny-open-hermes-web-ui"
+description = "Denies the open_hermes_web_ui command without any pre-configured scope."
+commands.deny = ["open_hermes_web_ui"]

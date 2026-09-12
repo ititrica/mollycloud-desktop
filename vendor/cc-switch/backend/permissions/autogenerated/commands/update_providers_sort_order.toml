@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-update-providers-sort-order"
+description = "Enables the update_providers_sort_order command without any pre-configured scope."
+commands.allow = ["update_providers_sort_order"]
+
+[[permission]]
+identifier = "deny-update-providers-sort-order"
+description = "Denies the update_providers_sort_order command without any pre-configured scope."
+commands.deny = ["update_providers_sort_order"]

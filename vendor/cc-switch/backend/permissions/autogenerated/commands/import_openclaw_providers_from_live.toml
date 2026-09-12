@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-import-openclaw-providers-from-live"
+description = "Enables the import_openclaw_providers_from_live command without any pre-configured scope."
+commands.allow = ["import_openclaw_providers_from_live"]
+
+[[permission]]
+identifier = "deny-import-openclaw-providers-from-live"
+description = "Denies the import_openclaw_providers_from_live command without any pre-configured scope."
+commands.deny = ["import_openclaw_providers_from_live"]

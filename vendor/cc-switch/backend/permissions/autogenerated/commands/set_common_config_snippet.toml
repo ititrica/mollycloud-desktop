@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-common-config-snippet"
+description = "Enables the set_common_config_snippet command without any pre-configured scope."
+commands.allow = ["set_common_config_snippet"]
+
+[[permission]]
+identifier = "deny-set-common-config-snippet"
+description = "Denies the set_common_config_snippet command without any pre-configured scope."
+commands.deny = ["set_common_config_snippet"]

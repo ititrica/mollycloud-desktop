@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-start-proxy-server"
+description = "Enables the start_proxy_server command without any pre-configured scope."
+commands.allow = ["start_proxy_server"]
+
+[[permission]]
+identifier = "deny-start-proxy-server"
+description = "Denies the start_proxy_server command without any pre-configured scope."
+commands.deny = ["start_proxy_server"]

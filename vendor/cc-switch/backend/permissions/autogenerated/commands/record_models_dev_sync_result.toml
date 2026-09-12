@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-record-models-dev-sync-result"
+description = "Enables the record_models_dev_sync_result command without any pre-configured scope."
+commands.allow = ["record_models_dev_sync_result"]
+
+[[permission]]
+identifier = "deny-record-models-dev-sync-result"
+description = "Denies the record_models_dev_sync_result command without any pre-configured scope."
+commands.deny = ["record_models_dev_sync_result"]

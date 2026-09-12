@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-stream-check-all-providers"
+description = "Enables the stream_check_all_providers command without any pre-configured scope."
+commands.allow = ["stream_check_all_providers"]
+
+[[permission]]
+identifier = "deny-stream-check-all-providers"
+description = "Denies the stream_check_all_providers command without any pre-configured scope."
+commands.deny = ["stream_check_all_providers"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-add-custom-endpoint"
+description = "Enables the add_custom_endpoint command without any pre-configured scope."
+commands.allow = ["add_custom_endpoint"]
+
+[[permission]]
+identifier = "deny-add-custom-endpoint"
+description = "Denies the add_custom_endpoint command without any pre-configured scope."
+commands.deny = ["add_custom_endpoint"]

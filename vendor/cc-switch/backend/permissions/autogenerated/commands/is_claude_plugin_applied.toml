@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-is-claude-plugin-applied"
+description = "Enables the is_claude_plugin_applied command without any pre-configured scope."
+commands.allow = ["is_claude_plugin_applied"]
+
+[[permission]]
+identifier = "deny-is-claude-plugin-applied"
+description = "Denies the is_claude_plugin_applied command without any pre-configured scope."
+commands.deny = ["is_claude_plugin_applied"]

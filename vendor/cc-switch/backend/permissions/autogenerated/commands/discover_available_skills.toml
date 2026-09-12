@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-discover-available-skills"
+description = "Enables the discover_available_skills command without any pre-configured scope."
+commands.allow = ["discover_available_skills"]
+
+[[permission]]
+identifier = "deny-discover-available-skills"
+description = "Denies the discover_available_skills command without any pre-configured scope."
+commands.deny = ["discover_available_skills"]

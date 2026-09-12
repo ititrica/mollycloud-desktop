@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-update-endpoint-last-used"
+description = "Enables the update_endpoint_last_used command without any pre-configured scope."
+commands.allow = ["update_endpoint_last_used"]
+
+[[permission]]
+identifier = "deny-update-endpoint-last-used"
+description = "Denies the update_endpoint_last_used command without any pre-configured scope."
+commands.deny = ["update_endpoint_last_used"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-update-tray-menu"
+description = "Enables the update_tray_menu command without any pre-configured scope."
+commands.allow = ["update_tray_menu"]
+
+[[permission]]
+identifier = "deny-update-tray-menu"
+description = "Denies the update_tray_menu command without any pre-configured scope."
+commands.deny = ["update_tray_menu"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-copilot-is-authenticated"
+description = "Enables the copilot_is_authenticated command without any pre-configured scope."
+commands.allow = ["copilot_is_authenticated"]
+
+[[permission]]
+identifier = "deny-copilot-is-authenticated"
+description = "Denies the copilot_is_authenticated command without any pre-configured scope."
+commands.deny = ["copilot_is_authenticated"]

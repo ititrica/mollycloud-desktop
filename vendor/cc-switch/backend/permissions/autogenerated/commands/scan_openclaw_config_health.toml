@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-scan-openclaw-config-health"
+description = "Enables the scan_openclaw_config_health command without any pre-configured scope."
+commands.allow = ["scan_openclaw_config_health"]
+
+[[permission]]
+identifier = "deny-scan-openclaw-config-health"
+description = "Denies the scan_openclaw_config_health command without any pre-configured scope."
+commands.deny = ["scan_openclaw_config_health"]

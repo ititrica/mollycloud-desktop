@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-import-default-config"
+description = "Enables the import_default_config command without any pre-configured scope."
+commands.allow = ["import_default_config"]
+
+[[permission]]
+identifier = "deny-import-default-config"
+description = "Denies the import_default_config command without any pre-configured scope."
+commands.deny = ["import_default_config"]

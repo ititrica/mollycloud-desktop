@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-import-claude-desktop-providers-from-claude"
+description = "Enables the import_claude_desktop_providers_from_claude command without any pre-configured scope."
+commands.allow = ["import_claude_desktop_providers_from_claude"]
+
+[[permission]]
+identifier = "deny-import-claude-desktop-providers-from-claude"
+description = "Denies the import_claude_desktop_providers_from_claude command without any pre-configured scope."
+commands.deny = ["import_claude_desktop_providers_from_claude"]

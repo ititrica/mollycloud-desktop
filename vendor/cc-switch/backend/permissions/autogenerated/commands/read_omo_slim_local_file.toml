@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-read-omo-slim-local-file"
+description = "Enables the read_omo_slim_local_file command without any pre-configured scope."
+commands.allow = ["read_omo_slim_local_file"]
+
+[[permission]]
+identifier = "deny-read-omo-slim-local-file"
+description = "Denies the read_omo_slim_local_file command without any pre-configured scope."
+commands.deny = ["read_omo_slim_local_file"]

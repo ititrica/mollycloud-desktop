@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-update-pi-provider-usage-script"
+description = "Enables the update_pi_provider_usage_script command without any pre-configured scope."
+commands.allow = ["update_pi_provider_usage_script"]
+
+[[permission]]
+identifier = "deny-update-pi-provider-usage-script"
+description = "Denies the update_pi_provider_usage_script command without any pre-configured scope."
+commands.deny = ["update_pi_provider_usage_script"]

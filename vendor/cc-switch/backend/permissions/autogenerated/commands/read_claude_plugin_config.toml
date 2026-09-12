@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-read-claude-plugin-config"
+description = "Enables the read_claude_plugin_config command without any pre-configured scope."
+commands.allow = ["read_claude_plugin_config"]
+
+[[permission]]
+identifier = "deny-read-claude-plugin-config"
+description = "Denies the read_claude_plugin_config command without any pre-configured scope."
+commands.deny = ["read_claude_plugin_config"]

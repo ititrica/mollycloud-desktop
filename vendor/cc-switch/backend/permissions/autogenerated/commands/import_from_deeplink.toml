@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-import-from-deeplink"
+description = "Enables the import_from_deeplink command without any pre-configured scope."
+commands.allow = ["import_from_deeplink"]
+
+[[permission]]
+identifier = "deny-import-from-deeplink"
+description = "Denies the import_from_deeplink command without any pre-configured scope."
+commands.deny = ["import_from_deeplink"]

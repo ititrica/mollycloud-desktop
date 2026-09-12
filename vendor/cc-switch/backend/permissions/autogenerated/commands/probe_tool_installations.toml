@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-probe-tool-installations"
+description = "Enables the probe_tool_installations command without any pre-configured scope."
+commands.allow = ["probe_tool_installations"]
+
+[[permission]]
+identifier = "deny-probe-tool-installations"
+description = "Denies the probe_tool_installations command without any pre-configured scope."
+commands.deny = ["probe_tool_installations"]

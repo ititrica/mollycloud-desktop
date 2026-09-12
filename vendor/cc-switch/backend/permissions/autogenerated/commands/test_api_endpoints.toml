@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-test-api-endpoints"
+description = "Enables the test_api_endpoints command without any pre-configured scope."
+commands.allow = ["test_api_endpoints"]
+
+[[permission]]
+identifier = "deny-test-api-endpoints"
+description = "Denies the test_api_endpoints command without any pre-configured scope."
+commands.deny = ["test_api_endpoints"]

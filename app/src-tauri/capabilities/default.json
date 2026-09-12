@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capabilities for the MollyCloud console and Petra desktop companion",
+  "windows": ["main", "console"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-set-position",
+    "core:window:allow-outer-position",
+    "core:window:allow-scale-factor",
+    "core:window:allow-set-focus",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-always-on-top",
+    "core:event:default",
+    "autostart:default",
+    "updater:default",
+    "opener:default"
+  ]
+}

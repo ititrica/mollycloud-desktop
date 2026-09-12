@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-app-config-dir-override"
+description = "Enables the get_app_config_dir_override command without any pre-configured scope."
+commands.allow = ["get_app_config_dir_override"]
+
+[[permission]]
+identifier = "deny-get-app-config-dir-override"
+description = "Denies the get_app_config_dir_override command without any pre-configured scope."
+commands.deny = ["get_app_config_dir_override"]

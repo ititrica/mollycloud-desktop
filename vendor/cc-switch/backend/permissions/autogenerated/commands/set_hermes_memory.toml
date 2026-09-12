@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-hermes-memory"
+description = "Enables the set_hermes_memory command without any pre-configured scope."
+commands.allow = ["set_hermes_memory"]
+
+[[permission]]
+identifier = "deny-set-hermes-memory"
+description = "Denies the set_hermes_memory command without any pre-configured scope."
+commands.deny = ["set_hermes_memory"]

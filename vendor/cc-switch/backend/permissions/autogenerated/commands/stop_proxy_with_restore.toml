@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-stop-proxy-with-restore"
+description = "Enables the stop_proxy_with_restore command without any pre-configured scope."
+commands.allow = ["stop_proxy_with_restore"]
+
+[[permission]]
+identifier = "deny-stop-proxy-with-restore"
+description = "Denies the stop_proxy_with_restore command without any pre-configured scope."
+commands.deny = ["stop_proxy_with_restore"]

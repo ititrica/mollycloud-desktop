@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-restore-db-backup"
+description = "Enables the restore_db_backup command without any pre-configured scope."
+commands.allow = ["restore_db_backup"]
+
+[[permission]]
+identifier = "deny-restore-db-backup"
+description = "Denies the restore_db_backup command without any pre-configured scope."
+commands.deny = ["restore_db_backup"]

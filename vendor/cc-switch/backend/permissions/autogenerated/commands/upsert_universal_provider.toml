@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-upsert-universal-provider"
+description = "Enables the upsert_universal_provider command without any pre-configured scope."
+commands.allow = ["upsert_universal_provider"]
+
+[[permission]]
+identifier = "deny-upsert-universal-provider"
+description = "Denies the upsert_universal_provider command without any pre-configured scope."
+commands.deny = ["upsert_universal_provider"]

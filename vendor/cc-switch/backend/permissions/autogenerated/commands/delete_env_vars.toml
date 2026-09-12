@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-delete-env-vars"
+description = "Enables the delete_env_vars command without any pre-configured scope."
+commands.allow = ["delete_env_vars"]
+
+[[permission]]
+identifier = "deny-delete-env-vars"
+description = "Denies the delete_env_vars command without any pre-configured scope."
+commands.deny = ["delete_env_vars"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-remove-provider-from-live-config"
+description = "Enables the remove_provider_from_live_config command without any pre-configured scope."
+commands.allow = ["remove_provider_from_live_config"]
+
+[[permission]]
+identifier = "deny-remove-provider-from-live-config"
+description = "Denies the remove_provider_from_live_config command without any pre-configured scope."
+commands.deny = ["remove_provider_from_live_config"]

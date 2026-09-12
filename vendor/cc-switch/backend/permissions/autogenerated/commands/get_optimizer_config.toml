@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-optimizer-config"
+description = "Enables the get_optimizer_config command without any pre-configured scope."
+commands.allow = ["get_optimizer_config"]
+
+[[permission]]
+identifier = "deny-get-optimizer-config"
+description = "Denies the get_optimizer_config command without any pre-configured scope."
+commands.deny = ["get_optimizer_config"]
