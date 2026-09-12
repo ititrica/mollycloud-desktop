@@ -99,6 +99,7 @@ const readShell = `(() => {
   const css = (el, names) => Object.fromEntries(names.map(name => [name, getComputedStyle(el)[name]]));
   const workspace = document.querySelector('.workspace');
   const heading = document.querySelector('.page-heading');
+  const topbar = document.querySelector('.topbar');
   const active = document.querySelector('.nav-item.active');
   const content = [...document.querySelectorAll('.page-content')].find(el => el.getBoundingClientRect().width > 0);
   return {
@@ -110,14 +111,14 @@ const readShell = `(() => {
       navStyle: css(active, ['fontFamily','fontSize','fontWeight','borderRadius','padding','backgroundColor','boxShadow','borderLeftWidth']),
       sidebarStyle: css(document.querySelector('.sidebar'), ['padding','backgroundColor']),
       workspaceStyle: css(workspace, ['backgroundColor','scrollbarGutter']),
-      header: rect(document.querySelector('.topbar')),
-      headerFont: css(heading.querySelector('h1'), ['fontFamily','fontSize','lineHeight']),
-      actions: rect(document.querySelector('.topbar-actions')),
-      contentX: rect(content)[0],
-      contentPadding: getComputedStyle(content).paddingTop,
     },
+    header: topbar ? rect(topbar) : null,
+    headerFont: heading ? css(heading.querySelector('h1'), ['fontFamily','fontSize','lineHeight']) : null,
+    actions: topbar ? rect(document.querySelector('.topbar-actions')) : null,
+    content: rect(content),
+    contentPadding: getComputedStyle(content).paddingTop,
     horizontalOverflow: document.documentElement.scrollWidth > innerWidth || workspace.scrollWidth > workspace.clientWidth,
-    headerClipped: heading.querySelector('h1').scrollWidth > heading.querySelector('h1').clientWidth,
+    headerClipped: heading ? heading.querySelector('h1').scrollWidth > heading.querySelector('h1').clientWidth : false,
     selectedCount: document.querySelectorAll('.nav-item[aria-current="page"]').length,
     navCount: document.querySelectorAll('.nav-item').length,
     settingsVisible: (() => {
@@ -159,6 +160,7 @@ async function verifyConsoleSettings(width, height) {
       focusedElement:document.activeElement?.outerHTML.slice(0,1500),
       ancestors:(() => {const result=[]; for(let el=dialog; el; el=el.parentElement) result.push({tag:el.tagName,id:el.id,class:el.className,inert:el.inert,ariaHidden:el.getAttribute('aria-hidden')}); return result;})(),
       radioLabels:[...dialog.querySelectorAll('input[name="console-close-action"]')].map(el => ({value:el.value,label:el.closest('label')?.innerText,checked:el.checked})),
+      autostart:dialog.querySelector('[aria-label="开机自启动"]')?.getAttribute('aria-checked'),
       maskFilter:maskStyle?.backdropFilter || maskStyle?.webkitBackdropFilter,
       shellFilter:getComputedStyle(document.querySelector('.app-shell')).filter,
       maskCoversViewport:Boolean(maskRect && maskRect.x <= 0 && maskRect.y <= 0 && maskRect.right >= innerWidth && maskRect.bottom >= innerHeight),
@@ -168,6 +170,7 @@ async function verifyConsoleSettings(width, height) {
   check(layout.maskCoversViewport && [layout.maskFilter,layout.shellFilter].some(value => /blur\((?!0(?:px)?\))/.test(value || '')), `Settings frosted glass backdrop ${width}`);
   check(layout.role && layout.focusInside, `Settings accessible modal focus ${width}`);
   check(layout.radioLabels.length === 2 && layout.radioLabels.some(radio => radio.value === 'quit' && radio.label?.includes('退出程序')) && layout.radioLabels.some(radio => radio.value === 'tray' && radio.label?.includes('最小化到托盘') && radio.checked), `Settings close action default/options ${width}`);
+  check(layout.autostart === 'false', `Settings autostart default ${width}`);
   check(layout.buttons.length === 2 && layout.buttons[0].text === '取消' && layout.buttons[1].text === '保存' && layout.buttons.every(button => button.height >= 40 && button.bottom <= layout.bottom && layout.bottom - button.bottom <= 48) && layout.buttons[1].x > layout.buttons[0].x && layout.right - layout.buttons[1].right <= 40, `Settings actions bottom right ${width}`);
   check(await evaluate(`document.querySelector('.app-shell').inert`), `Settings makes background non-interactive ${width}`);
   for (let index = 0; index < 6; index++) {
@@ -195,12 +198,14 @@ async function verifyConsoleSettings(width, height) {
 
   await openSettings();
   await evaluate(`document.querySelector('input[name="console-close-action"][value="quit"]').click()`);
+  await evaluate(`document.querySelector('[aria-label="开机自启动"]').click()`);
   await clickSettingsButton('保存');
   const saved = await evaluate(readPreviewSettings);
-  check(saved !== initialStorage && Boolean(saved?.includes('quit')), `Settings preview saves isolated preference ${width}`);
+  check(saved !== initialStorage && Boolean(saved?.includes('quit')) && Boolean(saved?.includes('"autostart":true')), `Settings preview saves isolated preference ${width}`);
   check(await evaluate(`document.activeElement === document.querySelector('.sidebar-settings')`), `Settings save restores focus ${width}`);
   await openSettings();
   check(await evaluate(`document.querySelector('input[name="console-close-action"]:checked').value === 'quit'`), `Settings saved preference reopened ${width}`);
+  check(await evaluate(`document.querySelector('[aria-label="开机自启动"]').getAttribute('aria-checked') === 'true'`), `Settings saved autostart reopened ${width}`);
   await clickSettingsButton('取消');
 
   // Reload only this temporary browser profile. Never send a native close/quit.
@@ -394,11 +399,19 @@ try {
         await page('Input.dispatchMouseEvent', { type:'mouseMoved', ...cardPoint });
         await pause(200);
       }
+      if (names[index] === 'images') {
+        await waitFor(`!document.querySelector('.embedded-load-state')`, `Image workbench ready ${width}`);
+      }
       const metrics = await evaluate(readShell);
       report.push({ page: names[index], width, height, ...metrics });
       baseline ??= metrics.shell;
       check(JSON.stringify(metrics.shell) === JSON.stringify(baseline), `Shared shell differs: ${names[index]} ${width}`);
       check(!metrics.horizontalOverflow && !metrics.valueOverflows && !metrics.headerClipped, `Content clipped: ${names[index]} ${width}`);
+      if (['ccswitch', 'images'].includes(names[index])) {
+        check(metrics.header === null && metrics.content[1] === 0 && metrics.contentPadding === '0px', `Embedded page fills workspace: ${names[index]} ${width}`);
+      } else {
+        check(metrics.header !== null, `Shared topbar missing: ${names[index]} ${width}`);
+      }
       check(metrics.selectedCount === 1, `Navigation state: ${names[index]} ${width}`);
       check(metrics.navCount === 7 && metrics.settingsVisible, `Seven navigation items and bottom settings visible: ${names[index]} ${width}`);
       check(metrics.shell.navStyle.boxShadow === 'none' && metrics.shell.navStyle.borderLeftWidth === '0px', `Navigation edge color: ${names[index]} ${width}`);

@@ -93,6 +93,21 @@ describe('normalizeSettings', () => {
 })
 
 describe('default API URL env', () => {
+  it('uses the embedded sub2api provider and requested image model for a new profile', async () => {
+    vi.resetModules()
+    vi.stubEnv('VITE_DEFAULT_API_URL', 'https://mollycloud.cn/v1?provider=sb2api-async&model=gpt-image-2.5&profileName=MollyCloud')
+    const apiProfiles = await import('./apiProfiles')
+
+    expect(apiProfiles.DEFAULT_SETTINGS.profiles[0]).toMatchObject({
+      name: 'MollyCloud',
+      provider: 'sb2api-async',
+      baseUrl: 'https://mollycloud.cn/v1',
+      model: 'gpt-image-2.5',
+      apiMode: 'images',
+      apiProxy: false,
+    })
+  })
+
   it.each([undefined, 'runtime-image-model', ''])('uses runtime tool model %s only for new defaults, not old inputs', async (imageGenerationModel) => {
     vi.resetModules()
     const params = new URLSearchParams({ apiMode: 'responses' })

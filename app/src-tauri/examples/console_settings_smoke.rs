@@ -18,7 +18,7 @@ fn main() {
     let path = temporary.path().join("console-settings.json");
     let webview_data = temporary.path().join("webview");
     let state = ConsoleSettingsState::load(Some(path.clone()));
-    state.save(ConsoleSettings { close_action: CloseAction::Tray }).unwrap();
+    state.save(ConsoleSettings { close_action: CloseAction::Tray, autostart: false }).unwrap();
     state.set_dashboard_active(!login_mode);
     let result = Arc::new(Mutex::new(None::<Result<(), String>>));
     let output = result.clone();
@@ -76,6 +76,7 @@ fn main() {
                         .state::<ConsoleSettingsState>()
                         .save(ConsoleSettings {
                             close_action: CloseAction::Quit,
+                            autostart: false,
                         })?;
                     console.close().map_err(|error| error.to_string())?;
                     closed_rx

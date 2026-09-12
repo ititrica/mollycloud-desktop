@@ -25,7 +25,7 @@ export function installReadOnlyPreview(): void {
       switch (command) {
         case "get_init_error": case "get_migration_result": case "get_skills_migration_result": case "get_pending_deeplink": result = null; break;
         case "get_app_config_dir_override": result = "[Molly 应用数据]/ccswitch"; break;
-        case "get_settings": result = { language: "zh", visibleApps, showProfileSwitcher: false, showInTray: false, enableLocalProxy: false, enableFailoverToggle: false, firstRunNoticeDismissed: true, commonConfigConfirmed: true, minimizeToTrayOnClose: false, launchOnStartup: false }; break;
+        case "get_settings": result = { language: "zh", visibleApps, showProfileSwitcher: false, showInTray: false, enableLocalProxy: true, enableFailoverToggle: false, firstRunNoticeDismissed: true, commonConfigConfirmed: true, minimizeToTrayOnClose: false, launchOnStartup: false }; break;
         case "get_providers": result = args?.app === "codex" ? { [provider.id]: provider } : {}; break;
         case "get_current_provider": case "get_common_config_snippet": case "get_codex_common_config": result = ""; break;
         case "get_proxy_status": result = { running: false, address: "127.0.0.1", port: 24327, active_connections: 0, total_requests: 0, success_requests: 0, failed_requests: 0, success_rate: 0, uptime_seconds: 0, current_provider: null, current_provider_id: null, last_request_at: null, last_error: null, failover_count: 0, active_targets: [] }; break;

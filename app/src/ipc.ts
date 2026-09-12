@@ -28,7 +28,7 @@ export interface CcSwitchImportResult {
 }
 
 export type ConsoleCloseAction = "tray" | "quit";
-export interface ConsoleSettings { closeAction: ConsoleCloseAction }
+export interface ConsoleSettings { closeAction: ConsoleCloseAction; autostart: boolean }
 const consoleSettingsPreviewKey = "mollycloud:preview:console-settings";
 
 function isConsoleSettingsPreview(): boolean {
@@ -37,9 +37,11 @@ function isConsoleSettingsPreview(): boolean {
 }
 
 function parseConsoleSettings(value: unknown): ConsoleSettings {
-  const action = (value as Partial<ConsoleSettings> | null)?.closeAction;
+  const settings = value as Partial<ConsoleSettings> | null;
+  const action = settings?.closeAction;
   if (action !== "tray" && action !== "quit") throw new Error("关闭窗口设置无效，请重新选择。");
-  return { closeAction: action };
+  if (settings?.autostart != null && typeof settings.autostart !== "boolean") throw new Error("开机自启动设置无效，请重新选择。");
+  return { closeAction: action, autostart: settings?.autostart === true };
 }
 
 function isTauriRuntime(): boolean {
@@ -130,7 +132,7 @@ export const desktopApi = {
     if (isTauriRuntime()) return parseConsoleSettings(await invoke("get_console_settings"));
     if (isConsoleSettingsPreview()) {
       const saved = localStorage.getItem(consoleSettingsPreviewKey);
-      return saved ? parseConsoleSettings(JSON.parse(saved)) : { closeAction: "tray" };
+      return saved ? parseConsoleSettings(JSON.parse(saved)) : { closeAction: "tray", autostart: false };
     }
     throw new Error("请在 MollyCloud 桌面客户端中设置关闭窗口的行为。");
   },

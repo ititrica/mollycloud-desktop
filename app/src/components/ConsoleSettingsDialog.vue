@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { NAlert, NButton, NModal } from "naive-ui";
+import { NAlert, NButton, NModal, NSwitch } from "naive-ui";
 import AppIcon from "./AppIcon.vue";
 import { desktopApi, type ConsoleCloseAction } from "../ipc";
 
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits<{ "update:show": [show: boolean]; closed: [] }>();
 const draftCloseAction = ref<ConsoleCloseAction>("tray");
+const draftAutostart = ref(false);
 const loading = ref(false);
 const loaded = ref(false);
 const saving = ref(false);
@@ -22,6 +23,7 @@ async function loadSettings(): Promise<void> {
     const settings = await desktopApi.getConsoleSettings();
     if (version !== loadVersion || !props.show) return;
     draftCloseAction.value = settings.closeAction;
+    draftAutostart.value = settings.autostart;
     loaded.value = true;
   } catch (error) {
     if (version === loadVersion) errorMessage.value = String(error instanceof Error ? error.message : error);
@@ -39,7 +41,7 @@ async function saveSettings(): Promise<void> {
   saving.value = true;
   errorMessage.value = "";
   try {
-    await desktopApi.saveConsoleSettings({ closeAction: draftCloseAction.value });
+    await desktopApi.saveConsoleSettings({ closeAction: draftCloseAction.value, autostart: draftAutostart.value });
     emit("update:show", false);
   } catch (error) {
     errorMessage.value = String(error instanceof Error ? error.message : error);
@@ -72,7 +74,7 @@ watch(() => props.show, (show) => {
       </header>
       <form class="console-settings-form" @submit.prevent="saveSettings">
         <div class="console-settings-body">
-          <fieldset :disabled="loading || saving || !loaded">
+          <fieldset class="console-settings-section" :disabled="loading || saving || !loaded">
             <legend>关闭窗口</legend>
             <p class="console-settings-hint">点击控制台右上角的关闭按钮时</p>
             <div class="console-settings-options">
@@ -87,6 +89,14 @@ watch(() => props.show, (show) => {
                 <input v-model="draftCloseAction" type="radio" name="console-close-action" value="tray" aria-label="最小化到托盘" />
               </label>
             </div>
+          </fieldset>
+          <fieldset class="console-settings-section" :disabled="loading || saving || !loaded">
+            <legend>系统启动</legend>
+            <p class="console-settings-hint">登录 Windows 后自动启动 MollyCloud</p>
+            <label class="console-settings-toggle" :class="{ 'is-selected': draftAutostart }">
+              <span><strong>开机自启动</strong><small>自动启动控制台与桌宠，无需手动打开应用。</small></span>
+              <n-switch v-model:value="draftAutostart" size="large" aria-label="开机自启动" />
+            </label>
           </fieldset>
           <p v-if="loading" class="console-settings-status" role="status">正在读取设置…</p>
           <n-alert v-if="errorMessage" class="console-settings-error" type="error" :bordered="false" :show-icon="false" role="alert">

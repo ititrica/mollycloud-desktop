@@ -1,6 +1,6 @@
 [package]
 name = "mollycloud"
-version = "0.1.0"
+version = "0.1.1"
 description = "MollyCloud Live2D desktop companion"
 authors = ["MollyCloud"]
 edition = "2021"

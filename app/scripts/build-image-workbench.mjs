@@ -8,7 +8,7 @@ if (!npmCli) throw new Error('请通过 npm run build:image-workbench 构建生�
 function npm(args) {
   const result = spawnSync(process.execPath, [npmCli, ...args], {
     cwd: frontend, stdio: 'inherit', windowsHide: true,
-    env: { ...process.env, VITE_MOLLY_EMBEDDED: 'true', VITE_DEFAULT_API_URL: 'https://mollycloud.cn/v1?model=gpt-image-2&profileName=MollyCloud' },
+    env: { ...process.env, VITE_MOLLY_EMBEDDED: 'true', VITE_DEFAULT_API_URL: 'https://mollycloud.cn/v1?provider=sb2api-async&model=gpt-image-2.5&profileName=MollyCloud' },
   });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);

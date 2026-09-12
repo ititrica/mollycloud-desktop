@@ -356,12 +356,13 @@ export function normalizeCustomProviderDefinitions(input: unknown): CustomProvid
 
 export function createDefaultOpenAIProfile(overrides: Partial<ApiProfile> = {}): ApiProfile {
   const apiMode = overrides.apiMode ?? DEFAULT_API_URL_PATCH?.apiMode ?? 'images'
-  const streamImages = overrides.streamImages ?? DEFAULT_API_URL_PATCH?.streamImages ?? getDefaultStreamImages('openai', apiMode)
+  const provider = overrides.provider ?? DEFAULT_API_URL_PATCH?.provider ?? 'openai'
+  const streamImages = overrides.streamImages ?? DEFAULT_API_URL_PATCH?.streamImages ?? getDefaultStreamImages(provider, apiMode)
 
   return {
     id: DEFAULT_OPENAI_PROFILE_ID,
     name: DEFAULT_API_URL_PATCH?.name ?? '默认',
-    provider: 'openai',
+    provider,
     baseUrl: DEFAULT_BASE_URL,
     apiKey: DEFAULT_API_URL_PATCH?.apiKey ?? '',
     model: DEFAULT_API_URL_PATCH?.model ?? (apiMode === 'responses' ? DEFAULT_RESPONSES_MODEL : DEFAULT_IMAGES_MODEL),

@@ -1,6 +1,14 @@
 use serde::{Deserialize, Serialize};
-use std::{io::Write, path::PathBuf, sync::{atomic::{AtomicBool, Ordering}, Mutex}};
+use std::{
+    io::Write,
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
+    },
+};
 use tauri::{AppHandle, Manager, State, WebviewWindow, Window, WindowEvent};
+use tauri_plugin_autostart::ManagerExt;
 
 const SETTINGS_FILE: &str = "console-settings.json";
 
@@ -16,6 +24,8 @@ pub enum CloseAction {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ConsoleSettings {
     pub close_action: CloseAction,
+    #[serde(default)]
+    pub autostart: bool,
 }
 
 pub struct ConsoleSettingsState {
@@ -108,9 +118,15 @@ pub fn initialize(app: &AppHandle) {
 
 #[tauri::command]
 pub fn get_console_settings(
+    app: AppHandle,
     state: State<'_, ConsoleSettingsState>,
 ) -> Result<ConsoleSettings, String> {
-    state.get()
+    let mut settings = state.get()?;
+    settings.autostart = app
+        .autolaunch()
+        .is_enabled()
+        .map_err(|_| "暂时无法读取开机自启动状态，请稍后重试".to_owned())?;
+    Ok(settings)
 }
 
 #[tauri::command]
@@ -122,7 +138,36 @@ pub fn save_console_settings(
     if window.label() != "console" {
         return Err("只能在控制台中修改关闭窗口设置".to_owned());
     }
-    state.save(settings)
+    let autolaunch = window.app_handle().autolaunch();
+    let previous_autostart = autolaunch
+        .is_enabled()
+        .map_err(|_| "暂时无法读取开机自启动状态，请稍后重试".to_owned())?;
+    if previous_autostart != settings.autostart {
+        let update = if settings.autostart {
+            autolaunch.enable()
+        } else {
+            autolaunch.disable()
+        };
+        update.map_err(|_| "无法更新开机自启动设置，请检查系统权限后重试".to_owned())?;
+    }
+    match state.save(settings) {
+        Ok(settings) => Ok(settings),
+        Err(error) => {
+            if previous_autostart != settings.autostart {
+                let rollback = if previous_autostart {
+                    autolaunch.enable()
+                } else {
+                    autolaunch.disable()
+                };
+                if rollback.is_err() {
+                    return Err(format!(
+                        "{error}；且无法恢复原开机自启动状态，请在设置中重试"
+                    ));
+                }
+            }
+            Err(error)
+        }
+    }
 }
 
 #[tauri::command]
@@ -182,6 +227,7 @@ mod tests {
     fn settings(action: CloseAction) -> ConsoleSettings {
         ConsoleSettings {
             close_action: action,
+            autostart: false,
         }
     }
 
@@ -228,7 +274,11 @@ mod tests {
         }
         assert_eq!(
             serde_json::to_value(settings(CloseAction::Quit)).unwrap(),
-            serde_json::json!({ "closeAction": "quit" }),
+            serde_json::json!({ "closeAction": "quit", "autostart": false }),
+        );
+        assert_eq!(
+            serde_json::from_str::<ConsoleSettings>(r#"{"closeAction":"tray"}"#).unwrap(),
+            settings(CloseAction::Tray),
         );
     }
 

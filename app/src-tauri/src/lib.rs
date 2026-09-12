@@ -30,7 +30,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use state::RuntimeState;
 
 /// Windows GUI 子系统中启动控制台程序（powershell/cmd/reg/shutdown）时，
@@ -290,7 +290,12 @@ fn sync_interaction_regions(
 fn hide_pet(app: AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.hide();
+        publish_pet_visibility(&app, win.is_visible().unwrap_or(false));
     }
+}
+
+fn publish_pet_visibility(app: &AppHandle, visible: bool) {
+    let _ = app.emit_to("console", "pet-visibility-changed", visible);
 }
 
 #[tauri::command]
@@ -323,6 +328,7 @@ fn show_pet(app: AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
         let _ = win.set_focus();
+        publish_pet_visibility(&app, win.is_visible().unwrap_or(true));
     }
 }
 
@@ -1349,12 +1355,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "open_console" => {
-                if let Some(win) = app.get_webview_window("console") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                }
-            }
+            "open_console" => show_console(app),
             "toggle" => toggle_window(app),
             "restart" => {
                 app.restart();
@@ -1372,12 +1373,20 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             } = event
             {
                 let app = tray.app_handle();
-                toggle_window(app);
+                show_console(app);
             }
         })
         .build(app)?;
 
     Ok(())
+}
+
+fn show_console(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("console") {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+    }
 }
 
 fn toggle_window(app: &AppHandle) {
@@ -1388,6 +1397,7 @@ fn toggle_window(app: &AppHandle) {
             let _ = win.show();
             let _ = win.set_focus();
         }
+        publish_pet_visibility(app, win.is_visible().unwrap_or(false));
     }
 }
 

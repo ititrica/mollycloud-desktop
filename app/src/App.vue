@@ -76,6 +76,7 @@ let copyFeedbackTimer: number | undefined;
 let unlistenAssistantConfig: (() => void) | undefined;
 let unlistenAssistantHistory: (() => void) | undefined;
 let unlistenAssistantState: (() => void) | undefined;
+let unlistenPetVisibility: (() => void) | undefined;
 
 const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "key" | "usage" | "assistant" | "code" | "image" }> = [
   { id: "overview", label: "概览", icon: "overview" },
@@ -111,6 +112,7 @@ const keyPage = computed(() => asRecord(dashboard.value?.keys));
 const keys = computed(() => asArray(keyPage.value.items));
 const userInitial = computed(() => textValue(user.value.username ?? user.value.email, "M").slice(0, 1).toUpperCase());
 const currentPageMeta = computed(() => pageMeta[activePage.value]);
+const isEmbeddedPage = computed(() => activePage.value === "ccswitch" || activePage.value === "images");
 const apiEndpoint = "https://mollycloud.cn/v1";
 const greeting = computed(() => {
   const hour = new Date().getHours();
@@ -651,6 +653,9 @@ onMounted(async () => {
       assistantChatError.value = typeof event.payload?.error === "string" ? event.payload.error : "";
       if (!assistantSending.value) void requestAssistantHistory();
     });
+    unlistenPetVisibility = await listen<boolean>("pet-visibility-changed", (event) => {
+      petVisible.value = event.payload;
+    });
   }
   void initialize();
 });
@@ -660,6 +665,7 @@ onBeforeUnmount(() => {
   unlistenAssistantConfig?.();
   unlistenAssistantHistory?.();
   unlistenAssistantState?.();
+  unlistenPetVisibility?.();
 });
 </script>
 
@@ -742,7 +748,7 @@ onBeforeUnmount(() => {
     </aside>
 
     <section class="workspace" :class="{ 'workspace--assistant': activePage === 'assistant', 'workspace--embedded': activePage === 'ccswitch' || activePage === 'images' }">
-      <header class="topbar">
+      <header v-if="!isEmbeddedPage" class="topbar">
         <div class="page-heading">
           <span class="page-kicker">{{ currentPageMeta.kicker }}</span>
           <h1>{{ activePage === 'overview' ? `${greeting}，${textValue(user.username, 'Molly 用户')}` : currentPageMeta.title }}</h1>
@@ -761,8 +767,8 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <n-alert v-if="errorMessage" class="page-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
-      <n-alert v-if="visibleAccountReminder" class="account-reminder" :class="{ 'account-reminder--subscription': visibleAccountReminder.kind === 'subscription' }" type="warning" :bordered="false" :show-icon="false">
+      <n-alert v-if="errorMessage && !isEmbeddedPage" class="page-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
+      <n-alert v-if="visibleAccountReminder && !isEmbeddedPage" class="account-reminder" :class="{ 'account-reminder--subscription': visibleAccountReminder.kind === 'subscription' }" type="warning" :bordered="false" :show-icon="false">
         <div class="account-reminder-content">
           <div class="account-reminder-copy"><span class="reminder-spark"><AppIcon v-if="visibleAccountReminder.kind === 'subscription'" name="spark" /><template v-else>!</template></span><div><strong>{{ visibleAccountReminder.title }}</strong><small>{{ visibleAccountReminder.detail }}</small></div></div>
           <n-button size="small" type="primary" @click="openRecharge">前往充值</n-button>

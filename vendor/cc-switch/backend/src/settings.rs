@@ -364,8 +364,8 @@ pub struct AppSettings {
     /// 静默启动（程序启动时不显示主窗口，仅托盘运行）
     #[serde(default)]
     pub silent_startup: bool,
-    /// 是否在主页面启用本地代理功能（默认关闭）
-    #[serde(default)]
+    /// 是否在主页面启用本地代理功能（默认开启）
+    #[serde(default = "default_enable_local_proxy")]
     pub enable_local_proxy: bool,
     /// User has confirmed the local proxy first-run notice
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -517,6 +517,10 @@ fn default_session_auto_sync_enabled() -> bool {
     true
 }
 
+fn default_enable_local_proxy() -> bool {
+    true
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
@@ -527,7 +531,7 @@ impl Default for AppSettings {
             skip_claude_onboarding: false,
             launch_on_startup: false,
             silent_startup: false,
-            enable_local_proxy: false,
+            enable_local_proxy: true,
             proxy_confirmed: None,
             usage_confirmed: None,
             usage_dashboard_refresh_interval_ms: None,
@@ -1194,6 +1198,22 @@ pub fn update_s3_sync_status(status: WebDavSyncStatus) -> Result<(), AppError> {
 mod tests {
     use super::*;
     use crate::app_config::AppType;
+
+    #[test]
+    fn local_proxy_toggle_defaults_on_without_overriding_saved_false() {
+        assert!(AppSettings::default().enable_local_proxy);
+
+        let mut stored = serde_json::to_value(AppSettings::default()).expect("settings json");
+        stored.as_object_mut().expect("settings object").remove("enableLocalProxy");
+        assert!(serde_json::from_value::<AppSettings>(stored.clone())
+            .expect("legacy settings")
+            .enable_local_proxy);
+
+        stored["enableLocalProxy"] = serde_json::Value::Bool(false);
+        assert!(!serde_json::from_value::<AppSettings>(stored)
+            .expect("saved settings")
+            .enable_local_proxy);
+    }
 
     #[test]
     fn visible_apps_old_settings_default_claude_desktop_visible() {

@@ -18,6 +18,7 @@ export function normalizeReasoningEffort(value: unknown, fallback?: ReasoningEff
 
 export interface DefaultApiUrlPatch {
   baseUrl: string
+  provider?: 'openai' | 'sb2api-async'
   apiKey?: string
   apiMode?: ApiMode
   model?: string
@@ -43,6 +44,7 @@ export function parseDefaultApiUrl(rawUrl: string): DefaultApiUrlPatch {
     }
 
     const apiUrlParam = parsed.searchParams.get('apiUrl')
+    const providerParam = parsed.searchParams.get('provider')
     const apiKeyParam = parsed.searchParams.get('apiKey')
     const apiModeParam = parsed.searchParams.get('apiMode')
     const modelParam = parsed.searchParams.get('model')
@@ -55,6 +57,7 @@ export function parseDefaultApiUrl(rawUrl: string): DefaultApiUrlPatch {
     const transparentBackgroundMethodParam = parsed.searchParams.get('transparentBackgroundMethod')
 
     if (apiUrlParam !== null) patch.baseUrl = normalizeBaseUrl(apiUrlParam.trim())
+    if (providerParam === 'openai' || providerParam === 'sb2api-async') patch.provider = providerParam
     if (apiKeyParam !== null) patch.apiKey = apiKeyParam.trim()
     if (apiModeParam === 'images' || apiModeParam === 'responses') patch.apiMode = apiModeParam
     if (modelParam !== null && modelParam.trim()) patch.model = modelParam.trim()
