@@ -2,7 +2,7 @@
 
 MollyCloud 的 Windows 桌面客户端。它把账户控制台、透明 Live2D 桌宠、Molly AI 助手、开发工具供应商管理和图片工作台组合为一个本地应用。
 
-当前版本：[v0.1.1](https://github.com/ititrica/mollycloud-desktop/releases/tag/v0.1.1)。可从 Release 下载 [NSIS 安装器](https://github.com/ititrica/mollycloud-desktop/releases/latest) 或 MSI 安装包。
+当前版本：[v0.1.2](https://github.com/ititrica/mollycloud-desktop/releases/tag/v0.1.2)。可从 Release 下载 [NSIS 安装器](https://github.com/ititrica/mollycloud-desktop/releases/latest) 或 MSI 安装包。
 
 ## 用途
 

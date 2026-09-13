@@ -15,13 +15,14 @@ import {
   type DropdownOption,
 } from "naive-ui";
 import AppIcon from "./components/AppIcon.vue";
+import CcSwitchImportDialog from "./components/CcSwitchImportDialog.vue";
 import CcSwitchPanel from "./components/CcSwitchPanel.vue";
 import ImageWorkbenchPanel from "./components/ImageWorkbenchPanel.vue";
 import ConsoleSettingsDialog from "./components/ConsoleSettingsDialog.vue";
 import PetSettingsDialog from "./components/PetSettingsDialog.vue";
 import { asArray, asRecord, type AssistantConfig, type DashboardPayload, type ServiceBootstrap } from "./contracts";
 import { formatBalance, formatDate, formatMoney, formatTokens, numberValue, textValue } from "./format";
-import { desktopApi, type CcSwitchImportResult } from "./ipc";
+import { desktopApi, type CcSwitchImportResult, type DesktopUpdate } from "./ipc";
 
 type Page = "overview" | "subscriptions" | "keys" | "usage" | "assistant" | "ccswitch" | "images";
 type Phase = "starting" | "login" | "two-factor" | "dashboard";
@@ -49,6 +50,10 @@ const consoleSettingsOpen = ref(false);
 const consoleSettingsButton = ref<HTMLButtonElement | null>(null);
 const petSettingsOpen = ref(false);
 const petSettingsButton = ref<HTMLButtonElement | null>(null);
+const sidebarCollapsed = ref(false);
+const ccSwitchImportOpen = ref(false);
+const ccSwitchImportKeyId = ref("");
+const ccSwitchImportName = ref("");
 const submitting = ref(false);
 const refreshing = ref(false);
 const errorMessage = ref("");
@@ -58,7 +63,6 @@ const assistantConfig = ref<AssistantConfig | null>(null);
 const petVisible = ref(true);
 const petToggleLoading = ref(false);
 const copiedKeyId = ref("");
-const importingKeyId = ref("");
 const importedProviders = ref<Record<string, CcSwitchImportResult>>({});
 const ccSwitchVisited = ref(false);
 const imageWorkbenchVisited = ref(false);
@@ -71,6 +75,7 @@ const assistantDraft = ref("");
 const assistantSending = ref(false);
 const assistantChatError = ref("");
 const assistantHistory = ref<HTMLElement | null>(null);
+const desktopUpdate = ref<DesktopUpdate | null>(null);
 let refreshTimer: number | undefined;
 let copyFeedbackTimer: number | undefined;
 let unlistenAssistantConfig: (() => void) | undefined;
@@ -238,10 +243,9 @@ const keyTableColumns: DataTableColumns<Record<string, unknown>> = [
           class: "ccs-import-button",
           size: "small",
           secondary: true,
-          loading: importingKeyId.value === keyId,
-          disabled: Boolean(importingKeyId.value) && importingKeyId.value !== keyId,
-          onClick: () => void importKeyToCcSwitch(row),
-        }, { default: () => imported ? "已导入" : "导入到内置 CC Switch" }),
+          "data-key-id": keyId,
+          onClick: () => openCcSwitchImport(row),
+        }, { default: () => imported ? "再次导入" : "导入到内置 CC Switch" }),
         imported ? h(NButton, {
           size: "small",
           quaternary: true,
@@ -517,6 +521,10 @@ function selectPage(page: Page): void {
   }
 }
 
+function toggleSidebar(): void {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
 function openImportedProvider(provider: CcSwitchImportResult): void {
   ccSwitchTarget.value = { ...provider };
   selectPage("ccswitch");
@@ -537,6 +545,26 @@ async function openSubscriptions(): Promise<void> {
     await desktopApi.openSubscriptions();
   } catch (reason) {
     errorMessage.value = `无法打开我的订阅：${friendlyError(reason)}`;
+  }
+}
+
+async function checkForDesktopUpdate(): Promise<void> {
+  if (consolePreview) return;
+  try {
+    desktopUpdate.value = await desktopApi.checkForDesktopUpdate();
+  } catch (reason) {
+    // 启动检查是静默的：网络或发布端暂时不可用时不干扰登录和控制台。
+    console.info("MollyCloud 更新检查未完成", friendlyError(reason));
+  }
+}
+
+async function openDesktopUpdate(): Promise<void> {
+  const update = desktopUpdate.value;
+  if (!update) return;
+  try {
+    await desktopApi.openDesktopUpdate(update.downloadUrl);
+  } catch (reason) {
+    errorMessage.value = `无法打开更新下载：${friendlyError(reason)}`;
   }
 }
 
@@ -622,21 +650,27 @@ async function copyKey(item: Record<string, unknown>): Promise<void> {
   }
 }
 
-async function importKeyToCcSwitch(item: Record<string, unknown>): Promise<void> {
+function openCcSwitchImport(item: Record<string, unknown>): void {
   const keyId = String(item.id ?? "");
-  if (!keyId || importingKeyId.value) return;
-  importingKeyId.value = keyId;
+  if (!keyId) return;
+  ccSwitchImportKeyId.value = keyId;
+  const keyName = textValue(item.name, "未命名").trim();
+  ccSwitchImportName.value = (keyName ? `MollyCloud · ${keyName}` : "MollyCloud").slice(0, 80);
   errorMessage.value = "";
-  try {
-    if (consolePreview) throw new Error("预览模式不会导入真实密钥，请在 MollyCloud 客户端中操作");
-    const provider = await desktopApi.importApiKeyToCcSwitch(keyId);
-    importedProviders.value[keyId] = provider;
-    ccSwitchPanel.value?.notifyProviderImported(provider);
-  } catch (reason) {
-    errorMessage.value = friendlyError(reason);
-  } finally {
-    importingKeyId.value = "";
-  }
+  ccSwitchImportOpen.value = true;
+}
+
+function restoreCcSwitchImportFocus(): void {
+  const keyId = ccSwitchImportKeyId.value;
+  window.setTimeout(() => {
+    const buttons = document.querySelectorAll<HTMLButtonElement>(".ccs-import-button");
+    Array.from(buttons).find((button) => button.dataset.keyId === keyId)?.focus();
+  }, 0);
+}
+
+function handleCcSwitchImported(keyId: string, provider: CcSwitchImportResult): void {
+  importedProviders.value[keyId] = provider;
+  ccSwitchPanel.value?.notifyProviderImported(provider);
 }
 
 onMounted(async () => {
@@ -658,6 +692,7 @@ onMounted(async () => {
     });
   }
   void initialize();
+  void checkForDesktopUpdate();
 });
 onBeforeUnmount(() => {
   if (refreshTimer) window.clearInterval(refreshTimer);
@@ -732,16 +767,20 @@ onBeforeUnmount(() => {
     </section>
   </main>
 
-  <main v-else class="app-shell" :inert="consoleSettingsOpen || petSettingsOpen">
+  <main v-else class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }" :inert="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen">
     <aside class="sidebar">
-      <div class="sidebar-brand"><img class="brand-logo" src="/brand/mollycloud-logo.png" alt="" /><div><strong>MollyCloud</strong><span>茉莉云</span></div></div>
+      <div class="sidebar-project-bar">
+        <button class="sidebar-toggle" type="button" :aria-label="sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'" :aria-pressed="sidebarCollapsed" :title="sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'" @click="toggleSidebar">
+          <AppIcon name="sidebar" />
+        </button>
+      </div>
       <nav aria-label="主导航">
-        <button v-for="item in navigation" :key="item.id" type="button" class="nav-item" :class="{ active: activePage === item.id }" :aria-current="activePage === item.id ? 'page' : undefined" @click="selectPage(item.id)">
+        <button v-for="item in navigation" :key="item.id" type="button" class="nav-item" :class="{ active: activePage === item.id }" :aria-label="item.label" :title="sidebarCollapsed ? item.label : undefined" :aria-current="activePage === item.id ? 'page' : undefined" @click="selectPage(item.id)">
           <AppIcon :name="item.icon" /><span>{{ item.label }}</span>
         </button>
       </nav>
       <div class="sidebar-footer">
-        <button ref="consoleSettingsButton" class="sidebar-settings" type="button" aria-haspopup="dialog" :aria-expanded="consoleSettingsOpen" @click="consoleSettingsOpen = true">
+        <button ref="consoleSettingsButton" class="sidebar-settings" type="button" aria-label="设置" :title="sidebarCollapsed ? '设置' : undefined" aria-haspopup="dialog" :aria-expanded="consoleSettingsOpen" @click="consoleSettingsOpen = true">
           <AppIcon name="settings" /><span>设置</span>
         </button>
       </div>
@@ -755,6 +794,9 @@ onBeforeUnmount(() => {
           <p>{{ currentPageMeta.description }}</p>
         </div>
         <div class="topbar-actions">
+          <n-button v-if="desktopUpdate" class="update-available" secondary :title="`发现 MollyCloud ${desktopUpdate.version}，点击下载更新`" :aria-label="`软件可更新，版本 ${desktopUpdate.version}，点击下载`" @click="openDesktopUpdate">
+            <AppIcon name="update" /><span>软件可更新</span>
+          </n-button>
           <n-button class="balance-chip" quaternary :aria-label="`账户余额 ${formatBalance(user.balance)}，前往充值`" @click="openRecharge">
             <span class="balance-chip__face balance-chip__amount"><AppIcon class="balance-chip__icon" name="wallet" /><small>账户余额</small><strong>{{ formatBalance(user.balance) }}</strong></span>
             <span class="balance-chip__face balance-chip__recharge">前往充值</span>
@@ -919,6 +961,14 @@ onBeforeUnmount(() => {
   <div id="console-settings-layer" class="console-settings-layer" />
   <ConsoleSettingsDialog v-if="phase === 'dashboard'" v-model:show="consoleSettingsOpen" @closed="consoleSettingsButton?.focus()" />
   <PetSettingsDialog v-if="phase === 'dashboard'" v-model:show="petSettingsOpen" @closed="petSettingsButton?.focus()" />
+  <CcSwitchImportDialog
+    v-if="phase === 'dashboard'"
+    v-model:show="ccSwitchImportOpen"
+    :key-id="ccSwitchImportKeyId"
+    :initial-name="ccSwitchImportName"
+    @imported="handleCcSwitchImported"
+    @closed="restoreCcSwitchImportFocus"
+  />
 
   <n-modal v-model:show="agreementOpen" preset="card" class="agreement-modal" title="登录协议" :bordered="false" :mask-closable="true">
       <div class="agreement-content"><article v-for="doc in agreementDocuments" :key="textValue(doc.id)"><h3>{{ textValue(doc.title) }}</h3><p>{{ textValue(doc.content_md) }}</p></article></div>

@@ -239,8 +239,42 @@ pub async fn copy_api_key(key_id: String, state: State<'_, RuntimeState>) -> Res
 }
 
 #[tauri::command]
+pub async fn fetch_ccswitch_import_models(
+    key_id: String,
+    state: State<'_, RuntimeState>,
+) -> Result<Vec<String>, String> {
+    if key_id.trim().is_empty() {
+        return Err("未找到要导入的 API 密钥".to_owned());
+    }
+    let token = state.access_token().await?;
+    let keys = state
+        .api
+        .get_authenticated("/keys?page=1&page_size=100", &token)
+        .await?;
+    let api_key = keys
+        .get("items")
+        .and_then(Value::as_array)
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|item| id_matches(item.get("id"), key_id.trim()))
+        })
+        .and_then(|item| item.get("key"))
+        .and_then(Value::as_str)
+        .filter(|key| !key.is_empty())
+        .ok_or_else(|| "未找到要拉取模型的 API 密钥".to_owned())?;
+    state
+        .api
+        .list_models_at(MOLLY_OPENAI_ROOT, Some(api_key))
+        .await
+}
+
+#[tauri::command]
 pub async fn import_api_key_to_ccswitch(
     key_id: String,
+    name: String,
+    agent: String,
+    model: String,
     state: State<'_, RuntimeState>,
     app: AppHandle,
 ) -> Result<CcSwitchImportOutcome, String> {
@@ -248,10 +282,36 @@ pub async fn import_api_key_to_ccswitch(
         return Err("未找到要导入的 API 密钥".to_owned());
     }
 
+    let name = name.trim();
+    let model = model.trim();
+    let agent = agent.trim().to_ascii_lowercase();
+    if name.is_empty() || name.chars().count() > 80 || name.chars().any(char::is_control) {
+        return Err("供应商名称应为 1–80 个可见字符".to_owned());
+    }
+    if model.is_empty() || model.chars().count() > 160 || model.chars().any(char::is_control) {
+        return Err("默认模型应为 1–160 个可见字符".to_owned());
+    }
+    if !matches!(
+        agent.as_str(),
+        "claude"
+            | "claude-desktop"
+            | "codex"
+            | "gemini"
+            | "grokbuild"
+            | "opencode"
+            | "openclaw"
+            | "hermes"
+            | "pi"
+    ) {
+        return Err("请选择 CC Switch 支持的 Agent".to_owned());
+    }
+
     let token = state.access_token().await?;
     let (user, keys) = tokio::try_join!(
         state.api.get_authenticated("/auth/me", &token),
-        state.api.get_authenticated("/keys?page=1&page_size=100", &token),
+        state
+            .api
+            .get_authenticated("/keys?page=1&page_size=100", &token),
     )?;
     let account_id = account_identity(&user)?;
     let item = keys
@@ -285,14 +345,14 @@ pub async fn import_api_key_to_ccswitch(
       }
     })"#;
 
-    let key_name = item.get("name").and_then(Value::as_str).unwrap_or("").trim();
     let input = molly_ccswitch::MollyProviderImport {
         account_id,
         key_id: key_id.trim().to_owned(),
-        name: if key_name.is_empty() { "MollyCloud".to_owned() } else { format!("MollyCloud · {key_name}") },
+        name: name.to_owned(),
+        app: agent.clone(),
         api_key: api_key.to_owned(),
         base_url: MOLLY_OPENAI_ROOT.to_owned(),
-        model: "gpt-5.5".to_owned(),
+        model: model.to_owned(),
         usage_script: Some(usage_script.to_owned()),
     };
     let provider_id = tauri::async_runtime::spawn_blocking(move || {
@@ -300,13 +360,16 @@ pub async fn import_api_key_to_ccswitch(
     })
     .await
     .map_err(|_| "内置 CC Switch 导入任务未完成".to_owned())??;
-    Ok(CcSwitchImportOutcome { provider_id, app: "codex" })
+    Ok(CcSwitchImportOutcome {
+        provider_id,
+        app: agent,
+    })
 }
 
 #[derive(Serialize)]
 pub struct CcSwitchImportOutcome {
     provider_id: String,
-    app: &'static str,
+    app: String,
 }
 
 fn account_identity(user: &Value) -> Result<String, String> {

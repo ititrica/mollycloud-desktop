@@ -11,6 +11,7 @@ mod proxy;
 mod screen;
 mod state;
 mod trash;
+mod update;
 
 use assistant::{
     assistant_chat, assistant_status, petra_assistant_chat, petra_assistant_models,
@@ -20,8 +21,8 @@ use ccswitch::launch_ccswitch_cli;
 use console_settings::{get_console_settings, save_console_settings, set_console_dashboard_active};
 use commands::{
     bootstrap_public, complete_two_factor, copy_api_endpoint, copy_api_key, fetch_account_balance,
-    fetch_dashboard, import_api_key_to_ccswitch, login, logout, play_overlay_motion,
-    restore_session, set_overlay_interactive,
+    fetch_ccswitch_import_models, fetch_dashboard, import_api_key_to_ccswitch, login, logout,
+    play_overlay_motion, restore_session, set_overlay_interactive,
 };
 use serde::{Deserialize, Serialize};
 use std::io::Write;
@@ -32,6 +33,7 @@ use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, State};
 use state::RuntimeState;
+use update::{check_for_desktop_update, open_desktop_update};
 
 /// Windows GUI 子系统中启动控制台程序（powershell/cmd/reg/shutdown）时，
 /// 默认会弹出一个新的控制台窗口。加 CREATE_NO_WINDOW 避免窗口闪现。
@@ -1660,13 +1662,14 @@ pub fn run() {
             set_volume, send_notification, get_weather,
             schedule_shutdown, cancel_shutdown,
             bootstrap_public, login, complete_two_factor, restore_session,
-            fetch_dashboard, fetch_account_balance, copy_api_endpoint, copy_api_key, import_api_key_to_ccswitch, logout,
+            fetch_dashboard, fetch_account_balance, copy_api_endpoint, copy_api_key, fetch_ccswitch_import_models, import_api_key_to_ccswitch, logout,
             launch_ccswitch_cli,
             image_workbench::image_request, image_workbench::cancel_image_request,
             get_console_settings, save_console_settings, set_console_dashboard_active,
             set_overlay_interactive, play_overlay_motion,
             assistant_status, assistant_chat, get_assistant_config, save_assistant_config,
             petra_assistant_models, petra_assistant_chat,
+            check_for_desktop_update, open_desktop_update,
         ])
         .setup(|app| {
             LOG_DIR.get_or_init(|| {

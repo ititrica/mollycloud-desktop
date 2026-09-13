@@ -1,5 +1,5 @@
 //! MollyCloud host boundary. The upstream application launcher is deliberately absent.
-use crate::{AppState, Database, Provider, ProviderMeta};
+use crate::{AppState, Database, Provider};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::{
@@ -527,10 +527,97 @@ pub struct MollyProviderImport {
     pub account_id: String,
     pub key_id: String,
     pub name: String,
+    pub app: String,
     pub api_key: String,
     pub base_url: String,
     pub model: String,
     pub usage_script: Option<String>,
+}
+
+fn molly_provider_config(
+    input: &MollyProviderImport,
+    provider_id: &str,
+) -> Result<serde_json::Value, String> {
+    let config = match input.app.as_str() {
+        "claude" | "claude-desktop" => json!({
+            "env": {
+                "ANTHROPIC_BASE_URL": input.base_url,
+                "ANTHROPIC_AUTH_TOKEN": input.api_key,
+                "ANTHROPIC_MODEL": input.model,
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": input.model,
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": input.model,
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": input.model,
+            }
+        }),
+        "codex" => {
+            let config = toml::to_string(&json!({
+                "model_provider": "mollycloud", "model": input.model,
+                "model_providers": { "mollycloud": { "name": "MollyCloud", "base_url": input.base_url,
+                    "wire_api": "responses", "requires_openai_auth": true } }
+            }))
+            .map_err(|_| "无法生成 Codex 供应商配置。")?;
+            json!({"auth": {"OPENAI_API_KEY": input.api_key}, "config": config})
+        }
+        "gemini" => json!({
+            "env": {
+                "GOOGLE_GEMINI_BASE_URL": input.base_url,
+                "GEMINI_API_KEY": input.api_key,
+                "GEMINI_MODEL": input.model,
+            }
+        }),
+        "grokbuild" => {
+            let mut profiles = serde_json::Map::new();
+            profiles.insert(
+                input.model.clone(),
+                json!({
+                    "model": input.model,
+                    "base_url": input.base_url,
+                    "name": input.name,
+                    "api_key": input.api_key,
+                    "api_backend": "responses",
+                    "context_window": 128000,
+                }),
+            );
+            let config = toml::to_string(&json!({
+                "models": {"default": input.model},
+                "model": profiles,
+            }))
+            .map_err(|_| "无法生成 Grok Build 供应商配置。")?;
+            json!({"config": config})
+        }
+        "opencode" => {
+            let mut models = serde_json::Map::new();
+            models.insert(input.model.clone(), json!({"name": input.model}));
+            json!({
+                "npm": "@ai-sdk/openai-compatible",
+                "name": input.name,
+                "options": {"baseURL": input.base_url, "apiKey": input.api_key, "setCacheKey": true},
+                "models": models,
+            })
+        }
+        "openclaw" => json!({
+            "baseUrl": input.base_url,
+            "apiKey": input.api_key,
+            "api": "openai-responses",
+            "models": [{"id": input.model, "name": input.model, "contextWindow": 128000, "maxTokens": 32768}],
+        }),
+        "hermes" => json!({
+            "name": provider_id,
+            "base_url": input.base_url,
+            "api_key": input.api_key,
+            "api_mode": "codex_responses",
+            "models": [{"id": input.model, "name": input.model, "context_length": 128000}],
+        }),
+        "pi" => json!({
+            "name": input.name,
+            "baseUrl": input.base_url,
+            "apiKey": input.api_key,
+            "api": "openai-responses",
+            "models": [{"id": input.model, "name": input.model, "contextWindow": 128000, "maxTokens": 32768}],
+        }),
+        _ => return Err("请选择 CC Switch 支持的 Agent。".into()),
+    };
+    Ok(config)
 }
 
 fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<String, String> {
@@ -547,19 +634,21 @@ fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<Stri
     {
         return Err("MollyCloud API 地址无效。".into());
     }
+    if input.name.trim().is_empty() || input.model.trim().is_empty() {
+        return Err("供应商名称和默认模型不能为空。".into());
+    }
     let mut hash = Sha256::new();
     hash.update(input.account_id.as_bytes());
     hash.update([0]);
     hash.update(input.key_id.as_bytes());
+    if input.app != "codex" {
+        hash.update([0]);
+        hash.update(input.app.as_bytes());
+    }
     let id = format!("molly-{:x}", hash.finalize());
-    let config = toml::to_string(&json!({
-        "model_provider": "mollycloud", "model": input.model,
-        "model_providers": { "mollycloud": { "name": "MollyCloud", "base_url": input.base_url,
-            "wire_api": "responses", "requires_openai_auth": true } }
-    }))
-    .map_err(|_| "无法生成内置供应商配置。")?;
+    let settings_config = molly_provider_config(&input, &id)?;
     let existing = db
-        .get_provider_by_id(&id, "codex")
+        .get_provider_by_id(&id, &input.app)
         .map_err(|_| "读取内置供应商库失败。")?;
     let mut provider = existing.unwrap_or_else(|| {
         Provider::with_id(
@@ -570,28 +659,54 @@ fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<Stri
         )
     });
     provider.name = input.name;
-    provider.settings_config = json!({"auth": {"OPENAI_API_KEY": input.api_key}, "config": config});
+    provider.settings_config = settings_config;
     provider.website_url = Some(input.base_url);
     provider
         .created_at
         .get_or_insert_with(|| chrono::Utc::now().timestamp());
     provider.category = Some("custom".into());
-    provider.notes = Some("由 MollyCloud API 密钥页导入；点击启用后写入本机 Codex 配置。".into());
+    provider.notes = Some(format!(
+        "由 MollyCloud API 密钥页导入；点击启用后写入本机 {} 配置。",
+        input.app
+    ));
+    let mut meta = provider.meta.take().unwrap_or_default();
     if let Some(code) = input.usage_script {
-        let mut meta = provider.meta.take().unwrap_or_default();
         meta.usage_script = Some(
             serde_json::from_value(json!({
                 "enabled":true, "language":"javascript", "code":code, "autoQueryInterval":30
             }))
             .map_err(|_| "无法保存用量脚本配置。")?,
         );
-        provider.meta = Some(meta);
-    } else {
-        provider.meta.get_or_insert_with(ProviderMeta::default);
     }
+    if input.app == "claude" || input.app == "claude-desktop" {
+        meta.api_format = Some("openai_responses".into());
+        meta.api_key_field = Some("ANTHROPIC_AUTH_TOKEN".into());
+    }
+    if input.app == "claude-desktop" {
+        meta.claude_desktop_mode = Some(crate::provider::ClaudeDesktopMode::Proxy);
+        meta.claude_desktop_model_routes = [
+            "claude-sonnet-5",
+            "claude-opus-5",
+            "claude-fable-5",
+            "claude-haiku-4-5",
+        ]
+        .into_iter()
+        .map(|route| {
+            (
+                route.to_owned(),
+                crate::provider::ClaudeDesktopModelRoute {
+                    model: input.model.clone(),
+                    label_override: Some(input.model.clone()),
+                    supports_1m: None,
+                },
+            )
+        })
+        .collect();
+    }
+    provider.meta = Some(meta);
     // Database::save_provider preserves current flag only for existing rows; new rows are false.
     // Never call ProviderService::add (which activates the first provider) or update (which rewrites live).
-    db.save_provider("codex", &provider)
+    db.save_provider(&input.app, &provider)
         .map_err(|_| "写入内置供应商库失败。")?;
     Ok(id)
 }
@@ -604,10 +719,11 @@ pub fn import_molly_provider(
         .try_state::<AppState>()
         .ok_or("内置 CC Switch 尚未初始化。")?;
     validate_settings(&crate::settings::get_settings()).map_err(|e| e.to_string())?;
+    let app_type = input.app.clone();
     let id = save_molly_provider(&state.db, input)?;
     let _ = app.emit(
         "molly-ccswitch:provider-imported",
-        json!({"app":"codex", "providerId":id}),
+        json!({"app":app_type, "providerId":id}),
     );
     Ok(id)
 }
@@ -695,6 +811,72 @@ mod tests {
     }
 
     #[test]
+    fn molly_import_builds_a_saved_provider_for_every_supported_agent() {
+        let db = Database::memory().unwrap();
+        let agents = [
+            "claude",
+            "claude-desktop",
+            "codex",
+            "gemini",
+            "grokbuild",
+            "opencode",
+            "openclaw",
+            "hermes",
+            "pi",
+        ];
+        let mut ids = std::collections::HashSet::new();
+        for agent in agents {
+            let id = save_molly_provider(
+                &db,
+                MollyProviderImport {
+                    account_id: "account-all-agents".into(),
+                    key_id: "key-all-agents".into(),
+                    name: format!("MollyCloud {agent}"),
+                    app: agent.into(),
+                    api_key: "secret-not-real".into(),
+                    base_url: "https://example.test/v1".into(),
+                    model: "model-selected-by-user".into(),
+                    usage_script: None,
+                },
+            )
+            .unwrap();
+            assert!(
+                ids.insert(id.clone()),
+                "provider IDs must be unique per agent"
+            );
+            let provider = db.get_provider_by_id(&id, agent).unwrap().unwrap();
+            assert_eq!(provider.name, format!("MollyCloud {agent}"));
+            assert!(provider.settings_config.is_object());
+            let serialized = provider.settings_config.to_string();
+            assert!(serialized.contains("secret-not-real"));
+            assert!(serialized.contains("model-selected-by-user"));
+            assert!(db.get_current_provider(agent).unwrap().is_none());
+            if agent == "claude-desktop" {
+                crate::claude_desktop_config::validate_provider(&provider).unwrap();
+                assert_eq!(
+                    crate::claude_desktop_config::provider_mode(&provider),
+                    crate::provider::ClaudeDesktopMode::Proxy
+                );
+            }
+        }
+
+        assert!(save_molly_provider(
+            &db,
+            MollyProviderImport {
+                account_id: "account-all-agents".into(),
+                key_id: "key-all-agents".into(),
+                name: "Unsupported".into(),
+                app: "unsupported".into(),
+                api_key: "secret-not-real".into(),
+                base_url: "https://example.test/v1".into(),
+                model: "model".into(),
+                usage_script: None,
+            },
+        )
+        .is_err());
+    }
+
+    #[test]
     fn system_targets_import_switch_and_proxy_ownership() {
         let temp = tempfile::tempdir().unwrap();
         let system_home = temp.path().join("system-user");
@@ -716,6 +898,7 @@ mod tests {
             account_id: "account-1".into(),
             key_id: "key-1".into(),
             name: "MollyCloud".into(),
+            app: "codex".into(),
             api_key: key.into(),
             base_url: "https://example.test/v1".into(),
             model: "gpt-5.5".into(),

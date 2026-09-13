@@ -94,6 +94,56 @@ async function select(index) {
   await evaluate(`document.querySelectorAll('.nav-item')[${index}].click()`);
   await pause(250);
 }
+async function verifyCompactSidebar(width, height) {
+  const toggle = `.sidebar-toggle`;
+  const expanded = await evaluate(`(() => {
+    const rect = (el) => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}; };
+    const projectBar = document.querySelector('.sidebar-project-bar');
+    const toggle = document.querySelector('.sidebar-toggle');
+    return {
+      projectBar: rect(projectBar),
+      projectBarText: projectBar.textContent.trim(),
+      toggle: rect(toggle), toggleBackground: getComputedStyle(toggle).backgroundColor,
+      brandAbsent: !document.querySelector('.sidebar-project-brand'),
+      nav: [...document.querySelectorAll('.nav-item')].map((el) => ({rect:rect(el),icon:rect(el.querySelector('.app-icon'))})),
+      settings: rect(document.querySelector('.sidebar-settings')),
+    };
+  })()`);
+  await evaluate(`document.querySelector(${JSON.stringify(toggle)}).focus(); document.querySelector(${JSON.stringify(toggle)}).click();`);
+  await pause(240);
+  const compact = await evaluate(`(() => {
+    const sidebar = document.querySelector('.sidebar');
+    const toggle = document.querySelector('.sidebar-toggle');
+    const projectBar = document.querySelector('.sidebar-project-bar');
+    const nav = [...document.querySelectorAll('.nav-item')];
+    const settings = document.querySelector('.sidebar-settings');
+    const rect = el => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}; };
+    return {
+      classApplied: document.querySelector('.app-shell').classList.contains('app-shell--sidebar-collapsed'),
+      sidebar: rect(sidebar), toggle: rect(toggle), togglePressed: toggle.getAttribute('aria-pressed'), toggleLabel: toggle.getAttribute('aria-label'), toggleBackground:getComputedStyle(toggle).backgroundColor,
+      projectBar: rect(projectBar), projectBarText: projectBar.textContent.trim(),
+      brandAbsent: !document.querySelector('.sidebar-project-brand'),
+      nav: nav.map(el => ({rect:rect(el), icon:rect(el.querySelector('.app-icon')), label:el.getAttribute('aria-label'), textHidden:getComputedStyle(el.querySelector('span')).display === 'none', iconVisible:el.querySelector('.app-icon').getBoundingClientRect().width > 0})),
+      settings: {rect:rect(settings), label:settings.getAttribute('aria-label'), textHidden:getComputedStyle(settings.querySelector('span')).display === 'none'},
+      horizontalOverflow: document.documentElement.scrollWidth > innerWidth || document.querySelector('.workspace').scrollWidth > document.querySelector('.workspace').clientWidth,
+    };
+  })()`);
+  check(compact.classApplied && compact.sidebar.width === 76 && compact.togglePressed === 'true' && compact.toggleLabel === '展开菜单栏', `Compact sidebar state ${width}`);
+  check(expanded.projectBarText === '' && compact.projectBarText === '' && expanded.brandAbsent && compact.brandAbsent && expanded.toggleBackground === 'rgba(0, 0, 0, 0)' && compact.toggleBackground === 'rgba(0, 0, 0, 0)' && compact.toggle.y >= compact.projectBar.y && compact.toggle.bottom <= compact.projectBar.bottom, `Sidebar project bar content ${width}`);
+  check(compact.nav.length === 7 && compact.nav.every((item, index) => item.rect.height === 56 && item.label && item.textHidden && item.iconVisible && Math.abs(item.rect.y - expanded.nav[index].rect.y) < 0.1) && Math.abs(compact.settings.rect.y - expanded.settings.y) < 0.1 && compact.settings.label === '设置' && compact.settings.textHidden && compact.settings.rect.bottom <= height && !compact.horizontalOverflow, `Compact sidebar icons, fixed vertical positions, and bounds ${width}`);
+  const expandedIconCenter = expanded.nav[0].icon.x + expanded.nav[0].icon.width / 2;
+  const compactIconCenter = compact.nav[0].icon.x + compact.nav[0].icon.width / 2;
+  check(Math.abs(expanded.toggle.x + expanded.toggle.width / 2 - expandedIconCenter) < 0.1, `Expanded project control aligns with navigation icons ${width}`);
+  check(Math.abs(compact.toggle.x + compact.toggle.width / 2 - compactIconCenter) < 0.1, `Compact project control aligns with navigation icons ${width}`);
+  check(Math.abs(compact.toggle.y - expanded.toggle.y) < 0.1, `Project control keeps its vertical position while collapsing ${width}`);
+  await page('Input.dispatchMouseEvent', { type:'mouseMoved', x:compact.toggle.x + compact.toggle.width / 2, y:compact.toggle.y + compact.toggle.height / 2 });
+  await pause(180);
+  check(await evaluate(`getComputedStyle(document.querySelector('.sidebar-toggle')).backgroundColor !== 'rgba(0, 0, 0, 0)'`), `Sidebar toggle background appears only on pointer hover ${width}`);
+  await screenshot(`sidebar-compact-${width}`);
+  await key(' ', 'Space', 32);
+  check(await evaluate(`!document.querySelector('.app-shell').classList.contains('app-shell--sidebar-collapsed') && document.querySelector('.sidebar-toggle').getAttribute('aria-pressed') === 'false'`), `Compact sidebar keyboard restore ${width}`);
+  report.push({ page:'sidebar-compact', width, expanded, ...compact });
+}
 const readShell = `(() => {
   const rect = el => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(n => Math.round(n * 100) / 100); };
   const css = (el, names) => Object.fromEntries(names.map(name => [name, getComputedStyle(el)[name]]));
@@ -388,6 +438,7 @@ try {
     await evaluate(`localStorage.removeItem('mollycloud:preview:console-settings')`);
     await page('Page.navigate', { url: `${baseUrl}/?ui-preview=console&preview-page=overview` });
     await ready('.overview-page');
+    await verifyCompactSidebar(width, height);
     await verifyConsoleSettings(width, height);
     let baseline;
     for (let index = 0; index < names.length; index++) {
@@ -462,17 +513,49 @@ try {
     // Round trip catches scroll position/layout changes caused by leaving chat.
     await select(0);
     check(JSON.stringify((await evaluate(readShell)).shell) === JSON.stringify(baseline), `Shell round trip ${width}`);
+    await mutate(`state.desktopUpdate = { version: '0.1.2', downloadUrl: 'https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe', notes: '设计预览' };`);
+    const updateNotice = await evaluate(`(() => {
+      const notice = document.querySelector('.update-available');
+      const balance = document.querySelector('.balance-chip');
+      const actions = document.querySelector('.topbar-actions');
+      const rect = el => { const r = el.getBoundingClientRect(); return { x:r.x, y:r.y, right:r.right, bottom:r.bottom, width:r.width, height:r.height }; };
+      return { notice: notice && rect(notice), balance: balance && rect(balance), actions: actions && rect(actions), text: notice?.innerText.trim(), title: notice?.getAttribute('title'), horizontalOverflow: document.documentElement.scrollWidth > innerWidth || document.querySelector('.workspace').scrollWidth > document.querySelector('.workspace').clientWidth };
+    })()`);
+    check(updateNotice.notice && updateNotice.text === '软件可更新' && updateNotice.title?.includes('0.1.2') && updateNotice.notice.right <= updateNotice.balance.x && !updateNotice.horizontalOverflow, `Desktop update indicator placement ${width}`);
+    await screenshot(`desktop-update-${width}`);
+    await mutate(`state.desktopUpdate = null;`);
     await select(5);
     check(await evaluate(`document.querySelector('.ccswitch-frame').contentWindow.__mollyKeepAliveProbe === ${width}`), `CC Switch iframe remains mounted ${width}`);
-    // A preview import must fail truthfully. Model a backend response only to test
-    // success feedback and ID-based navigation; this is not a native import test.
+    // The import dialog is exercised without exposing or saving a real key. A preview
+    // submission must fail truthfully; the backend result below only tests navigation.
     await select(2);
     await evaluate(`document.querySelector('.ccs-import-button').click()`);
-    await pause(220);
-    check(await evaluate(`document.querySelector('.page-alert')?.innerText.includes('预览模式不会导入真实密钥') && !document.querySelector('.ccs-import-actions').innerText.includes('已导入')`), `CC Switch preview import rejected ${width}`);
+    await ready('.ccs-import-dialog');
+    const importDialog = await evaluate(`(() => {
+      const dialog = document.querySelector('.ccs-import-dialog');
+      const bounds = dialog.getBoundingClientRect();
+      const fields = [...dialog.querySelectorAll('.ccs-import-field > span, .ccs-import-model legend')].map(el => el.textContent.trim());
+      const actions = [...dialog.querySelectorAll('.console-settings-actions button')].map(el => el.innerText.trim());
+      return {x:bounds.x,y:bounds.y,right:bounds.right,bottom:bounds.bottom,fields,actions,
+        description:dialog.innerText, backgroundInert:document.querySelector('.app-shell').inert,
+        agentCount:Number(dialog.dataset.agentCount),
+        modelValue:dialog.querySelector('.ccs-import-model input')?.value,
+        nameValue:dialog.querySelector('.ccs-import-field input')?.value,
+        focusInside:dialog.contains(document.activeElement)};
+    })()`);
+    check(importDialog.x >= 0 && importDialog.y >= 0 && importDialog.right <= width && importDialog.bottom <= height && importDialog.backgroundInert && importDialog.focusInside, `CC Switch import dialog bounds/focus ${width}`);
+    check(importDialog.fields.join('|') === '名称|导入到的 Agent|默认模型' && importDialog.actions.join('|') === '取消|导入' && importDialog.modelValue === 'gpt-5.5' && importDialog.nameValue.includes('MollyCloud'), `CC Switch import fields/defaults ${width}`);
+    check(importDialog.agentCount === 9 && importDialog.description.includes('Claude Desktop'), `CC Switch import supported agents ${width}`);
+    await evaluate(`document.querySelector('.ccs-import-submit').click()`);
+    await ready('.ccs-import-dialog .console-settings-error');
+    check(await evaluate(`document.querySelector('.ccs-import-dialog .console-settings-error')?.innerText.includes('浏览器预览不会保存真实密钥') && !document.querySelector('.ccs-import-actions').innerText.includes('再次导入')`), `CC Switch preview import rejected ${width}`);
     await screenshot(`ccswitch-import-preview-error-${width}`);
+    await evaluate(`document.querySelector('.ccs-import-dialog .console-settings-actions button').click()`);
+    await waitFor(`!document.querySelector('.ccs-import-dialog')`, `CC Switch import dialog dismissed ${width}`);
+    await pause(260);
+    check(await evaluate(`document.activeElement === document.querySelector('.ccs-import-button')`), `CC Switch import restores focus ${width}`);
     await mutate(`state.errorMessage = ''; state.importedProviders = { 'demo-key': {provider_id:'molly-preview-provider',app:'codex'} };`);
-    check(await evaluate(`document.querySelector('.ccs-import-actions').innerText.includes('已导入')`), `CC Switch import response feedback ${width}`);
+    check(await evaluate(`document.querySelector('.ccs-import-actions').innerText.includes('再次导入')`), `CC Switch import response feedback ${width}`);
     await evaluate(`document.querySelector('.ccs-import-actions button[aria-label]').click()`);
     await waitFor(`Boolean(document.querySelector('.ccswitch-frame').contentDocument.querySelector('[data-provider-id="molly-preview-provider"][data-molly-selected="true"]'))`, `CC Switch imported provider navigation ${width}`);
     check(await evaluate(`document.querySelector('.nav-item[aria-current="page"]').innerText === 'CC Switch'`), `CC Switch open action ${width}`);

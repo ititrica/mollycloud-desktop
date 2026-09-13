@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const baseUrl = process.env.MOLLY_UI_URL || 'http://127.0.0.1:24324';
+const balanceOnly = process.argv.includes('--balance-only');
 const outputDir = resolve(import.meta.dirname, '../../artifacts/balance-pill');
 await mkdir(outputDir, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'molly-design-check-'));
@@ -41,7 +42,7 @@ socket.onmessage = event => {
 function call(method, params = {}, sessionId) {
   return new Promise((resolve, reject) => {
     const id = ++nextId;
-    const timer = setTimeout(() => { pending.delete(id); reject(new Error(`Timed out: ${method}`)); }, 15000);
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error(`Timed out: ${method}`)); }, 30000);
     pending.set(id, { resolve, reject, timer });
     socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
   });
@@ -76,7 +77,7 @@ const failures = [];
 const check = (condition, message) => { if (!condition) failures.push(message); };
 async function pointer(x, y) {
   await page('Input.dispatchMouseEvent', { type:'mouseMoved', x, y });
-  await pause(180);
+  await pause(260);
 }
 async function mouseClick(x, y, button = 'left') {
   await pointer(x, y);
@@ -104,13 +105,19 @@ const readInteraction = `(() => {
 const read = `(() => {
   const pill = document.querySelector('#balance-pill-trigger');
   const r = pill.getBoundingClientRect();
+  const root = document.querySelector('#balance-pill');
   const panel = document.querySelector('#balance-pill-usage');
   const p = panel.getBoundingClientRect();
+  const orbit = document.querySelector('.balance-pill__orbit');
+  const orbitStyle = getComputedStyle(orbit);
+  const tailStyle = getComputedStyle(orbit, '::before');
   return { pill:{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height},
-    head:window.__testHead, text:pill.textContent.trim(), hidden:document.querySelector('#balance-pill').classList.contains('hidden'),
+    head:window.__testHead, text:document.querySelector('#balance-pill-value').textContent.trim(), hidden:root.classList.contains('hidden'), low:root.classList.contains('balance-pill--low'),
     expanded:pill.getAttribute('aria-expanded'), tokens:document.querySelector('#balance-pill-tokens').textContent,
+    fullBalance:document.querySelector('#balance-pill-full-value').textContent,
     panel:{left:p.left,top:p.top,right:p.right,bottom:p.bottom,hidden:panel.hidden},
-    regions:window.__testRegions, dots:document.querySelectorAll('.balance-pill__dot').length };
+    regions:window.__testRegions, orbits:document.querySelectorAll('.balance-pill__orbit').length,
+    orbitDirection:orbitStyle.animationDirection, orbitDuration:orbitStyle.animationDuration, tailGradient:tailStyle.backgroundImage };
 })()`;
 try {
   await page('Page.enable');
@@ -178,6 +185,7 @@ try {
     };
   })()`);
   await pause(300);
+  if (!balanceOnly) {
   // Drive trusted browser mouse events against the same pet region sent to native hit testing.
   // Keep the assistant enabled to catch accidental reopening from the model click path.
   let interaction = await evaluate(readInteraction);
@@ -273,19 +281,25 @@ try {
   const restoredSettings = await petRequest({action:'save',draft:initialSettings.value.draft,clearApiKey:true});
   check(!restoredSettings.error && !restoredSettings.value.apiKeyConfigured, 'Settings restore and explicit key clearing work');
   report.push({interaction:'pet-settings-bridge',saved:true,rejectedInvalid:true,secretExcluded:true,failedSavePreserved:true});
+  }
 
   for (const size of [180,300,450]) {
     await evaluate(`window.__testView.setScale(${size})`);
     await pause(250);
     let state=await evaluate(read);
-    check(Math.abs(state.head.top-state.pill.bottom+4)<2, 'Head gap at '+size);
-    check(state.pill.right>state.head.left && state.pill.right<state.head.left+26, 'Head horizontal position at '+size);
-    check(state.text==='余额3.72$' && state.dots===0, 'Balance label at '+size);
-    check(!state.hidden && state.expanded==='false', 'Initial state at '+size);
+    check(state.pill.top>=state.head.top-1 && state.pill.top<=state.head.top+7, 'Head vertical position at '+size);
+    check(state.head.left-state.pill.right>=11 && state.head.left-state.pill.right<=21, 'Head horizontal position at '+size);
+    check(state.pill.width===40 && state.pill.height===40 && state.text==='3$' && state.orbits===1, 'Compact balance orb at '+size);
+    const brightTailStart = state.tailGradient.indexOf('rgba(255, 255, 255, 0.96) 0%');
+    const transparentTailEnd = state.tailGradient.indexOf('rgba(0, 0, 0, 0) 36%');
+    check(state.orbitDirection==='reverse' && state.orbitDuration==='4.8s' && brightTailStart>=0 && transparentTailEnd>brightTailStart, 'Counterclockwise light point keeps its trail behind it at '+size);
+    check(!state.hidden && !state.low && state.expanded==='false', 'Initial state at '+size);
     await screenshot('balance-'+size);
     await pointer((state.pill.left+state.pill.right)/2,(state.pill.top+state.pill.bottom)/2);
     state=await evaluate(read);
-    check(state.expanded==='true' && !state.panel.hidden && state.tokens==='128,400 token', 'Hover usage at '+size);
+    check(state.expanded==='true' && !state.panel.hidden && state.fullBalance==='3.72$' && state.tokens==='128,400 token', 'Hover usage at '+size);
+    check(Math.abs((state.panel.right-state.panel.left)-(state.panel.bottom-state.panel.top))<0.1 && state.panel.left<state.pill.left && state.panel.bottom>state.pill.bottom, 'Usage expands as a larger circle toward bottom-left at '+size);
+    check(await evaluate(`getComputedStyle(document.querySelector('#balance-pill-usage')).opacity==='1' && getComputedStyle(document.querySelector('#balance-pill-usage')).transitionDuration.includes('0.22s')`), 'Usage circle has a completed expansion transition at '+size);
     check(state.regions.some(region=>region.id==='ui:balance-pill') && state.regions.some(region=>region.id==='ui:balance-usage'), 'Native hover regions at '+size);
     await pointer((state.panel.left+state.panel.right)/2,state.pill.bottom+3);
     check((await evaluate(read)).expanded==='true','Hover bridge at '+size);
@@ -296,7 +310,15 @@ try {
     check((await evaluate(read)).expanded==='false','Hover leave at '+size);
     report.push({size,...state});
   }
-  for(const [balance,today_tokens,expected] of [[0,0,'0 token'],[12.35,null,'暂无法获取今日用量'],[12.35,987654321,'987,654,321 token']]) {
+  await evaluate(`window.__testAccount={balance:0.68,today_tokens:0};window.__testEmit('account-session-changed')`);
+  await pause(200);
+  let low=await evaluate(read);
+  check(!low.hidden && low.low && low.pill.width>low.pill.height && low.expanded==='false' && low.panel.hidden, 'Low balance stays in the warning capsule state');
+  check(await evaluate(`document.querySelector('.balance-pill__low-label').textContent.trim()==='余额不足'`), 'Low balance capsule label');
+  await screenshot('balance-low');
+  await pointer((low.pill.left+low.pill.right)/2,(low.pill.top+low.pill.bottom)/2);
+  check((await evaluate(read)).expanded==='false', 'Low balance capsule does not open usage details');
+  for(const [balance,today_tokens,expected] of [[12.35,null,'暂无法获取今日用量'],[12.35,987654321,'987,654,321 token']]) {
     await evaluate(`window.__testAccount=${JSON.stringify({balance,today_tokens})};window.__testEmit('account-session-changed')`);
     await pause(200);
     const state=await evaluate(read);
@@ -332,7 +354,7 @@ try {
   edge=await evaluate(read);
   await pointer(edge.pill.left+20,edge.pill.top+15);
   edge=await evaluate(read);
-  check(edge.panel.bottom<=edge.pill.top && edge.panel.left>=8 && edge.panel.right<=692,'Dropdown flips above at bottom edge');
+  check(edge.panel.bottom<=edge.pill.bottom && edge.panel.top>=8 && edge.panel.left>=8 && edge.panel.right<=692,'Expanded circle stays visible at bottom edge');
   check(runtimeErrors.length===0,'Browser runtime errors');
   console.log(JSON.stringify({report,failures,runtimeErrors},null,2));
 } finally {

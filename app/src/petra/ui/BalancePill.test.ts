@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatOverlayBalance, formatTodayTokens } from "./BalancePill";
+import { formatCompactOverlayBalance, formatOverlayBalance, formatTodayTokens } from "./BalancePill";
 
 describe("overlay account display", () => {
   it("uses a dollar suffix and keeps real zero and negative balances", () => {
@@ -12,6 +12,13 @@ describe("overlay account display", () => {
     for (const missing of [null, undefined, "", " ", false, NaN, Infinity, "unavailable"]) {
       expect(formatOverlayBalance(missing)).toBeNull();
     }
+  });
+
+  it("limits the compact orb to two balance digits and adds the currency suffix", () => {
+    expect(formatCompactOverlayBalance(3.72)).toBe("3$");
+    expect(formatCompactOverlayBalance(59.89)).toBe("59$");
+    expect(formatCompactOverlayBalance(100)).toBe("99$");
+    expect(formatCompactOverlayBalance(null)).toBeNull();
   });
 
   it("distinguishes unavailable usage from actual zero and preserves the full count", () => {

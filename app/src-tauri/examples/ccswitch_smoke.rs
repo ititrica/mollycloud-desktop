@@ -150,6 +150,7 @@ fn main() {
                         account_id: "smoke-account".into(),
                         key_id: "smoke-key".into(),
                         name: "Molly Native Smoke".into(),
+                        app: "codex".into(),
                         api_key: "sk-molly-smoke-not-a-real-key".into(),
                         base_url: "https://example.test/v1".into(),
                         model: "gpt-5.5".into(),

@@ -27,6 +27,21 @@ export interface CcSwitchImportResult {
   app: string;
 }
 
+export type CcSwitchAgent = "claude" | "claude-desktop" | "codex" | "gemini" | "grokbuild" | "opencode" | "openclaw" | "hermes" | "pi";
+
+export interface CcSwitchImportRequest {
+  keyId: string;
+  name: string;
+  agent: CcSwitchAgent;
+  model: string;
+}
+
+export interface DesktopUpdate {
+  version: string;
+  downloadUrl: string;
+  notes?: string;
+}
+
 export type ConsoleCloseAction = "tray" | "quit";
 export interface ConsoleSettings { closeAction: ConsoleCloseAction; autostart: boolean }
 const consoleSettingsPreviewKey = "mollycloud:preview:console-settings";
@@ -218,11 +233,18 @@ export const desktopApi = {
     }
   },
 
-  async importApiKeyToCcSwitch(keyId: string): Promise<CcSwitchImportResult> {
+  async fetchCcSwitchImportModels(keyId: string): Promise<string[]> {
+    if (!isTauriRuntime()) {
+      throw new Error("请在 MollyCloud 客户端中拉取真实模型列表");
+    }
+    return invoke<string[]>("fetch_ccswitch_import_models", { keyId });
+  },
+
+  async importApiKeyToCcSwitch(request: CcSwitchImportRequest): Promise<CcSwitchImportResult> {
     if (!isTauriRuntime()) {
       throw new Error("请在 MollyCloud 客户端中导入到内置 CC Switch，浏览器预览不会保存真实密钥");
     }
-    return invoke<CcSwitchImportResult>("import_api_key_to_ccswitch", { keyId });
+    return invoke<CcSwitchImportResult>("import_api_key_to_ccswitch", { ...request });
   },
 
   async isPetVisible(): Promise<boolean> {
@@ -301,6 +323,19 @@ export const desktopApi = {
 
   async openSubscriptions(): Promise<void> {
     await openExternalPage("https://mollycloud.cn/subscriptions");
+  },
+
+  async checkForDesktopUpdate(): Promise<DesktopUpdate | null> {
+    if (!isTauriRuntime()) return null;
+    return invoke<DesktopUpdate | null>("check_for_desktop_update");
+  },
+
+  async openDesktopUpdate(downloadUrl: string): Promise<void> {
+    if (isTauriRuntime()) {
+      await invoke("open_desktop_update", { downloadUrl });
+      return;
+    }
+    await openExternalPage(downloadUrl);
   },
 
   async showPetBubble(message: string): Promise<void> {

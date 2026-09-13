@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { AppMode } from '../types'
 import { useCloseOnEscape } from '../hooks/useCloseOnEscape'
 import { usePreventBackgroundScroll } from '../hooks/usePreventBackgroundScroll'
+import { mollyEmbedded } from '../lib/mollyBridge'
 
 interface HelpModalProps {
   appMode: AppMode
@@ -36,7 +37,7 @@ export default function HelpModal({ appMode, isFavoriteCollectionOverview = fals
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm animate-overlay-in" />
       <div
         ref={modalRef}
-        className="relative z-10 w-full max-w-md rounded-3xl border border-white/50 bg-white/95 p-5 shadow-2xl ring-1 ring-black/5 animate-modal-in dark:border-white/[0.08] dark:bg-gray-900/95 dark:ring-white/10 flex flex-col max-h-[85vh] custom-scrollbar"
+        className={`relative z-10 w-full ${mollyEmbedded ? 'max-w-4xl' : 'max-w-md'} rounded-3xl border border-white/50 bg-white/95 p-5 shadow-2xl ring-1 ring-black/5 animate-modal-in dark:border-white/[0.08] dark:bg-gray-900/95 dark:ring-white/10 flex flex-col max-h-[85vh] custom-scrollbar`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between gap-4">
@@ -46,7 +47,7 @@ export default function HelpModal({ appMode, isFavoriteCollectionOverview = fals
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
               <path d="M12 17h.01" />
             </svg>
-            操作指南
+            {mollyEmbedded ? '生图工作台设置指引' : '操作指南'}
           </h3>
           <div className="flex items-center gap-3">
             <button
@@ -62,7 +63,38 @@ export default function HelpModal({ appMode, isFavoriteCollectionOverview = fals
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain mb-6 text-sm text-gray-600 dark:text-gray-300 space-y-6 custom-scrollbar pr-2">
-          {isAgentMode ? (
+          {mollyEmbedded ? (
+            <section data-molly-setup-guide className="grid gap-5 sm:grid-cols-2">
+              <article className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-white/[0.08] dark:bg-white/[0.03]">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">1</span>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-100">打开设置</h4>
+                    <p className="mt-1 leading-6">点击顶部栏的齿轮按钮，打开设置并进入“API 配置”。</p>
+                  </div>
+                </div>
+                <img className="mt-4 w-full rounded-xl border border-gray-200 shadow-sm dark:border-white/[0.08]" src="molly-guides/open-settings.png" alt="GPT Image Playground 顶部栏的设置按钮" />
+              </article>
+
+              <article className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-white/[0.08] dark:bg-white/[0.03]">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">2</span>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-100">填写生图分组 API 密钥</h4>
+                    <p className="mt-1 leading-6">在“API Key”中手动填写生图分组的密钥并保存。MollyCloud 不会自动读取或填入账户密钥。</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-start gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">3</span>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-100">填写所需模型</h4>
+                    <p className="mt-1 leading-6">在“模型 ID”中填写可用的生图模型；默认模型为 <code className="rounded bg-gray-200 px-1 py-0.5 font-mono text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-100">gpt-image-2.5</code>。</p>
+                  </div>
+                </div>
+                <img className="mt-4 w-full rounded-xl border border-gray-200 shadow-sm dark:border-white/[0.08]" src="molly-guides/api-key-and-model.png" alt="API 配置中的 API Key 和模型 ID 字段" />
+              </article>
+            </section>
+          ) : isAgentMode ? (
             <>
               <section>
                 <div className="space-y-4">
@@ -168,7 +200,7 @@ export default function HelpModal({ appMode, isFavoriteCollectionOverview = fals
           )}
         </div>
 
-        <div className="pt-4 border-t border-gray-200 dark:border-white/[0.08] flex justify-center">
+        {!mollyEmbedded && <div className="pt-4 border-t border-gray-200 dark:border-white/[0.08] flex justify-center">
           <a
             href="https://github.com/CookSleep/gpt_image_playground"
             target="_blank"
@@ -180,7 +212,7 @@ export default function HelpModal({ appMode, isFavoriteCollectionOverview = fals
             </svg>
             @CookSleep
           </a>
-        </div>
+        </div>}
       </div>
     </div>,
     document.body

@@ -275,6 +275,24 @@ export default function Header() {
             )}
             <div
               className="relative"
+              {...settingsTooltip.handlers}
+            >
+              <button
+                onClick={() => {
+                  dismissAllTooltips()
+                  setShowSettings(true)
+                }}
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+                aria-label="设置"
+              >
+                <SettingsIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+              <ViewportTooltip visible={settingsTooltip.visible} className="whitespace-nowrap">
+                设置
+              </ViewportTooltip>
+            </div>
+            <div
+              className="relative"
               {...helpTooltip.handlers}
             >
               <button
@@ -282,28 +300,13 @@ export default function Header() {
                   dismissAllTooltips()
                   setShowHelp(true)
                 }}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
-                aria-label="操作指南"
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+                aria-label="生图工作台设置指引"
               >
                 <HelpCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
               <ViewportTooltip visible={helpTooltip.visible} className="whitespace-nowrap">
-                操作指南
-              </ViewportTooltip>
-            </div>
-            <div
-              className="relative"
-              {...settingsTooltip.handlers}
-            >
-              <button
-                onClick={() => setShowSettings(true)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
-                aria-label="设置"
-              >
-                <SettingsIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              </button>
-              <ViewportTooltip visible={settingsTooltip.visible} className="whitespace-nowrap">
-                设置
+                生图工作台设置指引
               </ViewportTooltip>
             </div>
           </div>
