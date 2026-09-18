@@ -110,6 +110,9 @@ body {
 
 .balance-pill.hidden { display: none; }
 .balance-pill__trigger {
+  --border-light-duration: 5s;
+  --border-light-length: 5px;
+  --border-light-thickness: 5px;
   position: relative;
   box-sizing: border-box;
   width: 40px;
@@ -136,15 +139,70 @@ body {
 .balance-pill__trigger[aria-expanded="true"] { background: #f7fbed; border-color: #a9c28e; }
 .balance-pill__trigger:focus-visible { outline: 2px solid #427a20; outline-offset: 2px; }
 .balance-pill strong { color: #26320d; font-weight: 700; font-variant-numeric: tabular-nums; }
-.balance-pill__compact-value { position: relative; z-index: 1; max-width: 30px; overflow: hidden; font-size: 12px; text-align: center; }
+.balance-pill__compact-value { position: relative; z-index: 1; max-width: 38px; font-size: 12px; text-align: center; }
 .balance-pill__low-label { display: none; position: relative; z-index: 1; font-size: 12px; font-weight: 700; line-height: 16px; }
-.balance-pill__orbit { position: absolute; inset: -4px; border-radius: 50%; animation: balance-pill-orbit 4.8s linear infinite reverse; }
-.balance-pill__orbit::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: conic-gradient(from 0deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 255, 242, 0.56) 9%, rgba(244, 255, 235, 0.2) 22%, transparent 36% 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); }
-.balance-pill__orbit::after { content: ""; position: absolute; top: -1px; left: 50%; width: 6px; height: 6px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 5px 2px rgba(255, 255, 255, 0.9), 0 0 8px 3px rgba(193, 225, 156, 0.34); transform: translateX(-50%); }
+/* Apply the glow after masking so it remains visible outside the pale surface.
+   The hollow rim keeps the balance and task text clear at every width. */
+@property --balance-border-progress {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+.balance-pill__border-light {
+  position: absolute;
+  inset: -1px;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 5px rgba(193, 225, 156, 0.5));
+  animation: balance-pill-border-flow var(--border-light-duration) linear infinite;
+}
+.balance-pill__border-mask {
+  position: absolute;
+  inset: calc((1px - var(--border-light-thickness)) / 2);
+  box-sizing: border-box;
+  padding: var(--border-light-thickness);
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.balance-pill__border-sweep {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--border-light-length);
+  height: var(--border-light-thickness);
+  clip-path: ellipse(50% 50%);
+  background: radial-gradient(ellipse closest-side, #fff 0% 35%,
+    rgba(255, 255, 255, 0.96) 52%, rgba(255, 255, 255, 0.6) 72%,
+    rgba(255, 255, 255, 0) 100%);
+  /* A rounded motion path follows the full border as the capsule resizes.
+     Decreasing distance travels counterclockwise without a turnaround. */
+  offset-path: inset(calc(var(--border-light-thickness) / 2) round 999px);
+  offset-anchor: center;
+  offset-rotate: auto;
+  offset-distance: var(--balance-border-progress);
+}
+.balance-pill:not(.balance-pill--capsule) .balance-pill__border-light {
+  filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 5px rgba(193, 225, 156, 0.5));
+}
+.balance-pill:not(.balance-pill--capsule) .balance-pill__border-sweep {
+  clip-path: circle(50%);
+  background: radial-gradient(circle closest-side, #fff 0% 55%,
+    rgba(255, 255, 255, 0.98) 68%, rgba(255, 255, 255, 0.68) 82%,
+    rgba(255, 255, 255, 0) 100%);
+}
+/* Both lights inherit one clock, including when the second becomes visible. */
+.balance-pill__border-sweep--second { display: none; offset-distance: calc(var(--balance-border-progress) - 50%); }
+.balance-pill--capsule .balance-pill__border-sweep--second { display: block; }
 .balance-pill--open .balance-pill__trigger { opacity: 0; }
 .balance-pill--low .balance-pill__trigger { width: 82px; height: 34px; border-radius: 999px; background: rgba(250, 253, 244, 0.97); }
 .balance-pill--low .balance-pill__compact-value,
-.balance-pill--low .balance-pill__orbit { display: none; }
+.balance-pill--low:not(.balance-pill--capsule) .balance-pill__border-light { display: none; }
 .balance-pill--low .balance-pill__low-label { display: inline; }
 .balance-pill__dropdown { position: absolute; z-index: 2; top: 0; right: 0; width: 148px; height: 148px; opacity: 0; pointer-events: none; transform: translate(14px, -14px) scale(0.28); transform-origin: top right; transition: opacity 220ms ease, transform 220ms cubic-bezier(0.2, 0.75, 0.25, 1); }
 .balance-pill__dropdown[hidden] { display: none; }
@@ -159,14 +217,27 @@ body {
 .balance-pill__divider { width: 62px; height: 1px; flex: none; background: rgba(169, 194, 142, 0.64); }
 .balance-pill__trigger:focus-visible + .balance-pill__dropdown .balance-pill__usage { outline: 2px solid #427a20; outline-offset: 2px; }
 
-@keyframes balance-pill-orbit {
-  to { transform: rotate(1turn); }
+.balance-pill__orb { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: none; border-radius: 50%; }
+.balance-pill--low .balance-pill__orb { width: 80px; height: 32px; border-radius: inherit; }
+.balance-pill__progress[hidden] { display: none; }
+.balance-pill__progress { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: inherit; font-size: 12px; line-height: 18px; text-align: left; }
+.balance-pill--capsule .balance-pill__trigger { width: max-content; max-width: min(280px, calc(100vw - 16px)); height: 42px; justify-content: flex-start; gap: 10px; padding-right: 16px; border-radius: 999px; background: rgba(250, 253, 244, 0.97); }
+.balance-pill--capsule .balance-pill__trigger { --border-light-duration: 3.52941s; --border-light-length: 52px; --border-light-thickness: 2.5px; }
+.balance-pill--capsule .balance-pill__orb { width: 40px; height: 40px; box-sizing: border-box; border: 1px solid #c6d5b9; border-radius: 50%; background: #eef8e8; }
+.balance-pill--capsule .balance-pill__compact-value { display: block; }
+.balance-pill--capsule .balance-pill__low-label { display: none; }
+.balance-pill--capsule .balance-pill__dropdown { display: none; }
+.balance-pill--capsule[data-activity="needs_input"] .balance-pill__orb { background: #fff7e6; border-color: #d4b46d; }
+
+@keyframes balance-pill-border-flow {
+  from { --balance-border-progress: 0%; }
+  to { --balance-border-progress: -100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .balance-pill__trigger,
   .balance-pill__dropdown { transition: none; }
-  .balance-pill__orbit { animation: none; }
+  .balance-pill__border-light { animation: none; --balance-border-progress: -12.5%; }
 }
 
 .pet-menu .mi .state {

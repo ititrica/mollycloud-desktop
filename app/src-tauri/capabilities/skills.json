@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "skills-console",
+  "description": "Skill management restricted to the MollyCloud console.",
+  "windows": [
+    "console"
+  ],
+  "permissions": [
+    "molly-skills:default"
+  ]
+}

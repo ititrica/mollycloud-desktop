@@ -22,6 +22,7 @@ import { toggleDailyCardPanel } from "./features/card/DailyCardPanel";
 
 import { toast } from "./ui/Toast";
 import { createBalancePill, type OverlayAccount } from "./ui/BalancePill";
+import type { ActivitySnapshot } from "./ui/CodexActivity";
 import { setVisibleRect } from "./ui/visible";
 import { clamp } from "./utils/math";
 import { loadSettings, saveSettings, type Settings, type AssistantProvider } from "./utils/settings";
@@ -30,7 +31,6 @@ import { astrobotOn } from "./bridges/astrobot";
 import { openAssistant } from "./assistant/AssistantPanel";
 import { setLifecycle, triggerProactive, closeAssistant, clearBubbles, clearApiKeyCache, clearHistory, getDisplayHistory, publishAssistantHistory, submitAssistantMessage } from "./assistant/AssistantPanel";
 import { listModels, PROVIDERS } from "./assistant/AssistantClient";
-import { getUnreadAnnouncement, markAnnounced } from "./features/Announcement";
 import { checkForUpdate, performUpdate, UpdateCheckErrorExt } from "./updater/UpdateManager";
 import { setupReminder, getReminders, removeReminder, openReminderModal, fmtReminderTime } from "./ui/ReminderPanel";
 import {
@@ -91,12 +91,7 @@ const HIDDEN_PRODUCTION_WARNINGS = new Set([
   "eye_close が無いため汎用閉じ目を自動配置しました（「目」の差分バーで調整可）",
 ]);
 
-const balancePill = createBalancePill(async () => {
-  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("ui-preview") === "overlay") {
-    return { balance: 3.72, today_tokens: 128400 };
-  }
-  return invoke<OverlayAccount>("fetch_account_balance");
-}, () => {
+const balancePill = createBalancePill(() => {
   if (interactionSyncStarted) requestInteractionRegionSync(true);
 });
 
@@ -753,8 +748,20 @@ async function handlePetSettings(request: PetSettingsRequest): Promise<PetSettin
 }
 
 async function boot() {
-  void balancePill.refresh();
-  window.setInterval(() => void balancePill.refresh(), 60_000);
+  void listen<OverlayAccount>("account-balance-updated", (event) => balancePill.update(event.payload ?? {}));
+  let activityRevision = 0;
+  void listen<ActivitySnapshot>("codex-activity-updated", (event) => {
+    activityRevision++;
+    balancePill.updateActivity(event.payload);
+  }).then(async () => {
+    const revision = activityRevision;
+    const snapshot = await invoke<ActivitySnapshot>("get_codex_activity");
+    if (activityRevision === revision) balancePill.updateActivity(snapshot);
+  }).catch(() => undefined);
+  void listen("account-session-changed", () => balancePill.update({}));
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("ui-preview") === "overlay") {
+    balancePill.update({ balance: 3.72, today_tokens: 128400 });
+  }
   // Petra owns these settings; a missing native credential must not reset the
   // locally saved enabled state during upgrades or first launch.
   await syncAssistantSwitchToConsole(settings.assistant.enabled);
@@ -762,7 +769,6 @@ async function boot() {
     applyConsoleAssistantSwitch(event.payload);
   });
   void listen<string>("petra-bubble", (event) => toast(event.payload, "info"));
-  void listen("account-session-changed", () => void balancePill.refresh());
   void listen("petra-assistant-open", () => {
     if (settings.assistant.enabled) openAssistant(getModelRect());
   });
@@ -1105,53 +1111,7 @@ async function boot() {
       }).catch(() => {});
     }, 60 * 1000);
   }
-/** 显示更新公告弹窗 */
-function showAnnouncement(title: string, lines: string[], version: string) {
-  const panel = document.createElement("div");
-  panel.id = "announcement-panel";
-  panel.className = "model-panel";
-  panel.style.width = "300px";
-
-  const titleEl = document.createElement("div");
-  titleEl.className = "mp-title";
-  titleEl.textContent = title;
-  panel.appendChild(titleEl);
-
-  for (const line of lines) {
-    if (!line) {
-      const spacer = document.createElement("div");
-      spacer.style.height = "6px";
-      panel.appendChild(spacer);
-      continue;
-    }
-    const p = document.createElement("div");
-    p.style.cssText = "font-size:12.5px;color:#5a4a65;line-height:1.7;padding:2px 0;";
-    p.textContent = line;
-    panel.appendChild(p);
-  }
-
-  const btns = document.createElement("div");
-  btns.className = "as-set-btns";
-  btns.style.marginTop = "12px";
-  const okBtn = document.createElement("button");
-  okBtn.className = "as-btn as-btn-primary";
-  okBtn.textContent = "知道了";
-  okBtn.addEventListener("click", () => {
-    markAnnounced(version);
-    panel.remove();
-  });
-  btns.appendChild(okBtn);
-  panel.appendChild(btns);
-
-  document.body.appendChild(panel);
-  positionPanelNearModel(panel);
-}
-
-  // ---------- 更新公告（模型加载完成后弹出） ----------
-  setTimeout(() => {
-    const ann = getUnreadAnnouncement();
-    if (ann) showAnnouncement(ann.title, ann.lines, ann.version);
-  }, 3000);
+// MollyCloud 不自动展示上游 Petra 版本公告。
 
 // ---------- 主循环 ----------
   const driver: PetDriver = idleDriver();
@@ -1723,6 +1683,12 @@ async function toggleModelPanel() {
 
 function buildMenu(engine: BehaviorEngine) {
   return [
+    {
+      id: "open-console",
+      label: "打开控制台",
+      onPick: () => void invoke("open_console"),
+    },
+    { id: "open-console-separator", separator: true },
     {
       id: "model",
       label: "模型",

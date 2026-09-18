@@ -1,0 +1,453 @@
+[
+  {
+    "id": "context7",
+    "name": "Context7",
+    "description": "获取最新的库文档与代码示例。",
+    "category": "文档",
+    "homepage": "https://github.com/upstash/context7",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "@upstash/context7-mcp",
+      "version": "4.1.1",
+      "bin": "dist/index.js",
+      "args": [],
+      "env": {
+        "CONTEXT7_API_KEY": "{apiKey}"
+      }
+    },
+    "fields": [
+      {
+        "key": "apiKey",
+        "label": "Context7 API Key",
+        "kind": "secret",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "playwright",
+    "name": "Playwright",
+    "description": "让 Agent 操作浏览器、读取页面和执行网页测试。首次使用可能需要下载浏览器。",
+    "category": "浏览器",
+    "homepage": "https://github.com/microsoft/playwright-mcp",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "@playwright/mcp",
+      "version": "0.0.81",
+      "bin": "cli.js",
+      "args": [],
+      "env": {}
+    },
+    "fields": []
+  },
+  {
+    "id": "chrome-devtools",
+    "name": "Chrome DevTools",
+    "description": "连接 Chrome，分析网页、调试网络与性能。需要已安装 Chrome。",
+    "category": "浏览器",
+    "homepage": "https://github.com/ChromeDevTools/chrome-devtools-mcp",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "chrome-devtools-mcp",
+      "version": "1.9.0",
+      "bin": "build/src/bin/chrome-devtools.js",
+      "args": [],
+      "env": {}
+    },
+    "fields": []
+  },
+  {
+    "id": "filesystem",
+    "name": "文件系统",
+    "description": "在你指定的目录中读取、整理和编辑文件。",
+    "category": "文件",
+    "homepage": "https://github.com/modelcontextprotocol/servers",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "@modelcontextprotocol/server-filesystem",
+      "version": "2026.8.31",
+      "bin": "dist/index.js",
+      "args": [
+        "{directory}"
+      ],
+      "env": {}
+    },
+    "fields": [
+      {
+        "key": "directory",
+        "label": "允许访问的文件夹",
+        "kind": "directory",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "memory",
+    "name": "Memory",
+    "description": "在本地知识图谱中保存与检索记忆。",
+    "category": "效率",
+    "homepage": "https://github.com/modelcontextprotocol/servers",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "@modelcontextprotocol/server-memory",
+      "version": "2026.8.31",
+      "bin": "dist/index.js",
+      "args": [],
+      "env": {
+        "MEMORY_FILE_PATH": "{dataDir}/memory.jsonl"
+      }
+    },
+    "fields": []
+  },
+  {
+    "id": "sequential-thinking",
+    "name": "Sequential Thinking",
+    "description": "为复杂问题提供逐步分析与修正工具。",
+    "category": "效率",
+    "homepage": "https://github.com/modelcontextprotocol/servers",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "@modelcontextprotocol/server-sequential-thinking",
+      "version": "2026.8.31",
+      "bin": "dist/index.js",
+      "args": [],
+      "env": {}
+    },
+    "fields": []
+  },
+  {
+    "id": "brave-search",
+    "name": "Brave Search",
+    "description": "通过 Brave 搜索网页、新闻和图片。",
+    "category": "搜索",
+    "homepage": "https://github.com/brave/brave-search-mcp-server",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "@brave/brave-search-mcp-server",
+      "version": "2.1.3",
+      "bin": "dist/index.js",
+      "args": [
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "{apiKey}"
+      }
+    },
+    "fields": [
+      {
+        "key": "apiKey",
+        "label": "Brave Search API Key",
+        "kind": "secret",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "tavily",
+    "name": "Tavily",
+    "description": "面向 Agent 的网页搜索与内容提取。",
+    "category": "搜索",
+    "homepage": "https://github.com/tavily-ai/tavily-mcp",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "tavily-mcp",
+      "version": "0.2.22",
+      "bin": "build/index.js",
+      "args": [],
+      "env": {
+        "TAVILY_API_KEY": "{apiKey}"
+      }
+    },
+    "fields": [
+      {
+        "key": "apiKey",
+        "label": "Tavily API Key",
+        "kind": "secret",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "firecrawl",
+    "name": "Firecrawl",
+    "description": "将网页抓取为适合 Agent 阅读的内容。",
+    "category": "搜索",
+    "homepage": "https://github.com/firecrawl/firecrawl-mcp-server",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "firecrawl-mcp",
+      "version": "3.24.0",
+      "bin": "dist/index.js",
+      "args": [],
+      "env": {
+        "FIRECRAWL_API_KEY": "{apiKey}"
+      }
+    },
+    "fields": [
+      {
+        "key": "apiKey",
+        "label": "Firecrawl API Key",
+        "kind": "secret",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "notion-local",
+    "name": "Notion（本地）",
+    "description": "通过集成令牌读取和更新授权的 Notion 内容。",
+    "category": "协作",
+    "homepage": "https://github.com/makenotion/notion-mcp-server",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "@notionhq/notion-mcp-server",
+      "version": "2.5.1",
+      "bin": "bin/cli.mjs",
+      "args": [],
+      "env": {
+        "NOTION_TOKEN": "{apiKey}"
+      }
+    },
+    "fields": [
+      {
+        "key": "apiKey",
+        "label": "Notion 集成令牌",
+        "kind": "secret",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "mongodb",
+    "name": "MongoDB",
+    "description": "连接 MongoDB 数据库，默认使用只读模式。",
+    "category": "数据库",
+    "homepage": "https://github.com/mongodb-js/mongodb-mcp-server",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "mongodb-mcp-server",
+      "version": "2.1.1",
+      "bin": "dist/esm/index.js",
+      "args": [
+        "--readOnly"
+      ],
+      "env": {
+        "MDB_MCP_CONNECTION_STRING": "{connection}"
+      }
+    },
+    "fields": [
+      {
+        "key": "connection",
+        "label": "MongoDB 连接字符串",
+        "kind": "secret",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "supabase-local",
+    "name": "Supabase（本地）",
+    "description": "访问 Supabase 项目，默认使用只读模式。",
+    "category": "数据库",
+    "homepage": "https://github.com/supabase-community/supabase-mcp",
+    "source": "curated",
+    "recipe": {
+      "kind": "npm",
+      "package": "@supabase/mcp-server-supabase",
+      "version": "0.12.0",
+      "bin": "dist/transports/stdio.js",
+      "args": [
+        "--read-only"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "{apiKey}"
+      }
+    },
+    "fields": [
+      {
+        "key": "apiKey",
+        "label": "Supabase 访问令牌",
+        "kind": "secret",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "fetch",
+    "name": "Fetch",
+    "description": "获取网页内容并转换为文本。",
+    "category": "搜索",
+    "homepage": "https://github.com/modelcontextprotocol/servers",
+    "source": "curated",
+    "fields": [],
+    "recipe": {
+      "kind": "pypi",
+      "package": "mcp-server-fetch",
+      "version": "2026.8.18",
+      "bin": "mcp-server-fetch",
+      "args": [],
+      "env": {}
+    }
+  },
+  {
+    "id": "git",
+    "name": "Git",
+    "description": "查看本地 Git 仓库、提交和差异。需要系统 Git。",
+    "category": "开发",
+    "homepage": "https://github.com/modelcontextprotocol/servers",
+    "source": "curated",
+    "fields": [
+      {
+        "key": "directory",
+        "label": "Git 仓库目录",
+        "kind": "directory",
+        "required": true
+      }
+    ],
+    "recipe": {
+      "kind": "pypi",
+      "package": "mcp-server-git",
+      "version": "2026.8.18",
+      "bin": "mcp-server-git",
+      "args": [
+        "--repository",
+        "{directory}"
+      ],
+      "env": {}
+    }
+  },
+  {
+    "id": "time",
+    "name": "Time",
+    "description": "查询当前时间并转换时区。",
+    "category": "效率",
+    "homepage": "https://github.com/modelcontextprotocol/servers",
+    "source": "curated",
+    "fields": [],
+    "recipe": {
+      "kind": "pypi",
+      "package": "mcp-server-time",
+      "version": "2026.8.18",
+      "bin": "mcp-server-time",
+      "args": [],
+      "env": {}
+    }
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "description": "连接 GitHub 仓库、Issue 和 Pull Request。",
+    "category": "开发",
+    "homepage": "https://github.com/github/github-mcp-server",
+    "source": "curated",
+    "fields": [
+      {
+        "key": "token",
+        "label": "GitHub Personal Access Token",
+        "kind": "secret",
+        "required": true
+      }
+    ],
+    "recipe": {
+      "kind": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "version": "remote",
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {token}"
+      }
+    }
+  },
+  {
+    "id": "notion",
+    "name": "Notion",
+    "description": "通过官方远程服务连接 Notion，由 Agent 完成授权。",
+    "category": "协作",
+    "homepage": "https://developers.notion.com/docs/mcp",
+    "source": "curated",
+    "fields": [],
+    "recipe": {
+      "kind": "remote",
+      "url": "https://mcp.notion.com/mcp",
+      "version": "remote",
+      "oauth": true,
+      "headers": {}
+    }
+  },
+  {
+    "id": "linear",
+    "name": "Linear",
+    "description": "查看与管理 Linear 项目和任务，由 Agent 完成授权。",
+    "category": "协作",
+    "homepage": "https://linear.app/docs/mcp",
+    "source": "curated",
+    "fields": [],
+    "recipe": {
+      "kind": "remote",
+      "url": "https://mcp.linear.app/mcp",
+      "version": "remote",
+      "oauth": true,
+      "headers": {}
+    }
+  },
+  {
+    "id": "sentry",
+    "name": "Sentry",
+    "description": "查看错误、问题与诊断信息，由 Agent 完成授权。",
+    "category": "开发",
+    "homepage": "https://docs.sentry.io/product/sentry-mcp/",
+    "source": "curated",
+    "fields": [],
+    "recipe": {
+      "kind": "remote",
+      "url": "https://mcp.sentry.dev/mcp",
+      "version": "remote",
+      "oauth": true,
+      "headers": {}
+    }
+  },
+  {
+    "id": "deepwiki",
+    "name": "DeepWiki",
+    "description": "查询开源项目文档并理解仓库结构。",
+    "category": "文档",
+    "homepage": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
+    "source": "curated",
+    "fields": [],
+    "recipe": {
+      "kind": "remote",
+      "url": "https://mcp.deepwiki.com/mcp",
+      "version": "remote",
+      "oauth": false,
+      "headers": {}
+    }
+  },
+  {
+    "id": "microsoft-learn",
+    "name": "Microsoft Learn",
+    "description": "查询 Microsoft 官方文档与代码示例。",
+    "category": "文档",
+    "homepage": "https://learn.microsoft.com/training/support/mcp",
+    "source": "curated",
+    "fields": [],
+    "recipe": {
+      "kind": "remote",
+      "url": "https://learn.microsoft.com/api/mcp",
+      "version": "remote",
+      "oauth": false,
+      "headers": {}
+    }
+  }
+]

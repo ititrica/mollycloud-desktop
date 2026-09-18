@@ -108,23 +108,89 @@ const read = `(() => {
   const root = document.querySelector('#balance-pill');
   const panel = document.querySelector('#balance-pill-usage');
   const p = panel.getBoundingClientRect();
-  const orbit = document.querySelector('.balance-pill__orbit');
-  const orbitStyle = getComputedStyle(orbit);
-  const tailStyle = getComputedStyle(orbit, '::before');
+  const border = document.querySelector('.balance-pill__border-light');
+  const borderStyle = getComputedStyle(border.querySelector('.balance-pill__border-mask'));
+  const washStyle = getComputedStyle(border.querySelector('.balance-pill__border-sweep'));
   return { pill:{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height},
     head:window.__testHead, text:document.querySelector('#balance-pill-value').textContent.trim(), hidden:root.classList.contains('hidden'), low:root.classList.contains('balance-pill--low'),
     expanded:pill.getAttribute('aria-expanded'), tokens:document.querySelector('#balance-pill-tokens').textContent,
     fullBalance:document.querySelector('#balance-pill-full-value').textContent,
     panel:{left:p.left,top:p.top,right:p.right,bottom:p.bottom,hidden:panel.hidden},
-    regions:window.__testRegions, orbits:document.querySelectorAll('.balance-pill__orbit').length,
-    orbitDirection:orbitStyle.animationDirection, orbitDuration:orbitStyle.animationDuration, tailGradient:tailStyle.backgroundImage };
+    regions:window.__testRegions, borderLayers:document.querySelectorAll('.balance-pill__border-light').length,
+    borderMask:borderStyle.maskComposite, flowDuration:getComputedStyle(border).animationDuration, lightLength:parseFloat(washStyle.width), rim:parseFloat(borderStyle.paddingTop), washGradient:washStyle.backgroundImage };
 })()`;
+async function captureBorderPreview(mode) {
+  if(!process.argv.includes('--glow-preview')) return;
+  await evaluate(`window.__testPreviewHeadMethod=window.__testView.getHeadBounds;window.__testPreviewHead=window.__testView.getHeadBounds();window.__testView.getHeadBounds=()=>window.__testPreviewHead`);
+  await pause(250);
+  const clip=await evaluate(`(() => {const r=document.querySelector('#balance-pill-trigger').getBoundingClientRect();return {x:Math.floor(r.left)-12,y:Math.floor(r.top)-12,width:Math.ceil(r.width)+24,height:Math.ceil(r.height)+24,scale:1};})()`);
+  const period=await evaluate(`parseFloat(getComputedStyle(document.querySelector('.balance-pill__border-light')).animationDuration)*1000`);
+  const frameCount=Math.ceil(period/100);
+  const step=period/frameCount;
+  await writeFile(join(outputDir,`border-motion-${mode}.json`),JSON.stringify({period,step,frameCount,clip}));
+  for(const [theme,background] of [['light','#ffffff'],['dark','#121014']]) {
+    await evaluate(`document.body.style.backgroundColor=${JSON.stringify(background)};document.querySelector('.balance-pill__border-light').style.visibility='hidden'`);
+    let shot=await page('Page.captureScreenshot',{format:'png',clip});
+    await writeFile(join(outputDir,`border-motion-${mode}-${theme}-off.png`),Buffer.from(shot.data,'base64'));
+    await evaluate(`document.querySelector('.balance-pill__border-light').style.visibility=''`);
+    for(let frame=0;frame<frameCount;frame++) {
+      const time=frame*step;
+      await evaluate(`document.querySelector('.balance-pill__border-light').getAnimations({subtree:true}).forEach(a=>{a.pause();a.currentTime=${time};})`);
+      shot=await page('Page.captureScreenshot',{format:'png',clip});
+      await writeFile(join(outputDir,`border-motion-${mode}-${theme}-${frame}.png`),Buffer.from(shot.data,'base64'));
+    }
+  }
+  await evaluate(`document.body.style.backgroundColor='';window.__testView.getHeadBounds=window.__testPreviewHeadMethod;document.querySelector('.balance-pill__border-light').getAnimations({subtree:true}).forEach(a=>a.play())`);
+}
+
+async function verifyBorderMotion(label) {
+  const result=await evaluate(`(() => {
+    const border=document.querySelector('.balance-pill__border-light');
+    const highlights=[...border.querySelectorAll('.balance-pill__border-sweep')].filter(el=>getComputedStyle(el).display!=='none');
+    const animations=border.getAnimations({subtree:true});
+    const period=parseFloat(getComputedStyle(border).animationDuration)*1000;
+    const pill=document.querySelector('#balance-pill-trigger').getBoundingClientRect();
+    const radius=(pill.height-1)/2, middle={x:pill.x+pill.width/2,y:pill.y+pill.height/2};
+    const livePoints=highlights.map(el=>{const r=el.getBoundingClientRect();return {x:(r.left+r.right)/2,y:(r.top+r.bottom)/2};});
+    const liveOppositeError=livePoints.length===2 ? Math.max(Math.abs(livePoints[0].x+livePoints[1].x-2*middle.x),Math.abs(livePoints[0].y+livePoints[1].y-2*middle.y)) : 0;
+    let maxEdgeError=0, maxOppositeError=0;
+    const samples=[];
+    for(let i=0;i<=32;i++) {
+      animations.forEach(a=>{a.pause();a.currentTime=period*i/32;});
+      const points=highlights.map(el=>{const r=el.getBoundingClientRect();return {x:(r.left+r.right)/2,y:(r.top+r.bottom)/2};});
+      for(const point of points) {
+        const capX=Math.max(pill.left+0.5+radius,Math.min(point.x,pill.right-0.5-radius));
+        maxEdgeError=Math.max(maxEdgeError,Math.abs(Math.hypot(point.x-capX,point.y-middle.y)-radius));
+      }
+      if(points.length===2) maxOppositeError=Math.max(maxOppositeError,Math.abs(points[0].x+points[1].x-2*middle.x),Math.abs(points[0].y+points[1].y-2*middle.y));
+      samples.push(points.map(p=>Math.atan2(p.y-middle.y,p.x-middle.x)));
+    }
+    const turns=highlights.map(()=>0); let allCounterclockwise=true;
+    for(let i=1;i<samples.length;i++) for(let h=0;h<highlights.length;h++) {
+      let delta=samples[i][h]-samples[i-1][h];
+      while(delta>Math.PI)delta-=2*Math.PI;
+      while(delta<-Math.PI)delta+=2*Math.PI;
+      allCounterclockwise&&=delta < -0.001;
+      turns[h]+=delta;
+    }
+    animations.forEach(a=>{a.currentTime=0;a.play();});
+    const perimeter=2*(pill.width-pill.height)+Math.PI*(pill.height-1);
+    return {highlightCount:highlights.length,period,linearSpeed:perimeter/(period/1000),liveOppositeError,maxEdgeError,maxOppositeError,turns,allCounterclockwise};
+  })()`);
+  check(result.highlightCount===(label==='idle orb'?1:2), 'One idle highlight, two capsule highlights: '+label);
+  check(Math.abs(result.linearSpeed-(label==='idle orb'?24.5:136))<0.1, 'Fixed border travel speed: '+label);
+  check(result.maxEdgeError<0.25, 'Highlights follow the rounded border: '+label);
+  if(result.highlightCount===2) check(result.liveOppositeError<0.25 && result.maxOppositeError<0.25, 'Highlights remain opposite during live playback and sampled phases: '+label);
+  check(result.allCounterclockwise && result.turns.every(turn=>Math.abs(turn+Math.PI*2)<0.01), 'Visible highlights complete one counterclockwise lap without reversing: '+label);
+  report.push({activity:'border-motion',label,...result});
+}
+
 try {
   await page('Page.enable');
   await page('Runtime.enable');
   await page('Emulation.setDeviceMetricsOverride', {width:700,height:700,deviceScaleFactor:1,mobile:false});
   await page('Page.addScriptToEvaluateOnNewDocument', { source: `
-    localStorage.setItem('petra-announced-version','0.2.3');
+    localStorage.removeItem('petra-announced-version');
     localStorage.setItem('live2d-pet-settings', JSON.stringify({audioEnabled:false,activity:'low',modelScale:1,assistant:{enabled:true}}));
     const callbacks = new Map();
     const listeners = new Map();
@@ -147,7 +213,7 @@ try {
       unregisterCallback(id) {callbacks.delete(id);},
       async invoke(command,args={}) {
         window.__testCommands.add(command);
-        if(['drag_start','drag_end','set_menu_open'].includes(command)) window.__testCommandLog.push({command,args});
+        if(['drag_start','drag_end','set_menu_open','open_console','open_codex_activity','add_codex_activity_home'].includes(command)) window.__testCommandLog.push({command,args});
         if(command==='plugin:event|listen') { const list=listeners.get(args.event)||[]; list.push(args.handler); listeners.set(args.event,list); return args.handler; }
         if(command==='plugin:event|emit'||command==='plugin:event|emit_to') { if(args.event==='petra-settings-response')window.__testSettingsResponse=args.payload; window.__testEmit(args.event,args.payload); return null; }
         if(command==='plugin:window|scale_factor') return window.__testScale;
@@ -159,6 +225,18 @@ try {
         if(command==='save_psd') { window.__testImportedModels.set(args.name,args.bytes); return args.name; }
         if(command==='read_psd') { if(!window.__testImportedModels.has(args.name))throw new Error('模型不存在'); return window.__testImportedModels.get(args.name); }
         if(command==='delete_imported_model') { if(window.__testDeleteFails)throw new Error('测试：模型删除失败'); window.__testImportedModels.delete(args.name); return null; }
+        if(command==='get_codex_activity') return {status:null,tasks:[]};
+        if(command==='get_api_key') return window.__testMolly ? 'mock-only-key' : '';
+        if(command==='petra_assistant_chat') {
+          if (!window.__testMolly) throw new Error('Unexpected assistant call in UI check');
+          window.__testAssistantRequests.push(JSON.parse(JSON.stringify(args.body)));
+          const last = args.body.messages.at(-1);
+          if(last.role === 'tool') {
+            window.__testAssistantResult = JSON.parse(last.content);
+            return {choices:[{message:{content:'已读取悬浮窗显示信息。'}}]};
+          }
+          return {choices:[{message:{tool_calls:[{id:'test-floating-info',type:'function',function:{name:'get_floating_window_info',arguments:'{}'}}]}}]};
+        }
         if(command==='get_assistant_config') return {enabled:true};
         if(command==='has_api_key') return Boolean(window.__testApiKey);
         if(command==='set_api_key') { if(window.__testKeySaveFails)throw new Error('测试：密钥保存失败'); window.__testApiKey=args.apiKey; return null; }
@@ -172,7 +250,14 @@ try {
     };
   ` });
   await page('Page.navigate', {url:baseUrl+'/overlay.html'});
+  for (let attempt = 0; attempt < 40 && !(await evaluate(`Boolean(document.querySelector('#balance-pill:not(.hidden)'))`)); attempt++) {
+    if (await evaluate(`typeof window.__testEmit === 'function'`)) {
+      await evaluate(`window.__testEmit('account-balance-updated', window.__testAccount)`);
+    }
+    await pause(100);
+  }
   await ready('#balance-pill:not(.hidden)');
+  check(!(await evaluate(`window.__testCommands.has('fetch_account_balance')`)), 'Pet balance is supplied by the console event');
   await evaluate(`(async () => {
     const {Rigged2DView}=await import('/src/petra/live2d/psd/Rigged2DView.ts');
     const original=Rigged2DView.prototype.getHeadBounds;
@@ -223,9 +308,16 @@ try {
   interaction = await evaluate(readInteraction);
   check(interaction.menuVisible && interaction.commandLog.some(entry => entry.command === 'set_menu_open' && entry.args.open), 'Right click still opens the pet menu');
   check(interaction.inputEvents.some(event => event.type === 'contextmenu' && event.trusted), 'Context menu uses a trusted right click');
+  check(await evaluate(`{const children=[...document.querySelector('#menu').children]; children[0]?.classList.contains('mi') && children[0]?.querySelector('span:first-child')?.textContent.trim() === '打开控制台' && children[1]?.classList.contains('sep')}`), 'Open console is the first pet menu action');
   check(await evaluate(`document.querySelectorAll('#menu > .mi').length > 0 && !['模型','小助手设置','开机自启','今日抽卡','对话记录'].some(label => [...document.querySelectorAll('#menu > .mi > span:first-child')].some(el => el.textContent.trim() === label))`), 'Removed settings entries stay out of the pet menu');
   report.push({interaction:'model-context-menu',...interaction});
   await screenshot('model-right-click-menu');
+  const openConsolePoint = await evaluate(`{const rect=document.querySelector('#menu > .mi').getBoundingClientRect(); ({x:rect.x+rect.width/2,y:rect.y+rect.height/2})}`);
+  await mouseClick(openConsolePoint.x,openConsolePoint.y);
+  interaction = await evaluate(readInteraction);
+  check(!interaction.menuVisible && interaction.commandLog.some(entry => entry.command === 'open_console'), 'Open console menu action invokes the native console command');
+  await mouseClick(menuPoint.x,menuPoint.y,'right');
+  await pause(200);
   await mouseClick(690,690);
   check(!(await evaluate(readInteraction)).menuVisible, 'Clicking outside closes the context menu');
 
@@ -289,16 +381,16 @@ try {
     let state=await evaluate(read);
     check(state.pill.top>=state.head.top-1 && state.pill.top<=state.head.top+7, 'Head vertical position at '+size);
     check(state.head.left-state.pill.right>=11 && state.head.left-state.pill.right<=21, 'Head horizontal position at '+size);
-    check(state.pill.width===40 && state.pill.height===40 && state.text==='3$' && state.orbits===1, 'Compact balance orb at '+size);
-    const brightTailStart = state.tailGradient.indexOf('rgba(255, 255, 255, 0.96) 0%');
-    const transparentTailEnd = state.tailGradient.indexOf('rgba(0, 0, 0, 0) 36%');
-    check(state.orbitDirection==='reverse' && state.orbitDuration==='4.8s' && brightTailStart>=0 && transparentTailEnd>brightTailStart, 'Counterclockwise light point keeps its trail behind it at '+size);
+    check(state.pill.width===40 && state.pill.height===40 && state.text==='3$' && state.borderLayers===1, 'Compact balance orb at '+size);
+    check(state.borderMask.split(',').every(value=>value.trim()==='exclude') && Math.abs(parseFloat(state.flowDuration)-Math.PI*39/24.5)<0.001 && state.lightLength===5 && state.rim===5 && state.washGradient.includes('circle'), 'Round, slower white highlight on the idle orb at '+size);
     check(!state.hidden && !state.low && state.expanded==='false', 'Initial state at '+size);
+    if(size===300) { await verifyBorderMotion('idle orb'); await captureBorderPreview('orb'); }
     await screenshot('balance-'+size);
     await pointer((state.pill.left+state.pill.right)/2,(state.pill.top+state.pill.bottom)/2);
     state=await evaluate(read);
     check(state.expanded==='true' && !state.panel.hidden && state.fullBalance==='3.72$' && state.tokens==='128,400 token', 'Hover usage at '+size);
     check(Math.abs((state.panel.right-state.panel.left)-(state.panel.bottom-state.panel.top))<0.1 && state.panel.left<state.pill.left && state.panel.bottom>state.pill.bottom, 'Usage expands as a larger circle toward bottom-left at '+size);
+    for (let frame=0; frame<15 && !(await evaluate(`getComputedStyle(document.querySelector('#balance-pill-usage')).opacity==='1'`)); frame++) await pause(50);
     check(await evaluate(`getComputedStyle(document.querySelector('#balance-pill-usage')).opacity==='1' && getComputedStyle(document.querySelector('#balance-pill-usage')).transitionDuration.includes('0.22s')`), 'Usage circle has a completed expansion transition at '+size);
     check(state.regions.some(region=>region.id==='ui:balance-pill') && state.regions.some(region=>region.id==='ui:balance-usage'), 'Native hover regions at '+size);
     await pointer((state.panel.left+state.panel.right)/2,state.pill.bottom+3);
@@ -310,7 +402,7 @@ try {
     check((await evaluate(read)).expanded==='false','Hover leave at '+size);
     report.push({size,...state});
   }
-  await evaluate(`window.__testAccount={balance:0.68,today_tokens:0};window.__testEmit('account-session-changed')`);
+  await evaluate(`window.__testAccount={balance:0.68,today_tokens:0};window.__testEmit('account-balance-updated', window.__testAccount)`);
   await pause(200);
   let low=await evaluate(read);
   check(!low.hidden && low.low && low.pill.width>low.pill.height && low.expanded==='false' && low.panel.hidden, 'Low balance stays in the warning capsule state');
@@ -319,15 +411,15 @@ try {
   await pointer((low.pill.left+low.pill.right)/2,(low.pill.top+low.pill.bottom)/2);
   check((await evaluate(read)).expanded==='false', 'Low balance capsule does not open usage details');
   for(const [balance,today_tokens,expected] of [[12.35,null,'暂无法获取今日用量'],[12.35,987654321,'987,654,321 token']]) {
-    await evaluate(`window.__testAccount=${JSON.stringify({balance,today_tokens})};window.__testEmit('account-session-changed')`);
+    await evaluate(`window.__testAccount=${JSON.stringify({balance,today_tokens})};window.__testEmit('account-balance-updated', window.__testAccount)`);
     await pause(200);
     const state=await evaluate(read);
     check(!state.hidden && state.tokens===expected,'Usage data state '+expected);
   }
-  await evaluate(`window.__testAccount=null;window.__testEmit('account-session-changed')`);
+  await evaluate(`window.__testAccount=null;window.__testEmit('account-balance-updated', window.__testAccount)`);
   await pause(200);
   check((await evaluate(read)).hidden,'Hide account data after logout');
-  await evaluate(`window.__testAccount={balance:3.72,today_tokens:128400};window.__testEmit('account-session-changed');window.__testView.setScale(300)`);
+  await evaluate(`window.__testAccount={balance:3.72,today_tokens:128400};window.__testEmit('account-balance-updated', window.__testAccount);window.__testView.setScale(300)`);
   await pause(200);
   await evaluate(`document.getElementById('balance-pill-trigger').focus()`);
   await pause(150);
@@ -341,7 +433,7 @@ try {
   const region=scaled.regions.find(r=>r.id==='ui:balance-pill');
   check(region && region.x===Math.floor((scaled.pill.left-2)*1.5) && region.y===Math.floor((scaled.pill.top-2)*1.5),'150% native hover region scale');
   report.push({scaleFactor:1.5,pill:scaled.pill,region});
-  await evaluate(`window.__testView.getHeadBounds=()=>({left:0,top:0,right:80,bottom:100})`);
+  await evaluate(`window.__testNormalHead=window.__testView.getHeadBounds; window.__testView.getHeadBounds=()=>({left:0,top:0,right:80,bottom:100})`);
   await pause(180);
   let edge=await evaluate(read);
   check(edge.pill.left===8 && edge.pill.top===8,'Top/left screen edge clamp');
@@ -355,6 +447,167 @@ try {
   await pointer(edge.pill.left+20,edge.pill.top+15);
   edge=await evaluate(read);
   check(edge.panel.bottom<=edge.pill.bottom && edge.panel.top>=8 && edge.panel.left>=8 && edge.panel.right<=692,'Expanded circle stays visible at bottom edge');
+  check(!(await evaluate(`Boolean(document.querySelector('#announcement-panel'))`)), 'Fresh installation never shows upstream version announcement');
+  await pointer(650,50);
+  for (const [balance, expected] of [[9.9,'9$'],[99.99,'99$'],[100,'100$'],[128.9,'128$'],[1000,'1000$']]) {
+    await evaluate(`window.__testEmit('account-balance-updated', {balance:${balance},today_tokens:128400})`);
+    await pause(100);
+    check(await evaluate(`document.querySelector('#balance-pill-value').textContent === ${JSON.stringify(expected)} && document.querySelector('#balance-pill-value').scrollWidth <= document.querySelector('#balance-pill-value').clientWidth`), 'Uncapped compact balance '+balance);
+  }
+  await screenshot('balance-three-and-four-digits');
+  await evaluate(`window.__testView.getHeadBounds=window.__testNormalHead;
+    window.__testEmit('account-balance-updated', {balance:128.9,today_tokens:128400});
+    window.__activityTasks=[
+      {key:'test:1',threadId:'01a09809-9dd4-7203-ae17-00575d41934a',turnId:'1',model:'test-model',provider:'test-provider',status:'running',progress:'thinking',steps:[{progress:'starting',at:'2026-09-16T10:00:00Z'},{progress:'thinking',at:'2026-09-16T10:00:01Z'}],unread:false,updatedAt:'2026-09-16T10:00:01Z'},
+      {key:'test:2',threadId:'01a09810-9dd4-7203-ae17-00575d41934a',turnId:'2',model:'',provider:'',status:'blocked',progress:'blocked',unread:true,updatedAt:'2026-09-16T09:00:00Z'}
+    ]; window.__testEmit('codex-activity-updated', {status:'blocked',tasks:window.__activityTasks})`);
+  // Wait for the actual head-position transition, including slow render frames.
+  await evaluate(`(async()=>{
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    await Promise.all(document.querySelector('#balance-pill').getAnimations().map(animation=>animation.finished.catch(()=>{})));
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+  })()`);
+  let activityState = await evaluate(read);
+  report.push({activity:'initial-head-position',...activityState});
+  check(activityState.pill.bottom<=activityState.head.top-12 && Math.abs((activityState.pill.left+activityState.pill.right-activityState.head.left-activityState.head.right)/2)<=1, 'Running capsule is centered above model head');
+  check(activityState.pill.width>40 && activityState.pill.width<=280 && activityState.text==='128$', 'Capsule retains balance and fits content');
+  check(await evaluate(`!document.querySelector('.codex-activity-badge') && document.querySelector('.balance-pill__progress').textContent==='正在思考' && document.querySelector('#balance-pill').dataset.activity==='running'`), 'No numeric badge; active task wins over unread terminal');
+  await screenshot('codex-capsule-thinking');
+  const shortWidth=activityState.pill.width;
+  await evaluate(`document.querySelector('.balance-pill__progress').textContent='正在运行一个需要较长说明的命令并检查完整的任务执行结果和后续步骤';`);
+  await pause(220);
+  check(await evaluate(`document.querySelector('#balance-pill-trigger').getBoundingClientRect().width<=280 && document.querySelector('.balance-pill__progress').scrollWidth>document.querySelector('.balance-pill__progress').clientWidth && getComputedStyle(document.querySelector('.balance-pill__progress')).textOverflow==='ellipsis'`), 'Long progress is capped and truncated');
+  await screenshot('codex-capsule-long-text');
+  for (const [phase,label] of [['retrying','正在重试'],['command_running','正在运行命令'],['command_complete','运行了命令']]) {
+    await evaluate(`window.__activityTasks[0].status='needs_input'; window.__activityTasks[0].progress='waiting_input'; window.__testEmit('codex-activity-updated', {status:'needs_input',tasks:window.__activityTasks})`);
+    check(await evaluate(`document.querySelector('.balance-pill__progress').textContent==='等待你的输入' && document.querySelector('#balance-pill').dataset.activity==='needs_input'`), 'Question waiting state before '+phase);
+    await evaluate(`window.__activityTasks[0].status='running'; window.__activityTasks[0].progress=${JSON.stringify(phase)}; window.__activityTasks[0].steps.push({progress:${JSON.stringify(phase)},at:'2026-09-16T10:00:02Z'}); window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks})`);
+    await pause(250);
+    check(await evaluate(`document.querySelector('.balance-pill__progress').textContent===${JSON.stringify(label)} && document.querySelector('#balance-pill').dataset.activity==='running'`), 'New progress replaces waiting: '+phase);
+  }
+  activityState=await evaluate(read);
+  check(activityState.pill.width>=shortWidth && activityState.pill.width<280, 'Capsule shrinks back to actual text width');
+  await pointer(activityState.pill.left+20,activityState.pill.top+20);
+  await pause(300);
+  activityState = await evaluate(read);
+  report.push({activity:'codex-capsule', ...activityState});
+  check(activityState.panel.hidden && activityState.expanded==='false', 'Running hover does not open a dropdown');
+  await evaluate(`document.querySelector('#balance-pill-trigger').focus(); document.querySelector('#balance-pill-trigger').click()`);
+  check((await evaluate(read)).panel.hidden && (await evaluate(read)).expanded==='false', 'Running focus and click do not open a dropdown');
+  check(!activityState.regions.some(r=>r.id==='ui:balance-usage' || r.id==='ui:balance-bridge'), 'No hidden panel or bridge intercepts the pointer');
+  check(await evaluate(`getComputedStyle(document.querySelector('#balance-pill-trigger')).opacity==='1' && !document.querySelector('.balance-pill__bridge')`), 'Capsule remains visible without a hover bridge');
+  await evaluate(`document.querySelector('#balance-pill-trigger').blur(); window.__activityTasks[0].progress='thinking'; window.__activityTasks[0].progressTitle='Appending theme token CSS'; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks})`);
+  await pause(250);
+  check(await evaluate(`document.querySelector('.balance-pill__progress').textContent==='Appending theme token CSS'`), 'Original Codex summary heading is shown verbatim');
+  const readBorderLight = `(() => {
+    const border=document.querySelector('.balance-pill__border-light');
+    const bounds=border.getBoundingClientRect(), style=getComputedStyle(border.querySelector('.balance-pill__border-mask'));
+    const pill=document.querySelector('#balance-pill-trigger').getBoundingClientRect();
+    const motion=getComputedStyle(border);
+    const washes=[...border.querySelectorAll('.balance-pill__border-sweep')].map(el=>{const s=getComputedStyle(el);return {distance:s.offsetDistance,path:s.offsetPath,width:parseFloat(s.width),height:parseFloat(s.height),taper:s.clipPath,duration:motion.animationDuration,direction:motion.animationDirection,gradient:s.backgroundImage,top:parseFloat(s.top)};});
+    return {width:bounds.width,height:bounds.height,pillWidth:pill.width,pillHeight:pill.height,
+      alignmentError:Math.max(Math.abs(bounds.left-pill.left),Math.abs(bounds.top-pill.top),Math.abs(bounds.right-pill.right),Math.abs(bounds.bottom-pill.bottom)),
+      mask:style.maskComposite,maskImage:style.maskImage,rim:parseFloat(style.paddingTop),radius:style.borderRadius,
+      clips:style.overflow==='hidden',pointerEvents:style.pointerEvents,glow:getComputedStyle(border).filter,washes};
+  })()`;
+  check(await evaluate(`!document.querySelector('.balance-pill__orbit,.balance-pill__capsule-orbit,.balance-pill__orbit-dot,.balance-pill__orbit-tail')`), 'Old orbit dot and segmented trail are completely removed');
+  for (const [index,title] of ['正在思考', 'Appending theme token CSS', 'A very long public progress title that must be truncated at the capsule width limit'].entries()) {
+    await evaluate(`window.__activityTasks[0].progressTitle=${JSON.stringify(title)}; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks})`);
+    await pause(250);
+    const geometry=await evaluate(readBorderLight);
+    check(geometry.alignmentError<0.1 && geometry.mask.split(',').every(value=>value.trim()==='exclude') && geometry.rim===2.5 && geometry.radius==='999px' && geometry.clips, 'Visible hollow border follows resized capsule: '+title);
+    check(geometry.pointerEvents==='none' && geometry.washes.length===2 && geometry.washes.every(w=>w.gradient.includes('radial-gradient') && w.width===52 && w.height===2.5 && w.taper.startsWith('ellipse(')), 'Two tapered white highlights leave text and interaction clear');
+    report.push({activity:'border-light-geometry',title,...geometry});
+    await verifyBorderMotion(title);
+    await screenshot('codex-border-width-'+index);
+  }
+  await evaluate(`window.__activityTasks[0].progressTitle='Appending theme token CSS'; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks})`);
+  await pause(250);
+  const lightState=await evaluate(readBorderLight);
+  await pause(200);
+  const movingState=await evaluate(readBorderLight);
+  check(lightState.washes.every((w,i)=>w.distance!==movingState.washes[i].distance), 'Both border washes move continuously');
+  check(lightState.washes.every(w=>w.direction==='normal'), 'Both highlights move continuously without reversing');
+  for (const time of [0,600,1200,1800]) {
+    await evaluate(`document.querySelector('.balance-pill__border-light').getAnimations({subtree:true}).forEach(a=>{a.pause();a.currentTime=${time};})`);
+    await screenshot('codex-border-flow-'+time);
+  }
+  await evaluate(`document.querySelector('.balance-pill__border-light').getAnimations({subtree:true}).forEach(a=>a.currentTime=0);document.body.style.backgroundColor='#121014'`);
+  await screenshot('codex-border-dark-background');
+  await evaluate(`document.body.style.backgroundColor=''`);
+  await captureBorderPreview('capsule');
+  await page('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  check(await evaluate(`getComputedStyle(document.querySelector('.balance-pill__border-light')).animationName==='none'`), 'Border washes respect reduced motion');
+  await page('Emulation.setEmulatedMedia',{features:[]});
+  // Exercise the real console-to-pet assistant event and tool dispatcher with
+  // a local model response stub. No account login or network requests are used.
+  await evaluate(`window.__testMolly=true; window.__testAssistantRequests=[]; const settings=JSON.parse(localStorage.getItem('live2d-pet-settings')); settings.assistant={...settings.assistant,enabled:true,model:'mock-model'}; localStorage.setItem('live2d-pet-settings',JSON.stringify(settings));`);
+  const queryMolly = async () => {
+    await evaluate(`window.__testAssistantResult=null; window.__testEmit('petra-assistant-send',{text:'悬浮窗现在显示什么，任务完成了吗？'})`);
+    for(let i=0;i<60 && !(await evaluate('window.__testAssistantResult'));i++) await pause(100);
+    const result=await evaluate('window.__testAssistantResult');
+    check(result?.ok, 'Molly reads floating information without account login');
+    return result?.data;
+  };
+  let molly=await queryMolly();
+  check(molly?.activity.text==='Appending theme token CSS' && molly?.balance.compact==='128$', 'Molly tool receives exact current title and displayed balance');
+  check(await evaluate(`window.__testAssistantRequests[0].tools.some(t=>t.function.name==='get_floating_window_info')`), 'Floating info tool is included in assistant request');
+  await evaluate(`window.__activityTasks[0].status='ready'; window.__activityTasks[0].progress='ready'; window.__testEmit('codex-activity-updated', {status:'ready',tasks:window.__activityTasks})`);
+  await pause(250);
+  check(await evaluate(`document.querySelector('.balance-pill__progress').textContent==='任务已完成' && document.querySelector('#balance-pill').classList.contains('balance-pill--capsule')`), 'Completion remains a head capsule');
+  await screenshot('codex-completed-capsule');
+  molly=await queryMolly();
+  check(molly?.activity.text==='任务已完成' && molly?.activity.completionExpiresAt, 'Molly sees completion hold and deadline');
+  await evaluate(`window.__activityTasks[0].status='running'; window.__activityTasks[0].progress='retrying'; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks})`);
+  check(await evaluate(`document.querySelector('.balance-pill__progress').textContent==='正在重试'`), 'New task immediately replaces completion');
+  await evaluate(`window.__activityTasks[0].status='ready'; window.__activityTasks[0].progress='ready'; window.__testEmit('codex-activity-updated', {status:'ready',tasks:window.__activityTasks})`);
+  await pause(10_000);
+  await evaluate(`window.__testEmit('codex-activity-updated', {status:'ready',tasks:window.__activityTasks})`);
+  check(await evaluate(`document.querySelector('.balance-pill__progress').textContent==='任务已完成'`), 'Completion still present at 10 seconds');
+  await pause(10_350);
+  check(await evaluate(`!document.querySelector('#balance-pill').classList.contains('balance-pill--capsule') && document.querySelector('#balance-pill-trigger').getAttribute('aria-label').includes('展开查看详情')`), 'Completion expires after 20 seconds despite duplicate snapshot');
+  molly=await queryMolly();
+  check(molly?.mode==='orb' && molly?.activity.status==='idle' && molly?.activity.completionExpiresAt===null, 'Molly and capsule agree after expiry');
+  await evaluate(`(async()=>{const assistant=await import('/src/petra/assistant/AssistantPanel.ts');assistant.clearBubbles();})()`);
+  for (const status of ['blocked','stopped']) {
+    await evaluate(`window.__activityTasks[0].status=${JSON.stringify(status)}; window.__activityTasks[0].progress=${JSON.stringify(status)}; window.__activityTasks[0].unread=true; window.__testEmit('codex-activity-updated', {status:${JSON.stringify(status)},tasks:window.__activityTasks})`);
+    await pointer(650,50);
+    await pause(300);
+    let idle=await evaluate(read);
+    check(idle.pill.width===40 && idle.pill.height===40 && !(await evaluate(`document.querySelector('#balance-pill').classList.contains('balance-pill--capsule')`)), 'Terminal '+status+' restores small orb despite unread tasks');
+    await pointer(idle.pill.left+20,idle.pill.top+20);
+    await pause(250);
+    idle=await evaluate(read);
+    check(Math.abs(idle.panel.right-idle.panel.left-148)<1 && Math.abs(idle.panel.bottom-idle.panel.top-148)<1, 'Terminal '+status+' restores original round hover');
+    check(await evaluate(`!document.querySelector('#balance-pill-usage').textContent.includes('Codex 任务') && !document.querySelector('.codex-activity-entry') && document.querySelector('#balance-pill-full-value').textContent==='128.90$' && document.querySelector('#balance-pill-tokens').textContent==='128,400 token'`), 'Idle round hover only shows balance and token usage');
+  }
+  await screenshot('codex-stopped-round-hover');
+  check((await evaluate(read)).expanded==='true', 'Idle hover is open before a new task starts');
+  await evaluate(`window.__activityTasks[0].status='running'; window.__activityTasks[0].progress='thinking'; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks}); window.__testEmit('account-balance-updated',{balance:0.5})`);
+  await pause(250);
+  check((await evaluate(read)).panel.hidden, 'Starting a task immediately closes the idle hover');
+  const lowCapsule = await evaluate(`({text:document.querySelector('#balance-pill-value').textContent,display:getComputedStyle(document.querySelector('#balance-pill-value')).display,width:document.querySelector('.balance-pill__orb').getBoundingClientRect().width})`);
+  report.push({activity:'low-balance-capsule',...lowCapsule});
+  check(lowCapsule.text==='0$' && lowCapsule.display!=='none' && Math.abs(lowCapsule.width-40)<0.5, 'Low balance stays visible in active capsule orb');
+  await evaluate(`window.__testView.getHeadBounds=()=>({left:320,top:660,right:420,bottom:700})`);
+  await pause(300);
+  let bottomCapsule=await evaluate(read);
+  await pointer(bottomCapsule.pill.left+20,bottomCapsule.pill.top+20);
+  await pause(300);
+  bottomCapsule=await evaluate(read);
+  check(bottomCapsule.panel.hidden && bottomCapsule.expanded==='false' && bottomCapsule.pill.bottom<=692, 'Bottom-edge capsule remains visible without a dropdown');
+  await pointer(650,50);
+  await evaluate(`window.__testView.getHeadBounds=()=>({left:0,top:0,right:80,bottom:100})`);
+  await pause(250);
+  const topCapsule=await evaluate(read);
+  check(topCapsule.pill.left>=8 && topCapsule.pill.top>=8, 'Capsule stays visible at top and left edge');
+  await evaluate(`window.__testView.getHeadBounds=window.__testNormalHead`);
+  await evaluate(`window.__testEmit('account-session-changed', {})`);
+  await pause(150);
+  check(!(await evaluate(`document.querySelector('#balance-pill').classList.contains('hidden')`)), 'Active progress remains visible without account balance');
+  await evaluate(`window.__testEmit('codex-activity-updated', {status:null,tasks:[]})`);
+  await pause(250);
+  check(await evaluate(`document.querySelector('#balance-pill').classList.contains('hidden')`), 'No account or activity leaves orb hidden');
   check(runtimeErrors.length===0,'Browser runtime errors');
   console.log(JSON.stringify({report,failures,runtimeErrors},null,2));
 } finally {

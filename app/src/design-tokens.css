@@ -1,5 +1,6 @@
 /* Console design tokens. See design-system/molly-desktop/MASTER.md. */
 :root {
+  color-scheme: light;
   --font-body: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
   --font-mono: "Fira Code", "Cascadia Mono", Consolas, monospace;
   --color-bg: #f8fbfc;
@@ -29,12 +30,25 @@
   --color-warning: #8a651e;
   --color-warning-soft: #fff9ed;
   --color-warning-border: #ecdcb9;
+  --color-control-hover: rgba(16, 33, 62, 0.08);
+  --color-auth-art: #eff2e8;
+  --color-auth-panel: #fafbf7;
+  --color-auth-grid: rgba(46, 61, 25, 0.045);
+  --color-auth-glow: rgba(200, 255, 48, 0.3);
+  --color-auth-fade: rgba(247, 248, 242, 0.82);
+  --color-chat-bg: #f8fbfa;
+  --color-chat-glow: rgba(219, 251, 188, 0.28);
+  --color-scrollbar: #cfdbc8;
+  --color-overlay: rgba(220, 232, 237, 0.5);
+  --color-glass: rgba(255, 255, 255, 0.97);
+  --color-glass-border: rgba(255, 255, 255, 0.9);
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 24px;
   --shadow-card: 0 12px 32px rgba(47, 75, 98, 0.045);
   --shadow-float: 0 18px 48px rgba(47, 75, 98, 0.12);
+  --shadow-dialog: 0 24px 80px rgba(47, 75, 98, 0.18);
   --focus-ring: 0 0 0 3px rgba(66, 122, 32, 0.2);
   --space-xs: 4px;
   --space-sm: 8px;
@@ -47,4 +61,51 @@
   --content-max-width: 1440px;
   --content-gutter: clamp(24px, 2.7vw, 40px);
   --motion-duration: 180ms;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #141a21;
+  --color-sidebar: #171e26;
+  --color-surface: #1d2630;
+  --color-surface-soft: #222d39;
+  --color-surface-strong: #344252;
+  --color-text: #e5edf5;
+  --color-text-soft: #b0bfd0;
+  --color-text-muted: #94a6b9;
+  --color-border: #303e4d;
+  --color-border-strong: #506175;
+  --color-lime: #b4e976;
+  --color-lime-hover: #c2f18f;
+  --color-lime-pressed: #a6df64;
+  --color-lime-deep: #b4e976;
+  --color-on-lime: #275016;
+  --color-lime-soft: #263628;
+  --color-lime-border: #405a37;
+  --color-blue: #9caaff;
+  --color-blue-soft: #29344d;
+  --color-violet: #c7a3ff;
+  --color-violet-soft: #382d4b;
+  --color-danger: #ff9aae;
+  --color-danger-soft: #3b2630;
+  --color-danger-border: #70404d;
+  --color-warning: #e9c27a;
+  --color-warning-soft: #352f24;
+  --color-warning-border: #65563b;
+  --color-control-hover: rgba(229, 237, 245, 0.1);
+  --color-auth-art: #1b2525;
+  --color-auth-panel: #171e24;
+  --color-auth-grid: rgba(180, 233, 118, 0.045);
+  --color-auth-glow: rgba(180, 233, 118, 0.08);
+  --color-auth-fade: rgba(20, 26, 33, 0.82);
+  --color-chat-bg: #171f26;
+  --color-chat-glow: rgba(180, 233, 118, 0.035);
+  --color-scrollbar: #506175;
+  --color-overlay: rgba(5, 10, 17, 0.62);
+  --color-glass: rgba(29, 38, 48, 0.98);
+  --color-glass-border: #405064;
+  --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --shadow-dialog: 0 24px 80px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 3px rgba(180, 233, 118, 0.24);
 }

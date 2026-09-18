@@ -11,6 +11,7 @@ use tauri::{AppHandle, Manager, State, WebviewWindow, Window, WindowEvent};
 use tauri_plugin_autostart::ManagerExt;
 
 const SETTINGS_FILE: &str = "console-settings.json";
+const AUTOSTART_ARGUMENT: &str = "--mollycloud-autostart";
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -26,6 +27,8 @@ pub struct ConsoleSettings {
     pub close_action: CloseAction,
     #[serde(default)]
     pub autostart: bool,
+    #[serde(default)]
+    pub autostart_minimized: bool,
 }
 
 pub struct ConsoleSettingsState {
@@ -126,6 +129,9 @@ pub fn get_console_settings(
         .autolaunch()
         .is_enabled()
         .map_err(|_| "暂时无法读取开机自启动状态，请稍后重试".to_owned())?;
+    if !settings.autostart {
+        settings.autostart_minimized = false;
+    }
     Ok(settings)
 }
 
@@ -133,16 +139,24 @@ pub fn get_console_settings(
 pub fn save_console_settings(
     window: WebviewWindow,
     state: State<'_, ConsoleSettingsState>,
-    settings: ConsoleSettings,
+    mut settings: ConsoleSettings,
 ) -> Result<ConsoleSettings, String> {
     if window.label() != "console" {
         return Err("只能在控制台中修改关闭窗口设置".to_owned());
     }
+    if !settings.autostart {
+        settings.autostart_minimized = false;
+    }
+    let previous_settings = state.get()?;
     let autolaunch = window.app_handle().autolaunch();
     let previous_autostart = autolaunch
         .is_enabled()
         .map_err(|_| "暂时无法读取开机自启动状态，请稍后重试".to_owned())?;
-    if previous_autostart != settings.autostart {
+    let should_refresh_autostart = settings.autostart
+        && (previous_autostart != settings.autostart
+            || previous_settings.autostart != settings.autostart
+            || previous_settings.autostart_minimized != settings.autostart_minimized);
+    if previous_autostart != settings.autostart || should_refresh_autostart {
         let update = if settings.autostart {
             autolaunch.enable()
         } else {
@@ -166,6 +180,27 @@ pub fn save_console_settings(
                 }
             }
             Err(error)
+        }
+    }
+}
+
+fn should_start_minimized(settings: ConsoleSettings, arguments: &[String]) -> bool {
+    settings.autostart
+        && settings.autostart_minimized
+        && arguments.iter().any(|argument| argument == AUTOSTART_ARGUMENT)
+}
+
+pub fn apply_startup_visibility(app: &AppHandle) {
+    let settings = app
+        .try_state::<ConsoleSettingsState>()
+        .and_then(|state| state.get().ok())
+        .unwrap_or_default();
+    let arguments = std::env::args().collect::<Vec<_>>();
+    if should_start_minimized(settings, &arguments) {
+        if let Some(window) = app.get_webview_window("console") {
+            if window.hide().is_err() {
+                crate::log_line("autostart console window could not be hidden");
+            }
         }
     }
 }
@@ -228,6 +263,7 @@ mod tests {
         ConsoleSettings {
             close_action: action,
             autostart: false,
+            autostart_minimized: false,
         }
     }
 
@@ -274,7 +310,7 @@ mod tests {
         }
         assert_eq!(
             serde_json::to_value(settings(CloseAction::Quit)).unwrap(),
-            serde_json::json!({ "closeAction": "quit", "autostart": false }),
+            serde_json::json!({ "closeAction": "quit", "autostart": false, "autostartMinimized": false }),
         );
         assert_eq!(
             serde_json::from_str::<ConsoleSettings>(r#"{"closeAction":"tray"}"#).unwrap(),
@@ -359,5 +395,26 @@ mod tests {
         state.set_dashboard_active(false);
         assert_eq!(action(), Some(CloseAction::Quit));
         assert_eq!(state.get().unwrap().close_action, CloseAction::Tray);
+    }
+
+    #[test]
+    fn startup_minimizes_only_for_an_enabled_autostart_launch() {
+        let autostart_arguments = vec!["mollycloud.exe".to_owned(), AUTOSTART_ARGUMENT.to_owned()];
+        let manual_arguments = vec!["mollycloud.exe".to_owned()];
+        let minimized = ConsoleSettings {
+            close_action: CloseAction::Tray,
+            autostart: true,
+            autostart_minimized: true,
+        };
+        assert!(should_start_minimized(minimized, &autostart_arguments));
+        assert!(!should_start_minimized(minimized, &manual_arguments));
+        assert!(!should_start_minimized(
+            ConsoleSettings { autostart: false, ..minimized },
+            &autostart_arguments
+        ));
+        assert!(!should_start_minimized(
+            ConsoleSettings { autostart_minimized: false, ..minimized },
+            &autostart_arguments
+        ));
     }
 }

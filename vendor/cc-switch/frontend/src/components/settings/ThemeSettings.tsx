@@ -6,7 +6,11 @@ import { useTheme } from "@/components/theme-provider";
 
 export function ThemeSettings() {
   const { t } = useTranslation();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, followsHostTheme } = useTheme();
+
+  if (followsHostTheme) {
+    return <section className="space-y-2"><h3 className="text-sm font-medium">{t("settings.theme")}</h3><p className="text-xs text-muted-foreground">外观跟随 MollyCloud 控制台，可在控制台设置中更改。</p></section>;
+  }
 
   return (
     <section className="space-y-2">

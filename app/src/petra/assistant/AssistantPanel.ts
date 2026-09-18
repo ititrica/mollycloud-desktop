@@ -7,6 +7,7 @@ import { loadDiaries, getDiary } from "../features/diary/DiaryManager";
 import { loadSettings, saveSettings } from "../utils/settings";
 import { getVisibleRect } from "../ui/visible";
 import { toast } from "../ui/Toast";
+import { readFloatingWindowTool } from "./FloatingWindowInfo";
 
 const MAX_BUBBLES = 2;
 const HIST_KEY = "live2d-pet-assistant-history";
@@ -262,11 +263,12 @@ function resetTimer() {
   }
 }
 
-function addBubble(kind: "ai" | "sys" | "confirm", text: string): HTMLElement {
+function addBubble(kind: "ai" | "sys" | "confirm", text: string, hidden = false): HTMLElement {
   ensureBubbles();
   const b = document.createElement("div");
   b.className = `as-bubble as-${kind}`;
   b.textContent = text;
+  b.hidden = hidden;
   bubbles!.appendChild(b);
   trimBubbles();
   return b;
@@ -382,7 +384,7 @@ export function clearHistory() {
 export function resetHistory() {
   history = [];
   saveHistory();
-  if (bubbles) bubbles.innerHTML = "";
+  clearBubbles();
 }
 
 function lastBubble(): HTMLElement | null {
@@ -412,14 +414,15 @@ async function send(text: string) {
   saveHistory();
   busy = true;
   publishAssistantState(true);
-  const loading = addBubble("ai", "");
-  let streamed = false;
+  const loading = addBubble("ai", "", true);
   let sendError = "";
   try {
     // 循环处理：每轮 chatStream → 若有工具调用则执行并继续，否则结束（最多 4 轮）
     const MAX_ROUNDS = 4;
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      if (round > 0) loading.textContent = "";
+      let replyText = "";
+      loading.textContent = "";
+      loading.hidden = true;
       const res = await chatStream(
         s.assistant.provider,
         apiKey,
@@ -429,26 +432,29 @@ async function send(text: string) {
         memory,
         s.assistant.customBaseUrl,
         (delta) => {
-          streamed = true;
-          loading.textContent += delta;
+          replyText += delta;
+          loading.textContent = replyText;
+          loading.hidden = false;
         },
       );
 
       if (res.toolCalls.length) {
         // 工具调用：执行后进入下一轮
-        if (round === 0 && !streamed) loading.textContent = "";
+        loading.hidden = false;
+        loading.textContent = replyText;
         await handleToolCalls(res.toolCalls, loading);
         continue;
       }
 
       // 无工具调用：文字入历史
-      const finalText = loading.textContent || res.text;
+      const finalText = replyText || res.text;
       history.push({ role: "assistant", content: finalText });
       // 记录对话事件（日记系统）：记用户说的话（tracker 内部 safeSlice 截到 80 字）
       trackEvent({ type: "chat", summary: text });
       // CMD 兜底（非 function calling provider）
       const cmd = extractCommand(finalText);
       if (cmd) {
+        loading.hidden = false;
         loading.textContent = stripCommand(finalText) || "(执行中…)";
         await handleToolCalls(
           [{ id: `cmd_${Date.now()}`, name: "run_shell", args: { command: cmd } }],
@@ -456,6 +462,8 @@ async function send(text: string) {
         );
         continue;
       }
+      if (loadSettings().assistant.enabled) loading.textContent = finalText;
+      else loading.remove();
       break;
     }
     saveHistory();
@@ -464,11 +472,13 @@ async function send(text: string) {
     if (history.length % 5 === 0) {
       void extractMemoriesFromChat(s, apiKey);
     }
+    loading.hidden = false;
     if (!loading.textContent.trim()) loading.textContent = "(空回复)";
     scheduleFade(loading, 8000);
   } catch (e) {
     sendError = e instanceof Error ? e.message : String(e);
     loading.textContent = sendError;
+    loading.hidden = false;
     scheduleFade(loading, 6000);
   } finally {
     busy = false;
@@ -533,6 +543,10 @@ async function handleToolCalls(calls: ToolCall[], loading: HTMLElement) {
   };
 
   for (const tc of calls) {
+    if (tc.name === "get_floating_window_info") {
+      history.push({ role: "tool", tool_call_id: tc.id, content: readFloatingWindowTool() });
+      continue;
+    }
     if (["get_account_overview", "get_subscription_status", "get_usage_summary", "get_api_key_status"].includes(tc.name)) {
       await accountTool(tc);
       continue;

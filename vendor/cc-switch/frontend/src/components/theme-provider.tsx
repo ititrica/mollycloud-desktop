@@ -8,6 +8,7 @@ import React, {
 import { invoke } from "@tauri-apps/api/core";
 
 type Theme = "light" | "dark" | "system";
+const followsHostTheme = typeof window !== "undefined" && window.parent !== window;
 
 interface ThemeProviderProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ interface ThemeProviderProps {
 
 interface ThemeContextValue {
   theme: Theme;
+  followsHostTheme: boolean;
   setTheme: (theme: Theme) => void;
 }
 
@@ -30,6 +32,8 @@ export function ThemeProvider({
   storageKey = "cc-switch-theme",
 }: ThemeProviderProps) {
   const getInitialTheme = () => {
+    // This embedded view shares the host origin; the host owns its appearance.
+    if (followsHostTheme) return window.parent.document.documentElement.dataset.theme === "dark" ? "dark" : "light";
     if (typeof window === "undefined") {
       return defaultTheme;
     }
@@ -45,11 +49,21 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
   useEffect(() => {
+    if (!followsHostTheme) return;
+    const host = window.parent.document.documentElement;
+    const sync = () => setThemeState(host.dataset.theme === "dark" ? "dark" : "light");
+    const observer = new MutationObserver(sync);
+    observer.observe(host, { attributes: true, attributeFilter: ["data-theme"] });
+    sync();
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    window.localStorage.setItem(storageKey, theme);
+    if (!followsHostTheme) window.localStorage.setItem(storageKey, theme);
   }, [theme, storageKey]);
 
   useEffect(() => {
@@ -97,7 +111,7 @@ export function ThemeProvider({
 
   // Sync native window theme (Windows/macOS title bar)
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || followsHostTheme) {
       return;
     }
 
@@ -130,8 +144,9 @@ export function ThemeProvider({
   const value = useMemo<ThemeContextValue>(
     () => ({
       theme,
+      followsHostTheme,
       setTheme: (nextTheme: Theme) => {
-        if (nextTheme === theme) return;
+        if (followsHostTheme || nextTheme === theme) return;
         setThemeState(nextTheme);
       },
     }),

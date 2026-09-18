@@ -31,8 +31,7 @@ async function bootstrap() {
   if (!getNativeBridge()) throw new Error("请在 MollyCloud 桌面客户端中打开内置 CC Switch。");
   if (!localStorage.getItem("language")) localStorage.setItem("language", "zh");
   if (!localStorage.getItem("cc-switch-last-app")) localStorage.setItem("cc-switch-last-app", "codex");
-  const theme = localStorage.getItem("cc-switch-theme") ?? "light";
-  document.documentElement.classList.toggle("dark", theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches));
+  document.documentElement.classList.toggle("dark", window.parent.document.documentElement.dataset.theme === "dark");
   await import("../main");
 }
 

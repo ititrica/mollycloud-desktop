@@ -1,0 +1,14 @@
+{
+  "repository": "https://github.com/xingkongliang/skills-manager",
+  "commit": "6ae02e39d9efea0faf75e643b8205f97833a593d",
+  "version": "1.40.0",
+  "license": "MIT",
+  "adaptations": [
+    "Molly console navigation, shared design tokens and parent theme",
+    "Lazy console-only plugin with explicit IPC allowlist",
+    "Private library and Git credential namespace; temporary home for regressions",
+    "Copy deployment by default; no automatic deployment on startup",
+    "Agent CLI uses installed Molly executable with --molly-skills-cli; no executable copies or setup-time execution",
+    "Standalone tray, updater, lifecycle and independent appearance settings disabled"
+  ]
+}

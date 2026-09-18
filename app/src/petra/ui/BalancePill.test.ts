@@ -14,10 +14,14 @@ describe("overlay account display", () => {
     }
   });
 
-  it("limits the compact orb to two balance digits and adds the currency suffix", () => {
+  it("shows the actual whole balance without padding or a 99 dollar cap", () => {
     expect(formatCompactOverlayBalance(3.72)).toBe("3$");
     expect(formatCompactOverlayBalance(59.89)).toBe("59$");
-    expect(formatCompactOverlayBalance(100)).toBe("99$");
+    expect(formatCompactOverlayBalance(99)).toBe("99$");
+    expect(formatCompactOverlayBalance(99.99)).toBe("99$");
+    expect(formatCompactOverlayBalance(100)).toBe("100$");
+    expect(formatCompactOverlayBalance(128.99)).toBe("128$");
+    expect(formatCompactOverlayBalance(1000)).toBe("1000$");
     expect(formatCompactOverlayBalance(null)).toBeNull();
   });
 

@@ -20,11 +20,14 @@ import CcSwitchPanel from "./components/CcSwitchPanel.vue";
 import ImageWorkbenchPanel from "./components/ImageWorkbenchPanel.vue";
 import ConsoleSettingsDialog from "./components/ConsoleSettingsDialog.vue";
 import PetSettingsDialog from "./components/PetSettingsDialog.vue";
-import { asArray, asRecord, type AssistantConfig, type DashboardPayload, type ServiceBootstrap } from "./contracts";
+import McpMarketPanel from "./components/McpMarketPanel.vue";
+import SkillManagerPanel from "./components/SkillManagerPanel.vue";
+import McpExperimentalDialog from "./components/McpExperimentalDialog.vue";
+import { asArray, asRecord, type AccountBalance, type AssistantConfig, type DashboardPayload, type ServiceBootstrap } from "./contracts";
 import { formatBalance, formatDate, formatMoney, formatTokens, numberValue, textValue } from "./format";
 import { desktopApi, type CcSwitchImportResult, type DesktopUpdate } from "./ipc";
 
-type Page = "overview" | "subscriptions" | "keys" | "usage" | "assistant" | "ccswitch" | "images";
+type Page = "overview" | "subscriptions" | "keys" | "usage" | "assistant" | "ccswitch" | "images" | "mcp" | "skills";
 type Phase = "starting" | "login" | "two-factor" | "dashboard";
 type AssistantDisplayMessage = { role: "user" | "assistant"; content: string };
 type OverviewIcon = "wallet" | "spend" | "subscription" | "code";
@@ -49,6 +52,14 @@ const agreementOpen = ref(false);
 const consoleSettingsOpen = ref(false);
 const consoleSettingsButton = ref<HTMLButtonElement | null>(null);
 const petSettingsOpen = ref(false);
+const mcpModalOpen = ref(false);
+const mcpVisited = ref(false);
+const skillsVisited = ref(false);
+const skillsModalOpen = ref(false);
+const mcpWarningOpen = ref(false);
+const mcpAcknowledgementKey = "__TAURI_INTERNALS__" in window ? "mollycloud:mcp-experimental-ack:v1" : "mollycloud:preview:mcp-experimental-ack:v1";
+const mcpAcknowledged = ref(false);
+try { mcpAcknowledged.value = localStorage.getItem(mcpAcknowledgementKey) === "acknowledged"; } catch { /* First-use consent remains available without storage. */ }
 const petSettingsButton = ref<HTMLButtonElement | null>(null);
 const sidebarCollapsed = ref(false);
 const ccSwitchImportOpen = ref(false);
@@ -77,13 +88,15 @@ const assistantChatError = ref("");
 const assistantHistory = ref<HTMLElement | null>(null);
 const desktopUpdate = ref<DesktopUpdate | null>(null);
 let refreshTimer: number | undefined;
+let balanceRefreshTimer: number | undefined;
+let balanceRefreshInFlight = false;
 let copyFeedbackTimer: number | undefined;
 let unlistenAssistantConfig: (() => void) | undefined;
 let unlistenAssistantHistory: (() => void) | undefined;
 let unlistenAssistantState: (() => void) | undefined;
 let unlistenPetVisibility: (() => void) | undefined;
 
-const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "key" | "usage" | "assistant" | "code" | "image" }> = [
+const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "key" | "usage" | "assistant" | "code" | "image" | "mcp" | "skills" }> = [
   { id: "overview", label: "概览", icon: "overview" },
   { id: "subscriptions", label: "订阅", icon: "subscription" },
   { id: "keys", label: "API 密钥", icon: "key" },
@@ -91,6 +104,8 @@ const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscript
   { id: "assistant", label: "Molly助手", icon: "assistant" },
   { id: "ccswitch", label: "CC Switch", icon: "code" },
   { id: "images", label: "生图工作台", icon: "image" },
+  { id: "mcp", label: "MCP 市场", icon: "mcp" },
+  { id: "skills", label: "Skill 管理器", icon: "skills" },
 ];
 
 const pageMeta: Record<Page, { kicker: string; title: string; description: string }> = {
@@ -101,6 +116,8 @@ const pageMeta: Record<Page, { kicker: string; title: string; description: strin
   assistant: { kicker: "桌面伙伴", title: "Molly助手", description: "与桌面 Molly 共用对话记录和发送能力。" },
   ccswitch: { kicker: "工具配置", title: "CC Switch", description: "管理供应商与本机工具配置。" },
   images: { kicker: "图片创作", title: "生图工作台", description: "生成、编辑图片，保存创作记录。" },
+  skills: { kicker: "扩展能力", title: "Skill 管理器", description: "发现、整理与部署技能，让每个 Agent 拥有合适的能力。" },
+  mcp: { kicker: "扩展工具", title: "MCP 市场", description: "发现工具，一键安装到你使用的 Agent。" },
 };
 
 const settings = computed(() => asRecord(bootstrap.value?.settings));
@@ -117,7 +134,7 @@ const keyPage = computed(() => asRecord(dashboard.value?.keys));
 const keys = computed(() => asArray(keyPage.value.items));
 const userInitial = computed(() => textValue(user.value.username ?? user.value.email, "M").slice(0, 1).toUpperCase());
 const currentPageMeta = computed(() => pageMeta[activePage.value]);
-const isEmbeddedPage = computed(() => activePage.value === "ccswitch" || activePage.value === "images");
+const isEmbeddedPage = computed(() => ["assistant", "ccswitch", "images"].includes(activePage.value));
 const apiEndpoint = "https://mollycloud.cn/v1";
 const greeting = computed(() => {
   const hour = new Date().getHours();
@@ -325,6 +342,7 @@ async function initialize(): Promise<void> {
       await loadPetVisibility();
       await refreshDashboard();
       startRefreshTimer();
+      startBalanceRefreshTimer();
     } else {
       phase.value = "login";
     }
@@ -355,6 +373,7 @@ async function submitLogin(): Promise<void> {
     await loadPetVisibility();
     await refreshDashboard();
     startRefreshTimer();
+    startBalanceRefreshTimer();
   } catch (reason) {
     password.value = "";
     errorMessage.value = friendlyError(reason);
@@ -375,6 +394,7 @@ async function submitTwoFactor(): Promise<void> {
     await loadPetVisibility();
     await refreshDashboard();
     startRefreshTimer();
+    startBalanceRefreshTimer();
   } catch (reason) {
     errorMessage.value = friendlyError(reason);
   } finally {
@@ -388,12 +408,44 @@ async function refreshDashboard(): Promise<void> {
   errorMessage.value = "";
   try {
     dashboard.value = await desktopApi.fetchDashboard();
+    void desktopApi.syncPetAccountBalance(accountBalanceFromDashboard(dashboard.value));
     lastUpdated.value = new Date();
     await maybeShowAccountReminder();
   } catch (reason) {
     if (!dashboard.value) errorMessage.value = friendlyError(reason);
   } finally {
     refreshing.value = false;
+  }
+}
+
+function accountBalanceFromDashboard(payload: DashboardPayload): AccountBalance {
+  return {
+    balance: asRecord(payload.user).balance ?? null,
+    today_tokens: asRecord(payload.usage).today_tokens ?? null,
+  };
+}
+
+function applyAccountBalance(account: AccountBalance): void {
+  if (!dashboard.value) return;
+  dashboard.value = {
+    ...dashboard.value,
+    user: { ...asRecord(dashboard.value.user), balance: account.balance },
+    usage: { ...asRecord(dashboard.value.usage), today_tokens: account.today_tokens },
+  };
+}
+
+async function refreshAccountBalance(): Promise<void> {
+  if (balanceRefreshInFlight) return;
+  balanceRefreshInFlight = true;
+  try {
+    const account = await desktopApi.fetchAccountBalance();
+    applyAccountBalance(account);
+    void desktopApi.syncPetAccountBalance(account);
+    await maybeShowAccountReminder();
+  } catch (reason) {
+    if (!dashboard.value) errorMessage.value = friendlyError(reason);
+  } finally {
+    balanceRefreshInFlight = false;
   }
 }
 
@@ -412,9 +464,16 @@ function startRefreshTimer(): void {
   refreshTimer = window.setInterval(() => void refreshDashboard(), 60_000);
 }
 
+function startBalanceRefreshTimer(): void {
+  if (balanceRefreshTimer) window.clearInterval(balanceRefreshTimer);
+  balanceRefreshTimer = window.setInterval(() => void refreshAccountBalance(), 12_000);
+}
+
 async function signOut(): Promise<void> {
   await desktopApi.logout();
   if (refreshTimer) window.clearInterval(refreshTimer);
+  if (balanceRefreshTimer) window.clearInterval(balanceRefreshTimer);
+  void desktopApi.syncPetAccountBalance({ balance: null, today_tokens: null });
   dashboard.value = null;
   restoredUser.value = null;
   email.value = "";
@@ -512,17 +571,55 @@ function handleAssistantKeydown(event: KeyboardEvent): void {
 }
 
 function selectPage(page: Page): void {
+  if (page === "mcp" && !mcpAcknowledged.value) { mcpWarningOpen.value = true; return; }
   activePage.value = page;
   if (page === "ccswitch") ccSwitchVisited.value = true;
   if (page === "images") imageWorkbenchVisited.value = true;
+  if (page === "mcp") mcpVisited.value = true;
+  if (page === "skills") skillsVisited.value = true;
   if (page === "assistant") {
     void loadPetVisibility();
     void requestAssistantHistory();
   }
 }
 
+function acknowledgeMcp(): void {
+  mcpAcknowledged.value = true;
+  try { localStorage.setItem(mcpAcknowledgementKey, "acknowledged"); }
+  catch { errorMessage.value = "已确认本次提示，但无法保存确认记录，下次启动可能再次提示。"; }
+  mcpWarningOpen.value = false;
+  selectPage("mcp");
+}
+
+function cancelMcpWarning(): void {
+  mcpWarningOpen.value = false;
+  void nextTick(() => document.querySelector<HTMLButtonElement>('[aria-label="MCP 市场"]')?.focus());
+}
+
 function toggleSidebar(): void {
   sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
+async function withConsoleWindow(action: "minimize" | "toggleMaximize" | "close"): Promise<void> {
+  if (!("__TAURI_INTERNALS__" in window)) return;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow()[action]();
+  } catch (error) {
+    console.error(`窗口操作失败：${action}`, error);
+  }
+}
+
+function minimizeConsoleWindow(): void {
+  void withConsoleWindow("minimize");
+}
+
+function toggleConsoleMaximize(): void {
+  void withConsoleWindow("toggleMaximize");
+}
+
+function closeConsoleWindow(): void {
+  void withConsoleWindow("close");
 }
 
 function openImportedProvider(provider: CcSwitchImportResult): void {
@@ -696,6 +793,7 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => {
   if (refreshTimer) window.clearInterval(refreshTimer);
+  if (balanceRefreshTimer) window.clearInterval(balanceRefreshTimer);
   if (copyFeedbackTimer) window.clearTimeout(copyFeedbackTimer);
   unlistenAssistantConfig?.();
   unlistenAssistantHistory?.();
@@ -705,6 +803,19 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div class="console-window" :class="{ 'console-window--sidebar-collapsed': sidebarCollapsed }">
+    <header :inert="skillsModalOpen" class="window-titlebar" data-tauri-drag-region @dblclick="toggleConsoleMaximize">
+      <button v-if="phase === 'dashboard'" class="sidebar-toggle window-titlebar__sidebar-toggle" type="button" :aria-label="sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'" :aria-pressed="sidebarCollapsed" :title="sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'" @mousedown.stop @dblclick.stop @click="toggleSidebar">
+        <AppIcon name="sidebar" />
+      </button>
+      <div class="window-titlebar__drag" data-tauri-drag-region />
+      <div class="window-titlebar__controls">
+        <button type="button" aria-label="最小化窗口" title="最小化" @mousedown.stop @dblclick.stop @click="minimizeConsoleWindow"><span class="window-control-icon window-control-icon--minimize" /></button>
+        <button type="button" aria-label="最大化或还原窗口" title="最大化或还原" @mousedown.stop @dblclick.stop @click="toggleConsoleMaximize"><span class="window-control-icon window-control-icon--maximize" /></button>
+        <button class="window-titlebar__close" type="button" aria-label="关闭窗口" title="关闭" @mousedown.stop @dblclick.stop @click="closeConsoleWindow"><span class="window-control-icon window-control-icon--close" /></button>
+      </div>
+    </header>
+
   <main v-if="phase === 'starting'" class="splash-shell" aria-live="polite">
     <img class="brand-logo brand-logo--large" src="/brand/mollycloud-logo.png" alt="MollyCloud" />
     <div class="loader-line"><span /></div>
@@ -767,12 +878,13 @@ onBeforeUnmount(() => {
     </section>
   </main>
 
-  <main v-else class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }" :inert="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen">
-    <aside class="sidebar">
+  <main v-else class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }" :inert="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen || mcpModalOpen || mcpWarningOpen">
+    <aside :inert="skillsModalOpen" class="sidebar">
       <div class="sidebar-project-bar">
-        <button class="sidebar-toggle" type="button" :aria-label="sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'" :aria-pressed="sidebarCollapsed" :title="sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'" @click="toggleSidebar">
-          <AppIcon name="sidebar" />
-        </button>
+        <div class="sidebar-project-brand" aria-label="MollyCloud">
+          <img src="/brand/mollycloud-logo.png" alt="" />
+          <strong>MollyCloud</strong>
+        </div>
       </div>
       <nav aria-label="主导航">
         <button v-for="item in navigation" :key="item.id" type="button" class="nav-item" :class="{ active: activePage === item.id }" :aria-label="item.label" :title="sidebarCollapsed ? item.label : undefined" :aria-current="activePage === item.id ? 'page' : undefined" @click="selectPage(item.id)">
@@ -786,8 +898,8 @@ onBeforeUnmount(() => {
       </div>
     </aside>
 
-    <section class="workspace" :class="{ 'workspace--assistant': activePage === 'assistant', 'workspace--embedded': activePage === 'ccswitch' || activePage === 'images' }">
-      <header v-if="!isEmbeddedPage" class="topbar">
+    <section class="workspace" :class="{ 'workspace--assistant': activePage === 'assistant', 'workspace--embedded': isEmbeddedPage }">
+      <header :inert="skillsModalOpen" v-if="!isEmbeddedPage" class="topbar">
         <div class="page-heading">
           <span class="page-kicker">{{ currentPageMeta.kicker }}</span>
           <h1>{{ activePage === 'overview' ? `${greeting}，${textValue(user.username, 'Molly 用户')}` : currentPageMeta.title }}</h1>
@@ -801,16 +913,21 @@ onBeforeUnmount(() => {
             <span class="balance-chip__face balance-chip__amount"><AppIcon class="balance-chip__icon" name="wallet" /><small>账户余额</small><strong>{{ formatBalance(user.balance) }}</strong></span>
             <span class="balance-chip__face balance-chip__recharge">前往充值</span>
           </n-button>
-          <n-dropdown trigger="click" :options="userMenuOptions" @select="handleUserMenuSelect">
-          <n-button class="user-chip" quaternary type="default">
-            <span>{{ userInitial }}</span><div><strong>{{ textValue(user.username, 'Molly 用户') }}</strong><small>{{ textValue(user.email) }}</small></div><AppIcon name="chevron" />
-          </n-button>
-          </n-dropdown>
+          <div class="topbar-account-actions">
+            <n-dropdown trigger="click" :options="userMenuOptions" @select="handleUserMenuSelect">
+              <n-button class="user-chip" quaternary type="default">
+                <span>{{ userInitial }}</span><div><strong>{{ textValue(user.username, 'Molly 用户') }}</strong><small>{{ textValue(user.email) }}</small></div><AppIcon name="chevron" />
+              </n-button>
+            </n-dropdown>
+            <button class="account-refresh-button" :class="{ 'is-refreshing': refreshing }" type="button" :disabled="refreshing" :aria-busy="refreshing" aria-label="刷新账户数据" title="刷新账户数据" @click="refreshDashboard">
+              <AppIcon name="refresh" />
+            </button>
+          </div>
         </div>
       </header>
 
-      <n-alert v-if="errorMessage && !isEmbeddedPage" class="page-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
-      <n-alert v-if="visibleAccountReminder && !isEmbeddedPage" class="account-reminder" :class="{ 'account-reminder--subscription': visibleAccountReminder.kind === 'subscription' }" type="warning" :bordered="false" :show-icon="false">
+      <n-alert :inert="skillsModalOpen" v-if="errorMessage && !isEmbeddedPage" class="page-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
+      <n-alert :inert="skillsModalOpen" v-if="visibleAccountReminder && !isEmbeddedPage" class="account-reminder" :class="{ 'account-reminder--subscription': visibleAccountReminder.kind === 'subscription' }" type="warning" :bordered="false" :show-icon="false">
         <div class="account-reminder-content">
           <div class="account-reminder-copy"><span class="reminder-spark"><AppIcon v-if="visibleAccountReminder.kind === 'subscription'" name="spark" /><template v-else>!</template></span><div><strong>{{ visibleAccountReminder.title }}</strong><small>{{ visibleAccountReminder.detail }}</small></div></div>
           <n-button size="small" type="primary" @click="openRecharge">前往充值</n-button>
@@ -908,7 +1025,7 @@ onBeforeUnmount(() => {
       <div v-else-if="activePage === 'assistant'" class="page-content assistant-page">
         <n-card class="panel assistant-chat" :bordered="false">
           <div class="assistant-chat__toolbar">
-            <div><span class="section-kicker">共享会话</span><h2>对话记录</h2></div>
+            <div><h2>Molly</h2></div>
             <div class="assistant-toggle-cell">
               <span>{{ petVisible ? '开启' : '隐藏' }}</span>
               <n-switch size="large" :value="petVisible" :loading="petToggleLoading" aria-label="显示或隐藏 Live2D 桌宠" @update:value="setPetVisibility" />
@@ -940,10 +1057,20 @@ onBeforeUnmount(() => {
             <n-alert v-if="assistantChatError" class="assistant-chat__error" type="error" :show-icon="false">{{ assistantChatError }}</n-alert>
             <div class="assistant-composer__row">
               <n-input v-model:value="assistantDraft" class="assistant-chat__input" size="large" maxlength="2000" :disabled="assistantSending" :input-props="{ 'aria-label': '给 Molly 发送消息' }" placeholder="给 Molly 发送消息…" @keydown="handleAssistantKeydown" />
-              <n-button class="assistant-send-button" type="primary" :loading="assistantSending" :disabled="!assistantDraft.trim() || assistantSending" @click="sendAssistantMessage">发送</n-button>
+              <div class="assistant-composer__actions">
+                <n-button class="assistant-send-button" type="primary" :loading="assistantSending" :disabled="!assistantDraft.trim() || assistantSending" @click="sendAssistantMessage">发送</n-button>
+              </div>
             </div>
           </div>
         </n-card>
+      </div>
+
+      <div v-if="skillsVisited" v-show="activePage === 'skills'" class="page-content skills-page">
+        <SkillManagerPanel :preview="consolePreview" @modal="skillsModalOpen = $event" />
+      </div>
+
+      <div v-if="mcpVisited" v-show="activePage === 'mcp'" class="page-content mcp-page">
+        <McpMarketPanel :active="activePage === 'mcp'" @modal="mcpModalOpen = $event" />
       </div>
 
       <div v-if="ccSwitchVisited" v-show="activePage === 'ccswitch'" class="page-content ccswitch-page">
@@ -959,6 +1086,7 @@ onBeforeUnmount(() => {
   </main>
 
   <div id="console-settings-layer" class="console-settings-layer" />
+  <McpExperimentalDialog v-if="phase === 'dashboard'" :show="mcpWarningOpen" @acknowledge="acknowledgeMcp" @cancel="cancelMcpWarning" />
   <ConsoleSettingsDialog v-if="phase === 'dashboard'" v-model:show="consoleSettingsOpen" @closed="consoleSettingsButton?.focus()" />
   <PetSettingsDialog v-if="phase === 'dashboard'" v-model:show="petSettingsOpen" @closed="petSettingsButton?.focus()" />
   <CcSwitchImportDialog
@@ -974,4 +1102,5 @@ onBeforeUnmount(() => {
       <div class="agreement-content"><article v-for="doc in agreementDocuments" :key="textValue(doc.id)"><h3>{{ textValue(doc.title) }}</h3><p>{{ textValue(doc.content_md) }}</p></article></div>
       <template #action><n-button type="primary" @click="acceptedAgreement = true; agreementOpen = false">我已阅读并同意</n-button></template>
   </n-modal>
+  </div>
 </template>

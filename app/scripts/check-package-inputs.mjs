@@ -6,7 +6,8 @@ const appDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
 export function checkResourceConfig(config) {
   const expected = ['../THIRD_PARTY_NOTICES.md', '../public/models/'];
   if (config.build?.frontendDist !== '../dist' || !Array.isArray(config.bundle?.resources)
-    || config.bundle.resources.length !== expected.length || expected.some(path => !config.bundle.resources.includes(path))) {
+    || config.bundle.resources.length !== expected.length || expected.some(path => !config.bundle.resources.includes(path))
+    || (config.bundle.externalBin?.length ?? 0) > 0) {
     throw new Error('安装资源超出允许范围。仅分发 dist、第三方声明和内置模型；禁止包含用户配置或应用数据目录。');
   }
 }
@@ -25,6 +26,9 @@ async function inspect(directory) {
     const label = relative(appDir, path);
     if (stat.isSymbolicLink() || isCredentialFile(label)) throw new Error(`禁止打包用户数据或链接：${label}`);
     if (stat.isDirectory()) { count += await inspect(path); continue; }
+    if (/\.(?:exe|dll|com|scr|cpl|msi|bat|cmd|ps1)$/i.test(name)) {
+      throw new Error(`前端与模型资源禁止夹带可执行程序或启动脚本：${label}`);
+    }
     if (['.js', '.json', '.html', '.css', '.txt', '.md', '.map'].includes(extname(name))) {
       if (containsCredential(await readFile(path, 'utf8'))) throw new Error(`检测到疑似硬编码密钥：${label}（不输出密钥内容）`);
     }

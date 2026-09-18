@@ -1,10 +1,23 @@
 <script setup lang="ts">
-defineProps<{ name: "overview" | "subscription" | "key" | "usage" | "assistant" | "pet" | "refresh" | "logout" | "shield" | "copy" | "chevron" | "arrow" | "wallet" | "spend" | "code" | "token" | "request" | "spark" | "database" | "edit" | "upload" | "document" | "settings" | "power" | "tray" | "image" | "update" | "sidebar" }>();
+defineProps<{ name: "overview" | "subscription" | "key" | "usage" | "assistant" | "pet" | "refresh" | "logout" | "shield" | "copy" | "chevron" | "arrow" | "wallet" | "spend" | "code" | "token" | "request" | "spark" | "database" | "edit" | "upload" | "document" | "settings" | "power" | "tray" | "image" | "update" | "sidebar" | "sun" | "moon" | "monitor" | "mcp" | "skills" }>();
 </script>
 
 <template>
   <svg :viewBox="name === 'settings' ? '0 0 128 128' : '0 0 24 24'" aria-hidden="true" class="app-icon">
-    <template v-if="name === 'image'">
+    <template v-if="name === 'skills'"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></template>
+    <template v-else-if="name === 'sun'">
+      <circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </template>
+    <template v-else-if="name === 'moon'">
+      <path d="M21 13a9 9 0 0 1-10-10 9 9 0 1 0 10 10Z" />
+    </template>
+    <template v-else-if="name === 'monitor'">
+      <rect x="3" y="3" width="18" height="13" rx="2" /><path d="M8 21h8m-4-5v5" />
+    </template>
+    <template v-else-if="name === 'mcp'">
+      <path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6v4m-6-13v3a6 6 0 0 0 6 6M4 8h16" />
+    </template>
+    <template v-else-if="name === 'image'">
       <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.5" /><path d="m3 17 5-5 4 4 4-6 5 7" />
     </template>
     <template v-else-if="name === 'sidebar'">

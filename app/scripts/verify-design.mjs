@@ -7,7 +7,9 @@ import { join, resolve } from 'node:path';
 
 const baseUrl = process.env.MOLLY_UI_URL || 'http://localhost:24320';
 const productionSmoke = process.argv.includes('--production');
-const outputDir = resolve(import.meta.dirname, '../../artifacts/design-review');
+const darkMode = process.argv.includes('--dark');
+const appearanceOnly = process.argv.includes('--appearance');
+const outputDir = resolve(import.meta.dirname, '../../artifacts/design-review', appearanceOnly ? 'appearance' : darkMode ? 'dark' : 'light');
 await mkdir(outputDir, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'molly-design-check-'));
 const browser = spawn(process.env.MOLLY_EDGE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
@@ -29,8 +31,13 @@ await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror
 let nextId = 0;
 const pending = new Map();
 const runtimeErrors = [];
+const contexts = new Map();
 socket.onmessage = event => {
   const message = JSON.parse(event.data);
+  if (message.method === 'Runtime.executionContextCreated') contexts.set(`${message.sessionId}-${message.params.context.id}`, { ...message.params.context, session: message.sessionId });
+  if (message.method === 'Runtime.executionContextDestroyed') contexts.delete(`${message.sessionId}-${message.params.executionContextId}`);
+  if (message.method === 'Runtime.executionContextsCleared') for (const [key, value] of contexts) if (value.session === message.sessionId) contexts.delete(key);
+  if (message.method === 'Target.attachedToTarget') void call('Runtime.enable', {}, message.params.sessionId);
   if (message.method === 'Runtime.exceptionThrown') runtimeErrors.push(message.params.exceptionDetails);
   const request = pending.get(message.id);
   if (!request) return;
@@ -50,8 +57,8 @@ function call(method, params = {}, sessionId) {
 const { targetId } = await call('Target.createTarget', { url: 'about:blank' });
 const { sessionId } = await call('Target.attachToTarget', { targetId, flatten: true });
 const page = (method, params) => call(method, params, sessionId);
-async function evaluate(expression) {
-  const result = await page('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+async function evaluate(expression, context) {
+  const result = await call('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, ...(context ? { contextId: context.id } : {}) }, context?.session ?? sessionId);
   if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
   return result.result.value;
 }
@@ -78,6 +85,13 @@ async function screenshot(name) {
   const { data } = await page('Page.captureScreenshot', { format: 'png' });
   await writeFile(join(outputDir, `${name}.png`), Buffer.from(data, 'base64'));
 }
+async function settleAnimations() {
+  await evaluate(`(async () => {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await Promise.all(document.getAnimations().filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime)).map(animation => animation.finished.catch(() => {})));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+  })()`);
+}
 const failures = [];
 const report = [];
 function check(condition, message) { if (!condition) failures.push(message); }
@@ -94,17 +108,111 @@ async function select(index) {
   await evaluate(`document.querySelectorAll('.nav-item')[${index}].click()`);
   await pause(250);
 }
+async function verifySkills(width, height) {
+  await waitFor(`!document.querySelector('.skills-load-state') && Boolean(document.querySelector('.skills-frame')?.contentDocument.querySelector('.molly-skills-tabs'))`, 'Skill Manager ready');
+  const child = expression => evaluate(`(() => {const frame=document.querySelector('.skills-frame'); const d=frame.contentDocument; const w=frame.contentWindow; return (${expression});})()`);
+  for (const route of ['/', '/my-skills', '/install', '/global-workspace', '/organizer', '/backup', '/settings']) {
+    await child(`d.querySelector('a[href="#${route}"]').click()`);
+    await pause(350);
+    const metrics=await child(`(() => {const frameRect=frame.getBoundingClientRect(); const content=d.querySelector('.molly-skills-content'); return {route:w.location.hash, width:w.innerWidth, height:w.innerHeight, frameBottom:frameRect.bottom, outerScroll:document.querySelector('.workspace').scrollHeight > document.querySelector('.workspace').clientHeight+1, overflow:d.documentElement.scrollWidth>w.innerWidth || content.scrollWidth>content.clientWidth+1, theme:d.documentElement.dataset.theme, font:w.getComputedStyle(d.body).fontFamily, bg:w.getComputedStyle(d.body).backgroundColor, text:d.body.textContent.slice(0,180)};})()`);
+    check(metrics.route === '#'+route && !metrics.overflow && !metrics.outerScroll && metrics.frameBottom <= height, `Skills content bounds ${route} ${width}`);
+    check(metrics.theme === (darkMode ? 'dark' : 'light') && metrics.font.includes('Microsoft YaHei') && metrics.bg === (darkMode ? 'rgb(20, 26, 33)' : 'rgb(248, 251, 252)'), `Skills shared theme ${route} ${width}`);
+    report.push({page:'skills-'+route,width,height,...metrics});
+    await screenshot(`skills-${route === '/' ? 'home' : route.slice(1)}-${width}`);
+  }
+  await child(`d.querySelector('a[href="#/organizer"]').click()`);
+  await pause(200);
+  await child(`[...d.querySelectorAll('button')].find(b=>b.textContent.trim()==='新建预设').click()`);
+  await waitFor(`document.querySelector('.skills-frame').contentDocument.querySelector('[role="dialog"]') && document.querySelector('.sidebar').inert`, 'Skills modal host boundary');
+  check(await child(`!document.querySelector('.app-shell').inert && !frame.closest('[inert]') && d.querySelector('[role="dialog"]').contains(d.activeElement)`), `Skills modal remains interactive and focused ${width}`);
+  await child(`(() => {const input=d.querySelector('[role="dialog"] input'); Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype,'value').set.call(input,'Preview test'); input.dispatchEvent(new w.Event('input',{bubbles:true}));})()`);
+  await pause(100);
+  await child(`[...d.querySelector('[role="dialog"]').querySelectorAll('button')].find(b=>b.textContent.trim()==='创建').click()`);
+  await waitFor(`document.querySelector('.skills-frame').contentDocument.querySelector('[role="alert"]')?.textContent.includes('桌面端')`, 'Skills preview refuses writes');
+  await screenshot(`skills-preview-write-error-${width}`);
+  await child(`[...d.querySelector('[role="dialog"]').querySelectorAll('button')].find(b=>b.textContent.trim()==='取消').click()`);
+  await waitFor(`!document.querySelector('.sidebar').inert`, 'Skills modal closes');
+}
+
+async function verifyMcpGate(width) {
+  await evaluate(`localStorage.removeItem('mollycloud:preview:mcp-experimental-ack:v1')`);
+  await page('Page.navigate', {url: `${baseUrl}/?ui-preview=console`});
+  await ready('.overview-page');
+  await select(7);
+  await ready('#mcp-experimental-title');
+  check(await evaluate(`document.querySelector('.app-shell').inert && !document.querySelector('.mcp-market')`), `MCP gate blocks initial loading ${width}`);
+  await screenshot(`mcp-first-use-${width}`);
+  await evaluate(`[...document.querySelectorAll('.console-settings-dialog button')].find(b=>b.textContent.trim()==='暂不进入').click()`);
+  await waitFor(`!document.querySelector('.app-shell').inert`, 'MCP cancel');
+  check(await evaluate(`!localStorage.getItem('mollycloud:preview:mcp-experimental-ack:v1') && document.activeElement?.getAttribute('aria-label') === 'MCP 市场'`), `MCP cancellation keeps gate and returns focus ${width}`);
+  await select(7);
+  await ready('#mcp-experimental-title');
+  await evaluate(`[...document.querySelectorAll('.console-settings-dialog button')].find(b=>b.textContent.trim()==='我已知晓').click()`);
+  await waitFor(`!document.querySelector('.app-shell').inert`, 'MCP acknowledged');
+  await page('Page.navigate', {url: `${baseUrl}/?ui-preview=console&preview-page=mcp`});
+  await ready('.mcp-market');
+  check(await evaluate(`!document.querySelector('#mcp-experimental-title') && localStorage.getItem('mollycloud:preview:mcp-experimental-ack:v1')==='acknowledged' && !localStorage.getItem('mollycloud:mcp-experimental-ack:v1')`), `MCP acknowledgement survives reload with preview isolation ${width}`);
+  await select(0);
+}
+
+async function verifyMcpMarket(width, height) {
+  await waitFor(`document.querySelectorAll('.mcp-card').length === 21`, 'MCP install templates');
+  check(await evaluate(`document.querySelector('.mcp-market').textContent.includes('目录预览')`), `MCP browser boundary ${width}`);
+  await evaluate(`(() => { const el=document.querySelector('[aria-label="搜索 MCP"]'); el.value='modelcontextprotocol filesystem'; el.dispatchEvent(new Event('input',{bubbles:true})); })()`);
+  await waitFor(`document.querySelectorAll('.mcp-card').length === 1`, 'MCP multiword search');
+  check(await evaluate(`document.querySelector('.mcp-card').dataset.mcpId === 'filesystem'`), `MCP package search ${width}`);
+  await evaluate(`(() => { const button=[...document.querySelector('.mcp-card').querySelectorAll('button')].find(el=>el.textContent.includes('安装到 Agent')); button.focus(); button.click(); })()`);
+  await ready('.mcp-install-dialog');
+  const layout=await evaluate(`(() => { const dialog=document.querySelector('.mcp-install-dialog'); const r=dialog.getBoundingClientRect(); const body=dialog.querySelector('.mcp-install-body'); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,overflow:dialog.scrollWidth>dialog.clientWidth,scroll:body.scrollHeight>body.clientHeight,inert:document.querySelector('.app-shell').inert,targets:dialog.querySelectorAll('.mcp-target').length}; })()`);
+  check(layout.x>=0 && layout.y>=0 && layout.right<=width && layout.bottom<=height && !layout.overflow && layout.inert && layout.targets===4, `MCP install dialog bounds and targets ${width}`);
+  await screenshot(`mcp-install-${width}`);
+  await key('Escape','Escape',27);
+  await waitFor(`!document.querySelector('.app-shell').inert`, 'MCP close releases host');
+  await mutate(`state.query=''; state.source='awesome';`, '.mcp-market');
+  check(await evaluate(`document.querySelectorAll('.mcp-card').length === 24 && [...document.querySelectorAll('.mcp-card')].every(card=>card.textContent.includes('从来源安装') && !card.textContent.includes('安装到 Agent'))`), `Community entries resolve source before installation ${width}`);
+  await evaluate(`[...document.querySelector('.mcp-card').querySelectorAll('button')].find(el=>el.textContent.includes('从来源安装')).click()`);
+  await waitFor(`document.querySelector('.mcp-modal-error')?.textContent.includes('桌面端')`, 'Source resolution respects desktop boundary');
+  await key('Escape','Escape',27);
+  await waitFor(`!document.querySelector('.app-shell').inert`, 'Source resolution close');
+  await mutate(`state.origin={name:'Source example',homepage:'https://example.test'}; state.plans=[{planId:'test',label:'npm · @example/mcp @ 1.2.3',sourceUrl:'https://example.test/README.md',entry:{id:'source-test',name:'Source example',description:'从来源解析的安装选项',source:'awesome',fields:[{key:'token',label:'API Key',kind:'secret',required:true}],recipe:{kind:'npm',package:'@example/mcp',version:'1.2.3',args:['--token','{token}']}}}];state.choosePlan('test');`, '.mcp-market');
+  await ready('.mcp-install-dialog');
+  check(await evaluate(`document.querySelector('[aria-label="API Key"]').type==='password' && document.querySelectorAll('.mcp-target').length===4 && document.querySelector('.mcp-plan-preview').textContent.includes('@example/mcp')`), `Source plan preview and secret fields ${width}`);
+  await screenshot(`mcp-source-plan-${width}`);
+  await key('Escape','Escape',27);
+  await waitFor(`!document.querySelector('.app-shell').inert`, 'Source plan close');
+  await mutate(`state.removeTarget={name:'Source example',agent:'codex',canUpdate:true};state.cleanPackage=true;`, '.mcp-market');
+  await ready('.mcp-install-dialog');
+  check(await evaluate(`document.querySelector('.mcp-install-dialog').textContent.includes('回收站') && document.querySelector('.mcp-install-dialog .n-checkbox').getAttribute('aria-checked')==='true'`), `Uninstall preserves data and defaults to package cleanup ${width}`);
+  await screenshot(`mcp-uninstall-${width}`);
+  await key('Escape','Escape',27);
+  await waitFor(`!document.querySelector('.app-shell').inert`, 'Uninstall close');
+  await mutate(`state.source='curated';`, '.mcp-market');
+  await evaluate(`[...document.querySelector('.mcp-toolbar').querySelectorAll('button')].find(el=>el.textContent.trim()==='手动添加').click()`);
+  await ready('.mcp-install-dialog');
+  await evaluate(`(() => { const name=document.querySelector('[aria-label="MCP 名称"]'); name.value='preview-test'; name.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('.mcp-target .n-checkbox').click(); })()`);
+  await evaluate(`[...document.querySelector('.mcp-install-dialog').querySelectorAll('button')].find(el=>el.textContent.trim()==='安装到所选 Agent').click()`);
+  await waitFor(`document.querySelector('.mcp-modal-error')?.textContent.includes('浏览器预览不能修改')`, 'MCP preview rejects config writes');
+  await screenshot(`mcp-preview-error-${width}`);
+  await key('Escape','Escape',27);
+  await waitFor(`!document.querySelector('.app-shell').inert`, 'MCP preview close');
+}
+
 async function verifyCompactSidebar(width, height) {
   const toggle = `.sidebar-toggle`;
   const expanded = await evaluate(`(() => {
     const rect = (el) => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}; };
     const projectBar = document.querySelector('.sidebar-project-bar');
     const toggle = document.querySelector('.sidebar-toggle');
+    const brand = document.querySelector('.sidebar-project-brand');
+    const titlebar = document.querySelector('.window-titlebar');
+    const logo = brand.querySelector('img');
+    const brandText = brand.querySelector('strong');
     return {
+      titlebar: rect(titlebar), titlebarText:titlebar.innerText.trim(), windowControls:titlebar.querySelectorAll('.window-titlebar__controls button').length,
       projectBar: rect(projectBar),
       projectBarText: projectBar.textContent.trim(),
       toggle: rect(toggle), toggleBackground: getComputedStyle(toggle).backgroundColor,
-      brandAbsent: !document.querySelector('.sidebar-project-brand'),
+      brand: {rect:rect(brand),display:getComputedStyle(brand).display,text:brand.textContent.trim(),logo:rect(logo),textDisplay:getComputedStyle(brandText).display},
       nav: [...document.querySelectorAll('.nav-item')].map((el) => ({rect:rect(el),icon:rect(el.querySelector('.app-icon'))})),
       settings: rect(document.querySelector('.sidebar-settings')),
     };
@@ -115,26 +223,33 @@ async function verifyCompactSidebar(width, height) {
     const sidebar = document.querySelector('.sidebar');
     const toggle = document.querySelector('.sidebar-toggle');
     const projectBar = document.querySelector('.sidebar-project-bar');
+    const brand = document.querySelector('.sidebar-project-brand');
+    const titlebar = document.querySelector('.window-titlebar');
+    const logo = brand.querySelector('img');
+    const brandText = brand.querySelector('strong');
     const nav = [...document.querySelectorAll('.nav-item')];
     const settings = document.querySelector('.sidebar-settings');
     const rect = el => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}; };
     return {
       classApplied: document.querySelector('.app-shell').classList.contains('app-shell--sidebar-collapsed'),
+      titlebar: rect(titlebar), titlebarText:titlebar.innerText.trim(), windowControls:titlebar.querySelectorAll('.window-titlebar__controls button').length,
       sidebar: rect(sidebar), toggle: rect(toggle), togglePressed: toggle.getAttribute('aria-pressed'), toggleLabel: toggle.getAttribute('aria-label'), toggleBackground:getComputedStyle(toggle).backgroundColor,
       projectBar: rect(projectBar), projectBarText: projectBar.textContent.trim(),
-      brandAbsent: !document.querySelector('.sidebar-project-brand'),
+      brand: {display:getComputedStyle(brand).display,text:brand.textContent.trim(),logo:rect(logo),textDisplay:getComputedStyle(brandText).display},
       nav: nav.map(el => ({rect:rect(el), icon:rect(el.querySelector('.app-icon')), label:el.getAttribute('aria-label'), textHidden:getComputedStyle(el.querySelector('span')).display === 'none', iconVisible:el.querySelector('.app-icon').getBoundingClientRect().width > 0})),
       settings: {rect:rect(settings), label:settings.getAttribute('aria-label'), textHidden:getComputedStyle(settings.querySelector('span')).display === 'none'},
       horizontalOverflow: document.documentElement.scrollWidth > innerWidth || document.querySelector('.workspace').scrollWidth > document.querySelector('.workspace').clientWidth,
     };
   })()`);
   check(compact.classApplied && compact.sidebar.width === 76 && compact.togglePressed === 'true' && compact.toggleLabel === '展开菜单栏', `Compact sidebar state ${width}`);
-  check(expanded.projectBarText === '' && compact.projectBarText === '' && expanded.brandAbsent && compact.brandAbsent && expanded.toggleBackground === 'rgba(0, 0, 0, 0)' && compact.toggleBackground === 'rgba(0, 0, 0, 0)' && compact.toggle.y >= compact.projectBar.y && compact.toggle.bottom <= compact.projectBar.bottom, `Sidebar project bar content ${width}`);
-  check(compact.nav.length === 7 && compact.nav.every((item, index) => item.rect.height === 56 && item.label && item.textHidden && item.iconVisible && Math.abs(item.rect.y - expanded.nav[index].rect.y) < 0.1) && Math.abs(compact.settings.rect.y - expanded.settings.y) < 0.1 && compact.settings.label === '设置' && compact.settings.textHidden && compact.settings.rect.bottom <= height && !compact.horizontalOverflow, `Compact sidebar icons, fixed vertical positions, and bounds ${width}`);
+  check(expanded.titlebar.height === 32 && expanded.titlebarText === '' && expanded.windowControls === 3 && compact.titlebarText === '' && compact.windowControls === 3 && expanded.toggle.y >= expanded.titlebar.y && expanded.toggle.bottom <= expanded.titlebar.bottom, `Custom titlebar controls and content ${width}`);
+  check(expanded.projectBarText === 'MollyCloud' && expanded.brand.display === 'flex' && expanded.brand.text === 'MollyCloud' && expanded.brand.textDisplay !== 'none' && compact.brand.display === 'flex' && compact.brand.textDisplay === 'none' && expanded.toggleBackground === 'rgba(0, 0, 0, 0)' && compact.toggleBackground === 'rgba(0, 0, 0, 0)', `Sidebar project bar content ${width}`);
+  check(compact.nav.length === 9 && compact.nav.every((item, index) => item.rect.height === 56 && item.label && item.textHidden && item.iconVisible && Math.abs(item.rect.y - expanded.nav[index].rect.y) < 0.1) && Math.abs(compact.settings.rect.y - expanded.settings.y) < 0.1 && compact.settings.label === '设置' && compact.settings.textHidden && compact.settings.rect.bottom <= height && !compact.horizontalOverflow, `Compact sidebar icons, fixed vertical positions, and bounds ${width}`);
   const expandedIconCenter = expanded.nav[0].icon.x + expanded.nav[0].icon.width / 2;
   const compactIconCenter = compact.nav[0].icon.x + compact.nav[0].icon.width / 2;
-  check(Math.abs(expanded.toggle.x + expanded.toggle.width / 2 - expandedIconCenter) < 0.1, `Expanded project control aligns with navigation icons ${width}`);
-  check(Math.abs(compact.toggle.x + compact.toggle.width / 2 - compactIconCenter) < 0.1, `Compact project control aligns with navigation icons ${width}`);
+  check(Math.abs(expanded.brand.logo.x + expanded.brand.logo.width / 2 - expandedIconCenter) <= 1, `Expanded sidebar brand aligns with navigation icons ${width}`);
+  check(Math.abs(compact.brand.logo.x + compact.brand.logo.width / 2 - compactIconCenter) <= 1, `Compact sidebar brand aligns with navigation icons ${width}`);
+  check(Math.abs(compact.toggle.x - expanded.toggle.x) < 0.1, `Titlebar project control keeps its horizontal position while collapsing ${width}`);
   check(Math.abs(compact.toggle.y - expanded.toggle.y) < 0.1, `Project control keeps its vertical position while collapsing ${width}`);
   await page('Input.dispatchMouseEvent', { type:'mouseMoved', x:compact.toggle.x + compact.toggle.width / 2, y:compact.toggle.y + compact.toggle.height / 2 });
   await pause(180);
@@ -153,18 +268,21 @@ const readShell = `(() => {
   const active = document.querySelector('.nav-item.active');
   const content = [...document.querySelectorAll('.page-content')].find(el => el.getBoundingClientRect().width > 0);
   return {
+    titlebar: rect(document.querySelector('.window-titlebar')),
     shell: {
       sidebar: rect(document.querySelector('.sidebar')),
       nav: [...document.querySelectorAll('.nav-item')].map(el => rect(el)),
       settingsButton: rect(document.querySelector('.sidebar-settings')),
+      themeButtonAbsent: !document.querySelector('.sidebar-theme'),
       settingsStyle: css(document.querySelector('.sidebar-settings'), ['fontFamily','fontSize','fontWeight','height','borderRadius','padding','backgroundColor']),
       navStyle: css(active, ['fontFamily','fontSize','fontWeight','borderRadius','padding','backgroundColor','boxShadow','borderLeftWidth']),
       sidebarStyle: css(document.querySelector('.sidebar'), ['padding','backgroundColor']),
-      workspaceStyle: css(workspace, ['backgroundColor','scrollbarGutter']),
+      workspaceStyle: css(workspace, ['backgroundColor']),
     },
     header: topbar ? rect(topbar) : null,
     headerFont: heading ? css(heading.querySelector('h1'), ['fontFamily','fontSize','lineHeight']) : null,
     actions: topbar ? rect(document.querySelector('.topbar-actions')) : null,
+    accountLayout: topbar ? (() => { const balance=rect(document.querySelector('.balance-chip')); const user=rect(document.querySelector('.user-chip')); const refresh=rect(document.querySelector('.account-refresh-button')); return {balance,user,refresh}; })() : null,
     content: rect(content),
     contentPadding: getComputedStyle(content).paddingTop,
     horizontalOverflow: document.documentElement.scrollWidth > innerWidth || workspace.scrollWidth > workspace.clientWidth,
@@ -177,7 +295,7 @@ const readShell = `(() => {
       const nav = document.querySelector('.sidebar nav').getBoundingClientRect();
       return button.width > 0 && button.height >= 40 && button.x >= sidebar.x && button.right <= sidebar.right && button.y >= nav.bottom && button.bottom <= innerHeight && button.bottom >= innerHeight - 60;
     })(),
-    cardBorders: [...document.querySelectorAll('.stat-card, .panel, .table-panel, .usage-stat')].map(el => css(el, ['borderTopColor','borderRightColor','borderBottomColor','borderLeftColor','borderWidth','borderRadius'])),
+    cardBorders: [...document.querySelectorAll('.stat-card, .panel, .table-panel, .usage-stat, .mcp-card, .mcp-installed-card')].map(el => css(el, ['borderTopColor','borderRightColor','borderBottomColor','borderLeftColor','borderWidth','borderRadius'])),
     contentFont: getComputedStyle(content).fontFamily,
     valueOverflows: [...document.querySelectorAll('.usage-stat__value, .token-category dd')].filter(el => el.scrollWidth > el.clientWidth).length,
     tableInternalScroll: [...document.querySelectorAll('.n-data-table *')].some(el => el.scrollWidth > el.clientWidth && ['auto','scroll'].includes(getComputedStyle(el).overflowX)),
@@ -189,6 +307,7 @@ const readPreviewSettings = `localStorage.getItem('mollycloud:preview:console-se
 async function openSettings() {
   await evaluate(`(() => { const button = document.querySelector('.sidebar-settings'); button.focus(); button.click(); })()`);
   await waitFor(visibleSettings, 'Console settings opened');
+  await settleAnimations();
 }
 async function clickSettingsButton(text) {
   await evaluate(`(() => { const button = [...document.querySelector('.console-settings-dialog').querySelectorAll('button')].find(el => el.innerText.trim() === ${JSON.stringify(text)}); if (!button) throw new Error('Settings action not found'); button.click(); })()`);
@@ -205,12 +324,19 @@ async function verifyConsoleSettings(width, height) {
     const maskRect = mask?.getBoundingClientRect();
     const buttons = [...dialog.querySelectorAll('button')].filter(el => ['取消','保存'].includes(el.innerText.trim())).map(el => { const b = el.getBoundingClientRect(); return {text:el.innerText.trim(),x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height}; });
     const role = dialog.matches('[role="dialog"]') ? dialog : dialog.closest('[role="dialog"]') || dialog.querySelector('[role="dialog"]');
+    const release = dialog.querySelector('.console-settings-release');
+    const download = release?.querySelector('.console-settings-download');
+    const releaseRect = release?.getBoundingClientRect();
+    const downloadRect = download?.getBoundingClientRect();
     return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom,buttons,
+      release: release && { text:release.textContent.trim(), x:releaseRect.x, y:releaseRect.y, right:releaseRect.right, bottom:releaseRect.bottom, downloadLabel:download?.getAttribute('aria-label') || download?.textContent.trim(), downloadRight:downloadRect.right },
       role:Boolean(role), focusInside:dialog.contains(document.activeElement),
       focusedElement:document.activeElement?.outerHTML.slice(0,1500),
       ancestors:(() => {const result=[]; for(let el=dialog; el; el=el.parentElement) result.push({tag:el.tagName,id:el.id,class:el.className,inert:el.inert,ariaHidden:el.getAttribute('aria-hidden')}); return result;})(),
       radioLabels:[...dialog.querySelectorAll('input[name="console-close-action"]')].map(el => ({value:el.value,label:el.closest('label')?.innerText,checked:el.checked})),
       autostart:dialog.querySelector('[aria-label="开机自启动"]')?.getAttribute('aria-checked'),
+      autostartMinimized:dialog.querySelector('[aria-label="启动后最小化到托盘"]')?.getAttribute('aria-checked'),
+      autostartMinimizedDisabled:(() => {const el=dialog.querySelector('[aria-label="启动后最小化到托盘"]'); return Boolean(el && (el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true' || el.classList.contains('n-switch--disabled')));})(),
       maskFilter:maskStyle?.backdropFilter || maskStyle?.webkitBackdropFilter,
       shellFilter:getComputedStyle(document.querySelector('.app-shell')).filter,
       maskCoversViewport:Boolean(maskRect && maskRect.x <= 0 && maskRect.y <= 0 && maskRect.right >= innerWidth && maskRect.bottom >= innerHeight),
@@ -221,7 +347,9 @@ async function verifyConsoleSettings(width, height) {
   check(layout.role && layout.focusInside, `Settings accessible modal focus ${width}`);
   check(layout.radioLabels.length === 2 && layout.radioLabels.some(radio => radio.value === 'quit' && radio.label?.includes('退出程序')) && layout.radioLabels.some(radio => radio.value === 'tray' && radio.label?.includes('最小化到托盘') && radio.checked), `Settings close action default/options ${width}`);
   check(layout.autostart === 'false', `Settings autostart default ${width}`);
+  check(layout.autostartMinimized === 'false' && layout.autostartMinimizedDisabled, `Settings minimized autostart default dependency ${width}`);
   check(layout.buttons.length === 2 && layout.buttons[0].text === '取消' && layout.buttons[1].text === '保存' && layout.buttons.every(button => button.height >= 40 && button.bottom <= layout.bottom && layout.bottom - button.bottom <= 48) && layout.buttons[1].x > layout.buttons[0].x && layout.right - layout.buttons[1].right <= 40, `Settings actions bottom right ${width}`);
+  check(layout.release?.text === 'v0.1.3更多版本客户端密码 7s3y' && layout.release.downloadLabel === '下载更多版本客户端' && layout.release.x >= layout.x + 32 && layout.release.downloadRight < layout.buttons[0].x && layout.release.bottom <= layout.bottom, `Settings version and client download ${width}`);
   check(await evaluate(`document.querySelector('.app-shell').inert`), `Settings makes background non-interactive ${width}`);
   for (let index = 0; index < 6; index++) {
     await key('Tab', 'Tab', 9);
@@ -249,13 +377,16 @@ async function verifyConsoleSettings(width, height) {
   await openSettings();
   await evaluate(`document.querySelector('input[name="console-close-action"][value="quit"]').click()`);
   await evaluate(`document.querySelector('[aria-label="开机自启动"]').click()`);
+  check(await evaluate(`{const el=document.querySelector('[aria-label="启动后最小化到托盘"]'); !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true' && !el.classList.contains('n-switch--disabled')}`), `Settings minimized autostart enabled with autostart ${width}`);
+  await evaluate(`document.querySelector('[aria-label="启动后最小化到托盘"]').click()`);
   await clickSettingsButton('保存');
   const saved = await evaluate(readPreviewSettings);
-  check(saved !== initialStorage && Boolean(saved?.includes('quit')) && Boolean(saved?.includes('"autostart":true')), `Settings preview saves isolated preference ${width}`);
+  check(saved !== initialStorage && Boolean(saved?.includes('quit')) && Boolean(saved?.includes('"autostart":true')) && Boolean(saved?.includes('"autostartMinimized":true')), `Settings preview saves isolated preference ${width}`);
   check(await evaluate(`document.activeElement === document.querySelector('.sidebar-settings')`), `Settings save restores focus ${width}`);
   await openSettings();
   check(await evaluate(`document.querySelector('input[name="console-close-action"]:checked').value === 'quit'`), `Settings saved preference reopened ${width}`);
   check(await evaluate(`document.querySelector('[aria-label="开机自启动"]').getAttribute('aria-checked') === 'true'`), `Settings saved autostart reopened ${width}`);
+  check(await evaluate(`{const el=document.querySelector('[aria-label="启动后最小化到托盘"]'); el.getAttribute('aria-checked') === 'true' && !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true' && !el.classList.contains('n-switch--disabled')}`), `Settings saved minimized autostart reopened ${width}`);
   await clickSettingsButton('取消');
 
   // Reload only this temporary browser profile. Never send a native close/quit.
@@ -355,10 +486,114 @@ async function verifyPetSettings(width, height) {
   report.push({page:'pet-settings',width,height,...layout});
 }
 
+async function verifyAppearance() {
+  await page('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
+  await page('Emulation.setDeviceMetricsOverride', { width: 1180, height: 760, deviceScaleFactor: 1, mobile: false });
+  await page('Page.navigate', { url: `${baseUrl}/?ui-preview=console` });
+  await ready('.overview-page');
+  const rootTheme = `document.documentElement.dataset.theme`;
+  const pref = `document.documentElement.dataset.themePreference`;
+  const system = async (value) => {
+    await page('Emulation.setEmulatedMedia', { features: value ? [{ name: 'prefers-color-scheme', value }] : [] });
+    await pause(300);
+  };
+  check(await evaluate(`${pref} === 'system' && ${rootTheme} === 'light'`), 'Default appearance follows system');
+  await system('dark');
+  check(await evaluate(`${rootTheme} === 'dark'`), 'System change applies immediately');
+  check(await evaluate(`!document.querySelector('.sidebar-theme') && document.querySelectorAll('.sidebar-footer button').length === 1`), 'Settings is the only sidebar footer button');
+  await openSettings();
+  await evaluate(`document.querySelector('input[name="console-theme"][value="light"]').focus()`);
+  await key(' ', 'Space', 32);
+  await clickSettingsButton('保存');
+  check(await evaluate(`${rootTheme} === 'light' && ${pref} === 'light'`), 'Keyboard selection in settings saves explicit light');
+  await system('light');
+  await system('dark');
+  check(await evaluate(`${rootTheme} === 'light'`), 'Explicit light overrides dark system');
+  await page('Page.reload', { ignoreCache: true });
+  await ready('.overview-page');
+  check(await evaluate(`${rootTheme} === 'light' && ${pref} === 'light'`), 'Theme preference survives reload');
+  await openSettings();
+  await evaluate(`document.querySelector('input[name="console-theme"][value="dark"]').click()`);
+  check(await evaluate(`${rootTheme} === 'light'`), 'Theme remains a draft before save');
+  await clickSettingsButton('取消');
+  await openSettings();
+  check(await evaluate(`document.querySelector('input[name="console-theme"]:checked').value === 'light'`), 'Cancel discards theme draft');
+  await evaluate(`document.querySelector('input[name="console-theme"][value="system"]').click()`);
+  await key('Escape', 'Escape', 27);
+  await waitFor(`!${visibleSettings}`, 'Theme settings Escape');
+  check(await evaluate(`${pref} === 'light'`), 'Escape preserves theme');
+  await openSettings();
+  await evaluate(`document.querySelector('input[name="console-theme"][value="system"]').click()`);
+  await clickSettingsButton('保存');
+  check(await evaluate(`${rootTheme} === 'dark' && ${pref} === 'system'`), 'Saved system preference resolves current OS theme');
+  await system('light');
+  check(await evaluate(`${rootTheme} === 'light'`), 'System tracking resumes after settings save');
+
+  // Stop emulating media before checking inherited iframe color-scheme: the
+  // browser override otherwise forces iframe media queries as well.
+  await system(null);
+  await openSettings();
+  await evaluate(`document.querySelector('input[name="console-theme"][value="dark"]').click()`);
+  await clickSettingsButton('保存');
+  await select(5);
+  await waitFor(`!document.querySelector('.ccswitch-load-state') && Boolean(document.querySelector('.ccswitch-frame')?.contentDocument.querySelector('[data-provider-id="molly-preview-provider"]'))`, 'CC Switch appearance ready');
+  await evaluate(`document.querySelector('.ccswitch-frame').contentWindow.__appearanceProbe = 42`);
+  await select(8);
+  await waitFor(`Boolean(document.querySelector('.skills-frame')?.contentDocument.querySelector('.molly-skills-tabs'))`, 'Skill Manager appearance ready');
+  await evaluate(`document.querySelector('.skills-frame').contentWindow.__appearanceProbe = 42`);
+  await select(6);
+  await waitFor(`!document.querySelector('.embedded-load-state')`, 'Image appearance ready');
+  let imageContext;
+  for (const context of contexts.values()) {
+    if (context.auxData?.isDefault && await evaluate(`location.href.includes('/image-workbench/')`, context).catch(() => false)) imageContext = context;
+  }
+  if (!imageContext) throw new Error('Image sandbox context not found');
+  await evaluate(`window.__appearanceProbe = 42`, imageContext);
+  for (const theme of ['dark', 'light', 'dark']) {
+    if (await evaluate(rootTheme) !== theme) {
+      await openSettings();
+      await evaluate(`document.querySelector('input[name="console-theme"][value="${theme}"]').click()`);
+      await clickSettingsButton('保存');
+    }
+    await pause(350);
+    const image = await evaluate(`({ dark: matchMedia('(prefers-color-scheme: dark)').matches, background: getComputedStyle(document.documentElement).getPropertyValue('--background').trim(), probe: window.__appearanceProbe, parentBlocked: (()=>{try{return !parent.document}catch{return true}})(), ipc: typeof window.__TAURI_INTERNALS__ })`, imageContext);
+    const cc = await evaluate(`(() => { const f=document.querySelector('.ccswitch-frame'); return {dark:f.contentDocument.documentElement.classList.contains('dark'),probe:f.contentWindow.__appearanceProbe}; })()`);
+    const skills = await evaluate(`(() => { const f=document.querySelector('.skills-frame'); return {theme:f.contentDocument.documentElement.dataset.theme,probe:f.contentWindow.__appearanceProbe}; })()`);
+    check(image.dark === (theme === 'dark') && cc.dark === (theme === 'dark') && skills.theme === theme, `All embedded themes follow ${theme}`);
+    check(image.probe === 42 && cc.probe === 42 && skills.probe === 42, `Theme ${theme} preserves embedded state`);
+    check(image.parentBlocked && image.ipc === 'undefined', 'Image sandbox remains isolated');
+    report.push({page:'embedded-appearance',theme,image,cc,skills});
+    await screenshot(`images-${theme}`);
+    await select(5);
+    await screenshot(`ccswitch-${theme}`);
+    await select(6);
+  }
+  await select(0);
+  const colors = await evaluate(`({ background:getComputedStyle(document.body).backgroundColor, text:getComputedStyle(document.body).color })`);
+  check(colors.background === 'rgb(20, 26, 33)' && colors.text === 'rgb(229, 237, 245)', 'Dark shared tokens applied');
+  await screenshot('overview-dark');
+  await openSettings();
+  check(await evaluate(`document.querySelector('input[name="console-theme"]:checked').value === 'dark'`), 'Settings reflects the saved appearance');
+  await screenshot('settings-dark');
+  await clickSettingsButton('取消');
+  // A failed write keeps the theme and the editable draft in the open dialog.
+  await openSettings();
+  await evaluate(`document.querySelector('input[name="console-theme"][value="light"]').click(); window.__appearanceSetItem = Storage.prototype.setItem; Storage.prototype.setItem = function(k,v) { if(k === 'mollycloud:preview:appearance') throw new DOMException('存储不可用','QuotaExceededError'); return window.__appearanceSetItem.call(this,k,v); }; [...document.querySelector('.console-settings-dialog').querySelectorAll('button')].find(el => el.innerText.trim() === '保存').click();`);
+  await waitFor(`Boolean(document.querySelector('.console-settings-error'))`, 'Theme write error');
+  check(await evaluate(`${rootTheme} === 'dark' && document.querySelector('input[name="console-theme"]:checked').value === 'light'`), 'Failed theme write preserves current mode and draft');
+  await evaluate(`Storage.prototype.setItem = window.__appearanceSetItem; delete window.__appearanceSetItem;`);
+  await clickSettingsButton('保存');
+  check(await evaluate(`${rootTheme} === 'light' && !document.querySelector('.console-settings-error')`), 'Theme write retry succeeds');
+  report.push({page:'appearance-behavior',colors});
+}
+
 try {
   await page('Page.enable');
   await page('Runtime.enable');
-  if (productionSmoke) {
+  await page('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: darkMode ? 'dark' : 'light' }] });
+  if (appearanceOnly) {
+    await verifyAppearance();
+  } else if (productionSmoke) {
     // Exercise the real production entry with only public bootstrap responses stubbed.
     await page('Page.addScriptToEvaluateOnNewDocument', { source: `
       const originalFetch = globalThis.fetch;
@@ -384,13 +619,14 @@ try {
     await pause(300);
     const smoke = await evaluate(`(() => {
       const style = getComputedStyle(document.querySelector('.primary-button'));
-      return { font: getComputedStyle(document.querySelector('.login-input')).fontFamily, primary: style.backgroundColor, text: style.color, disabled: document.querySelector('.primary-button').disabled, previewExcluded: !document.querySelector('.app-shell') };
+      return { theme: document.documentElement.dataset.theme, background: getComputedStyle(document.body).backgroundColor, font: getComputedStyle(document.querySelector('.login-input')).fontFamily, primary: style.backgroundColor, text: style.color, disabled: document.querySelector('.primary-button').disabled, previewExcluded: !document.querySelector('.app-shell') };
     })()`);
     report.push({ page: 'production-login', ...smoke });
     check(smoke.font.includes('Microsoft YaHei') && smoke.primary === 'rgb(180, 233, 118)' && smoke.text === 'rgb(39, 80, 22)' && !smoke.disabled && smoke.previewExcluded, 'Production theme/entry initialization');
+    check(smoke.theme === (darkMode ? 'dark' : 'light') && smoke.background === (darkMode ? 'rgb(20, 26, 33)' : 'rgb(248, 251, 252)'), 'Production system appearance');
     await screenshot('production-login-1180');
   } else {
-  const names = ['overview', 'subscriptions', 'keys', 'usage', 'assistant', 'ccswitch', 'images'];
+  const names = ['overview', 'subscriptions', 'keys', 'usage', 'assistant', 'ccswitch', 'images', 'mcp', 'skills'];
   for (const [width, height] of [[1440, 900], [1180, 760], [960, 640]]) {
     await page('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
     await page('Page.navigate', { url: `${baseUrl}/?ui-preview=login` });
@@ -440,6 +676,7 @@ try {
     await ready('.overview-page');
     await verifyCompactSidebar(width, height);
     await verifyConsoleSettings(width, height);
+    await verifyMcpGate(width);
     let baseline;
     for (let index = 0; index < names.length; index++) {
       await select(index);
@@ -453,20 +690,27 @@ try {
       if (names[index] === 'images') {
         await waitFor(`!document.querySelector('.embedded-load-state')`, `Image workbench ready ${width}`);
       }
+      await settleAnimations();
       const metrics = await evaluate(readShell);
       report.push({ page: names[index], width, height, ...metrics });
       baseline ??= metrics.shell;
       check(JSON.stringify(metrics.shell) === JSON.stringify(baseline), `Shared shell differs: ${names[index]} ${width}`);
       check(!metrics.horizontalOverflow && !metrics.valueOverflows && !metrics.headerClipped, `Content clipped: ${names[index]} ${width}`);
-      if (['ccswitch', 'images'].includes(names[index])) {
-        check(metrics.header === null && metrics.content[1] === 0 && metrics.contentPadding === '0px', `Embedded page fills workspace: ${names[index]} ${width}`);
+      if (['assistant', 'ccswitch', 'images'].includes(names[index])) {
+        check(metrics.header === null && metrics.content[1] === metrics.titlebar[1] + metrics.titlebar[3] && metrics.content[3] === height - metrics.titlebar[3] && metrics.contentPadding === '0px', `Embedded page fills workspace: ${names[index]} ${width}`);
       } else {
         check(metrics.header !== null, `Shared topbar missing: ${names[index]} ${width}`);
+        check(Math.abs(metrics.accountLayout.balance[1] - metrics.accountLayout.user[1]) < 0.1 && Math.abs(metrics.accountLayout.balance[3] - metrics.accountLayout.user[3]) < 0.1 && Math.abs(metrics.accountLayout.refresh[0] + metrics.accountLayout.refresh[2] - metrics.accountLayout.user[0] - metrics.accountLayout.user[2]) < 0.1 && Math.abs(metrics.accountLayout.refresh[1] - metrics.accountLayout.user[1] - metrics.accountLayout.user[3] - 8) < 0.1, `Account controls alignment ${names[index]} ${width}`);
       }
       check(metrics.selectedCount === 1, `Navigation state: ${names[index]} ${width}`);
-      check(metrics.navCount === 7 && metrics.settingsVisible, `Seven navigation items and bottom settings visible: ${names[index]} ${width}`);
+      check(metrics.navCount === 9 && metrics.settingsVisible, `Nine navigation items and bottom settings visible: ${names[index]} ${width}`);
       check(metrics.shell.navStyle.boxShadow === 'none' && metrics.shell.navStyle.borderLeftWidth === '0px', `Navigation edge color: ${names[index]} ${width}`);
-      check(metrics.cardBorders.every(card => ['borderTopColor','borderRightColor','borderBottomColor','borderLeftColor'].every(side => card[side] === 'rgb(227, 234, 240)')), `Non-neutral card border: ${names[index]} ${width}`);
+      check(metrics.cardBorders.every(card => parseFloat(card.borderWidth) === 0 || ['borderTopColor','borderRightColor','borderBottomColor','borderLeftColor'].every(side => card[side] === (darkMode ? 'rgb(48, 62, 77)' : 'rgb(227, 234, 240)'))), `Non-neutral card border: ${names[index]} ${width}`);
+      check(await evaluate(`document.documentElement.dataset.theme === '${darkMode ? 'dark' : 'light'}'`), `Resolved theme: ${names[index]} ${width}`);
+      check(metrics.shell.themeButtonAbsent, `Theme shortcut removed: ${names[index]} ${width}`);
+      if (names[index] === 'assistant') {
+        check(await evaluate(`document.querySelector('.assistant-chat__toolbar h2').textContent === 'Molly' && !document.querySelector('.assistant-chat__toolbar .section-kicker')`), `Molly chat heading ${width}`);
+      }
       if (names[index] === 'keys' && width === 960) check(metrics.tableInternalScroll, `API table internal scrolling ${width}`);
       if (names[index] === 'ccswitch') {
         const embedded = await evaluate(`(() => {
@@ -488,6 +732,8 @@ try {
         check(embedded.chinese && embedded.codex && embedded.preview && embedded.card.includes('MollyCloud'), `CC Switch real UI/readonly preview ${width}`);
       }
       await screenshot(`${names[index]}-${width}`);
+      if (names[index] === 'mcp') await verifyMcpMarket(width, height);
+      if (names[index] === 'skills') await verifySkills(width, height);
       if (names[index] === 'ccswitch') {
         await evaluate(`document.querySelector('.ccswitch-frame').contentDocument.querySelector('[data-provider-id="molly-preview-provider"] button[aria-label="编辑"]').click()`);
         await waitFor(`Boolean(document.querySelector('.ccswitch-frame').contentDocument.querySelector('#provider-form'))`, `CC Switch edit panel ${width}`);

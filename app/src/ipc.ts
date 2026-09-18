@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
+  accountBalanceSchema,
   assistantConfigSchema,
   assistantReplySchema,
   assistantStatusSchema,
@@ -7,6 +8,7 @@ import {
   loginOutcomeSchema,
   serviceBootstrapSchema,
   type DashboardPayload,
+  type AccountBalance,
   type AssistantMessage,
   type AssistantConfig,
   type AssistantConfigUpdate,
@@ -17,6 +19,8 @@ import {
 } from "./contracts";
 
 const browserApiRoot = "/molly-api/api/v1";
+const browserAppVersion = "0.1.3";
+const moreClientDownloadsUrl = "https://wwall.lanzouu.com/b01gib2wkh";
 let browserAccessToken = "";
 let browserRefreshToken = "";
 let browserTempToken = "";
@@ -43,7 +47,7 @@ export interface DesktopUpdate {
 }
 
 export type ConsoleCloseAction = "tray" | "quit";
-export interface ConsoleSettings { closeAction: ConsoleCloseAction; autostart: boolean }
+export interface ConsoleSettings { closeAction: ConsoleCloseAction; autostart: boolean; autostartMinimized: boolean }
 const consoleSettingsPreviewKey = "mollycloud:preview:console-settings";
 
 function isConsoleSettingsPreview(): boolean {
@@ -56,7 +60,9 @@ function parseConsoleSettings(value: unknown): ConsoleSettings {
   const action = settings?.closeAction;
   if (action !== "tray" && action !== "quit") throw new Error("关闭窗口设置无效，请重新选择。");
   if (settings?.autostart != null && typeof settings.autostart !== "boolean") throw new Error("开机自启动设置无效，请重新选择。");
-  return { closeAction: action, autostart: settings?.autostart === true };
+  if (settings?.autostartMinimized != null && typeof settings.autostartMinimized !== "boolean") throw new Error("启动后最小化设置无效，请重新选择。");
+  const autostart = settings?.autostart === true;
+  return { closeAction: action, autostart, autostartMinimized: autostart && settings?.autostartMinimized === true };
 }
 
 function isTauriRuntime(): boolean {
@@ -142,12 +148,35 @@ async function browserDashboard(): Promise<DashboardPayload> {
   });
 }
 
+async function browserAccountBalance(): Promise<AccountBalance> {
+  const [user, usage] = await Promise.all([
+    browserEnvelope("/auth/me"),
+    browserEnvelope("/usage/dashboard/stats"),
+  ]);
+  const userRecord = user && typeof user === "object" ? user as Record<string, unknown> : {};
+  const usageRecord = usage && typeof usage === "object" ? usage as Record<string, unknown> : {};
+  return accountBalanceSchema.parse({
+    balance: userRecord.balance ?? null,
+    today_tokens: usageRecord.today_tokens ?? null,
+  });
+}
+
 export const desktopApi = {
+  async getAppVersion(): Promise<string> {
+    if (!isTauriRuntime()) return browserAppVersion;
+    const { getVersion } = await import("@tauri-apps/api/app");
+    return getVersion();
+  },
+
+  async openMoreClientDownloads(): Promise<void> {
+    await openExternalPage(moreClientDownloadsUrl);
+  },
+
   async getConsoleSettings(): Promise<ConsoleSettings> {
     if (isTauriRuntime()) return parseConsoleSettings(await invoke("get_console_settings"));
     if (isConsoleSettingsPreview()) {
       const saved = localStorage.getItem(consoleSettingsPreviewKey);
-      return saved ? parseConsoleSettings(JSON.parse(saved)) : { closeAction: "tray", autostart: false };
+      return saved ? parseConsoleSettings(JSON.parse(saved)) : { closeAction: "tray", autostart: false, autostartMinimized: false };
     }
     throw new Error("请在 MollyCloud 桌面客户端中设置关闭窗口的行为。");
   },
@@ -199,6 +228,19 @@ export const desktopApi = {
       ? await invoke("fetch_dashboard")
       : await browserDashboard();
     return dashboardPayloadSchema.parse(value);
+  },
+
+  async fetchAccountBalance(): Promise<AccountBalance> {
+    const value = isTauriRuntime()
+      ? await invoke("fetch_account_balance")
+      : await browserAccountBalance();
+    return accountBalanceSchema.parse(value);
+  },
+
+  async syncPetAccountBalance(account: AccountBalance): Promise<void> {
+    if (!isTauriRuntime()) return;
+    const { emitTo } = await import("@tauri-apps/api/event");
+    await emitTo("main", "account-balance-updated", account).catch(() => undefined);
   },
 
   async logout(): Promise<void> {

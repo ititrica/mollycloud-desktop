@@ -2,7 +2,7 @@
 
 MollyCloud 的 Windows 桌面客户端。它把账户控制台、透明 Live2D 桌宠、Molly AI 助手、开发工具供应商管理和图片工作台组合为一个本地应用。
 
-当前版本：[v0.1.2](https://github.com/ititrica/mollycloud-desktop/releases/tag/v0.1.2)。可从 Release 下载 [NSIS 安装器](https://github.com/ititrica/mollycloud-desktop/releases/latest) 或 MSI 安装包。
+当前版本：[v0.1.3](https://github.com/ititrica/mollycloud-desktop/releases/tag/v0.1.3)。可从 Release 下载 [NSIS 安装器](https://github.com/ititrica/mollycloud-desktop/releases/latest) 或 MSI 安装包；完整更新见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ## 用途
 
@@ -10,6 +10,8 @@ MollyCloud 的 Windows 桌面客户端。它把账户控制台、透明 Live2D �
 - 在桌面上运行可拖动、可显示或隐藏的 Live2D Molly；系统托盘可快速唤出控制台。
 - 使用 Molly 助手对话，并在控制台设置桌宠显示、模型、助手和开机自启。
 - 在内置 CC Switch 中管理供应商，并在用户点击“启用”后配置本机的 Claude Code、Codex、Gemini CLI 等工具。
+- 在 MCP 市场浏览官方与社区目录，并按用户选择安装或卸载目标 Agent 的 MCP 配置；该功能当前为实验性功能。
+- 在 Skill 管理器中浏览、安装、启用、导入和管理本机 Agent Skills。
 - 在独立隔离的生图工作台中，使用手动保存的 API Key 进行图片生成、编辑和历史管理。
 
 充值和订阅购买当前仍跳转至 MollyCloud 网页端，桌面端不会自动创建订单或扣款。
@@ -48,6 +50,8 @@ MollyCloud Desktop (Tauri 2 / Windows)
 | MollyCloud 控制台 | 账户概览、订阅、用量、掩码 API 密钥、桌宠开关 | Access Token 仅在原生内存中使用；Refresh Token 存放在 Windows 凭据管理器；账户读取通过 HTTPS API 完成。 |
 | Live2D / Petra | 桌宠渲染、交互、助手对话、模型和行为设置 | 独立透明窗口；桌宠助手不能直接取得账户密钥或账户令牌。 |
 | 内置 CC Switch | 供应商库、工具配置、备份和本地代理 | 数据库与设备设置放在 MollyCloud 私有目录；只有用户在界面中明确启用供应商时，才会写入实际 CLI 的配置目录。不会唤起或覆盖独立 CC Switch 的数据。 |
+| MCP 市场 | 官方与社区 MCP 目录、选定 Agent 的安装和卸载 | 用户明确选择目标 Agent 与安装操作后才写入其实际 MCP 配置；市场不代理 MCP 请求。当前为实验性功能。 |
+| Skill 管理器 | 本机 Skills 的浏览、导入、安装、启用和管理 | 操作作用于用户明确选择的本机 Agent；不读取账户或 API 密钥。 |
 | 生图工作台 | 图像请求、编辑、作品历史、手动 API 配置 | 在 sandbox 内运行，不能调用通用 Tauri IPC；不会读取 MollyCloud 账户 API Key，密钥由用户手动填写并在当前设备保存。 |
 
 ## 仓库结构
@@ -62,6 +66,7 @@ app/
 vendor/
   cc-switch/              内置 CC Switch 前端与后端适配
   gpt-image-playground/   内置生图工作台适配
+  skills-manager/         内置 Skill 管理器前端与后端适配
 design-system/            MollyCloud 控制台设计规范
 docs/                     CC Switch 与生图工作台的集成、测试边界
 ```

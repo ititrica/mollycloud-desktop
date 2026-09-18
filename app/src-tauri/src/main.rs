@@ -2,5 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    if molly_skills::is_cli_request() {
+        molly_skills::cli::main();
+        return;
+    }
     mollycloud_lib::run()
 }

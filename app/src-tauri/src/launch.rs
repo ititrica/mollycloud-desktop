@@ -342,6 +342,14 @@ pub fn open_url(url: &str) -> Result<(), String> {
     shell_execute(url, "")
 }
 
+/// Dedicated Codex navigation, separate from the public HTTP-only URL command.
+pub(crate) fn open_codex_thread(id: &str) -> Result<(), String> {
+    if id.len() != 36 || !id.bytes().enumerate().all(|(i, c)| {
+        if [8, 13, 18, 23].contains(&i) { c == b'-' } else { c.is_ascii_hexdigit() }
+    }) { return Err("Codex 任务标识无效".into()); }
+    shell_execute(&format!("codex://threads/{id}"), "")
+}
+
 /// Tauri command 入口：command 可能在任意线程执行，这里自行初始化/清理 COM。
 pub fn launch_application_checked(application: String) -> LaunchResult {
     let _ = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };

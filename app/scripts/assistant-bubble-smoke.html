@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>Isolated assistant bubble verification</title>
+<link rel="stylesheet" href="/src/petra/style.css">
+<script type="module">
+// Exercise the actual assistant UI with a private browser profile and mocked IPC.
+const checks = [], replies = [], calls = [];
+let callbackId = 0;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const assert = (condition, name) => { if (!condition) throw new Error(name); checks.push(name); };
+async function wait(check, name, timeout = 2000) {
+  const until = performance.now() + timeout;
+  while (performance.now() < until) { if (check()) return; await sleep(10); }
+  throw new Error(`Timed out: ${name}`);
+}
+const response = content => ({ choices: [{ message: { content } }] });
+window.__TAURI_INTERNALS__ = {
+  transformCallback() { return ++callbackId; },
+  async invoke(command, args = {}) {
+    calls.push({ command, args });
+    if (command === 'plugin:event|emit_to') return;
+    if (command === 'get_api_key') return 'isolated-test-key';
+    if (command === 'petra_assistant_chat') {
+      if (!replies.length) throw new Error('Unexpected chat request');
+      return replies.shift()();
+    }
+    throw new Error(`Unexpected native call: ${command}`);
+  },
+};
+localStorage.clear();
+localStorage.setItem('live2d-pet-settings', JSON.stringify({ assistant: { enabled: true, provider: 'mollycloud', model: 'isolated-test-model' } }));
+try {
+  const panel = await import('../src/petra/assistant/AssistantPanel');
+  const visible = () => [...document.querySelectorAll('.as-ai')].filter(el => !el.hidden);
+  replies.push(() => response('文字回复立即显示。'));
+  await panel.submitAssistantMessage('你好');
+  assert(visible()[0]?.textContent === '文字回复立即显示。', 'reply is visible when the chat request completes');
+  assert(panel.getDisplayHistory().at(-1).content === '文字回复立即显示。', 'console and pet share the same reply');
+  await sleep(7000);
+  assert(visible()[0]?.style.opacity !== '0' && visible().length === 1, 'reply remains visible before the eight-second timeout');
+  await wait(() => visible().length === 0, 'completed reply fades away', 3000);
+  checks.push('reply fades after the eight-second timeout');
+
+  panel.clearHistory();
+  replies.push(() => { throw new Error('模拟网络错误'); });
+  await panel.submitAssistantMessage('错误检查');
+  assert(visible()[0]?.textContent.includes('模拟网络错误'), 'chat failures remain visible');
+
+  panel.clearHistory();
+  let release;
+  replies.push(() => new Promise(resolve => { release = resolve; }));
+  const pending = panel.submitAssistantMessage('稍后返回');
+  await wait(() => Boolean(release), 'pending reply');
+  assert(visible().length === 0, 'pending reply does not show an empty bubble');
+  panel.clearBubbles();
+  release(response('清空后的旧回复'));
+  await pending;
+  assert(visible().length === 0, 'cleared bubbles are not recreated by a late reply');
+
+  panel.clearHistory();
+  const { registerFloatingWindowReader } = await import('../src/petra/assistant/FloatingWindowInfo');
+  registerFloatingWindowReader(() => ({ mode: 'capsule', balance: { compact: '123', full: '$123.00', low: false }, todayTokens: '12', activity: { headline: '任务已完成' } }));
+  replies.push(() => ({ choices: [{ message: { content: null, tool_calls: [{ id: 'fixture', function: { name: 'get_floating_window_info', arguments: '{}' } }] } }] }));
+  replies.push(() => response('任务已经完成。'));
+  await panel.submitAssistantMessage('现在任务怎么样');
+  const lastRequest = calls.filter(call => call.command === 'petra_assistant_chat').at(-1);
+  const result = lastRequest.args.body.messages.find(message => message.role === 'tool');
+  assert(JSON.parse(result.content).data.activity.headline === '任务已完成', 'assistant can still read floating-window task information');
+  assert(visible()[0]?.textContent === '任务已经完成。', 'tool follow-up reply is displayed');
+
+  panel.clearHistory();
+  replies.push(() => response('恢复正常回复。'));
+  await panel.submitAssistantMessage('继续');
+  assert(visible()[0]?.textContent === '恢复正常回复。', 'chat continues after errors and clearing');
+  window.__bubbleReport = { ok: true, checks };
+} catch (error) {
+  window.__bubbleReport = { ok: false, checks, error: String(error) };
+}
+</script>

@@ -41,7 +41,7 @@ fn normalize_proxy_url(raw: &str) -> Option<String> {
 
 /// 读 WinINET registry：ProxyEnable + ProxyServer（含 per-protocol 格式）。
 fn wininet_proxy() -> Option<String> {
-    use windows::Win32::Foundation::{ERROR_MORE_DATA, ERROR_SUCCESS};
+    use windows::Win32::Foundation::ERROR_SUCCESS;
     use windows::Win32::System::Registry::{
         RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY, HKEY_CURRENT_USER, KEY_READ,
         REG_VALUE_TYPE,
@@ -97,7 +97,8 @@ fn wininet_proxy() -> Option<String> {
                     Some(&mut size),
                 )
             };
-            if status2 == ERROR_SUCCESS || status2 == ERROR_MORE_DATA {
+            if status2 == ERROR_SUCCESS {
+                buf.truncate(size as usize);
                 return Some(buf);
             }
         }
@@ -122,12 +123,22 @@ fn wininet_proxy() -> Option<String> {
     // Clash/V2RayN 等 PAC 模式下必然失败。优先使用可用的静态代理；仅 PAC
     // 且没有 ProxyServer 时才退回系统直连。
     let server = query_value(hkey, "ProxyServer")
-        .map(|raw| String::from_utf8_lossy(&raw).trim_end_matches('\0').trim().to_string())
+        .and_then(|raw| decode_registry_string(&raw))
         .unwrap_or_default();
     if !server.is_empty() {
         return parse_proxy_server(&server);
     }
     None
+}
+
+// RegQueryValueExW returns UTF-16LE, including a terminating wide NUL.
+// Decoding those bytes as UTF-8 inserts NULs between every ASCII character.
+fn decode_registry_string(raw: &[u8]) -> Option<String> {
+    if raw.len() % 2 != 0 { return None; }
+    let units: Vec<u16> = raw.chunks_exact(2)
+        .map(|bytes| u16::from_le_bytes([bytes[0], bytes[1]]))
+        .take_while(|unit| *unit != 0).collect();
+    String::from_utf16(&units).ok().map(|value| value.trim().to_owned())
 }
 
 /// 解析 ProxyServer：`host:port` 或 `http=host:port;https=host:port`。
@@ -156,6 +167,17 @@ fn parse_proxy_server(server: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn windows_proxy_string_is_decoded_as_utf16() {
+        for input in ["127.0.0.1:7892", "https=127.0.0.1:7892;http=127.0.0.1:7892"] {
+            let raw: Vec<u8> = input.encode_utf16().chain(Some(0)).flat_map(u16::to_le_bytes).collect();
+            let decoded = decode_registry_string(&raw).unwrap();
+            assert_eq!(decoded, input);
+            assert!(reqwest::Proxy::all(parse_proxy_server(&decoded).unwrap()).is_ok());
+        }
+        assert!(decode_registry_string(&[1]).is_none());
+    }
 
     #[test]
     fn normalize_adds_scheme() {

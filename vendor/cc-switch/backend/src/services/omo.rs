@@ -518,7 +518,7 @@ fn append_array_value(
     Ok(())
 }
 
-fn merge_rt_value(
+pub(crate) fn merge_rt_value(
     round_trip: &mut RtJSONValue,
     current: &Value,
     desired: &Value,

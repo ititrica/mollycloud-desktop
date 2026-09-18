@@ -4,7 +4,12 @@ mod assistant;
 mod assistant_config;
 mod commands;
 mod console_settings;
+mod codex_activity;
 mod ccswitch;
+#[cfg(not(feature = "mcp-market-smoke"))]
+mod mcp_market;
+#[cfg(feature = "mcp-market-smoke")]
+pub mod mcp_market;
 mod image_workbench;
 mod launch;
 mod proxy;
@@ -1391,6 +1396,11 @@ fn show_console(app: &AppHandle) {
     }
 }
 
+#[tauri::command]
+fn open_console(app: AppHandle) {
+    show_console(&app);
+}
+
 fn toggle_window(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         if win.is_visible().unwrap_or(false) {
@@ -1605,7 +1615,9 @@ mod interaction_tests {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let runtime_state = RuntimeState::new().expect("failed to initialize Molly runtime");
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default().plugin(tauri_plugin_single_instance::init(
+        |app, _arguments, _working_directory| show_console(app),
+    ));
     // updater 插件在 dev / release 都注册，使 tauri dev 下也能真实测试 check() 网络链路。
     // 开发版禁止实际安装由前端 import.meta.env.DEV 保护（见 UpdateManager.performUpdate）。
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
@@ -1613,11 +1625,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(molly_ccswitch::init())
+        .plugin(molly_skills::init())
         .plugin(image_workbench::plugin())
         .manage(image_workbench::ImageRequests::default())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
+            Some(vec!["--mollycloud-autostart"]),
         ))
         .manage(AudioState {
             enabled: Arc::new(AtomicBool::new(true)),
@@ -1647,6 +1660,7 @@ pub fn run() {
             model_bounds: std::sync::Mutex::new((0, 0, 700, 700)),
         })
         .manage(runtime_state)
+        .manage(mcp_market::MarketState::default())
         .invoke_handler(tauri::generate_handler![
             trash_files, work_area_at, cursor_pos, hide_pet, is_pet_visible, set_topmost, is_topmost, show_pet,
             quit_app, restart_app, debug_mark, read_file_bytes, save_psd,
@@ -1657,19 +1671,24 @@ pub fn run() {
             run_shell, launch_application, open_url, active_window_title,
             get_idle_seconds, get_system_proxy,
             set_api_key, get_api_key, has_api_key, send_feedback, export_feedback,
-            get_autostart, set_autostart, sync_interaction_regions,
+            get_autostart, set_autostart, open_console, sync_interaction_regions,
             set_interacting, set_menu_open, set_window_pos_size,
             set_volume, send_notification, get_weather,
             schedule_shutdown, cancel_shutdown,
             bootstrap_public, login, complete_two_factor, restore_session,
             fetch_dashboard, fetch_account_balance, copy_api_endpoint, copy_api_key, fetch_ccswitch_import_models, import_api_key_to_ccswitch, logout,
             launch_ccswitch_cli,
+            mcp_market::mcp_market_status, mcp_market::mcp_market_install,
+            mcp_market::mcp_market_action, mcp_market::mcp_market_search,
+            mcp_market::mcp_market_resolve, mcp_market::mcp_market_cleanup,
             image_workbench::image_request, image_workbench::cancel_image_request,
             get_console_settings, save_console_settings, set_console_dashboard_active,
             set_overlay_interactive, play_overlay_motion,
             assistant_status, assistant_chat, get_assistant_config, save_assistant_config,
             petra_assistant_models, petra_assistant_chat,
             check_for_desktop_update, open_desktop_update,
+            codex_activity::get_codex_activity, codex_activity::open_codex_activity,
+            codex_activity::add_codex_activity_home,
         ])
         .setup(|app| {
             LOG_DIR.get_or_init(|| {
@@ -1690,9 +1709,11 @@ pub fn run() {
             log_line("=== pet started ===");
             log_environment();
             console_settings::initialize(app.handle());
+            codex_activity::initialize(app.handle());
 
             let handle = app.handle().clone();
             setup_tray(app)?;
+            console_settings::apply_startup_visibility(app.handle());
             spawn_clickthrough_watcher(handle.clone());
             spawn_pet_mover(handle.clone());
             spawn_drag_follower(handle.clone());

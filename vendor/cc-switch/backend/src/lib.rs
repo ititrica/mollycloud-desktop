@@ -21,6 +21,7 @@ mod lightweight;
 #[cfg(target_os = "linux")]
 mod linux_fix;
 mod mcp;
+pub mod mcp_market;
 mod model_capabilities;
 mod openclaw_config;
 mod opencode_config;

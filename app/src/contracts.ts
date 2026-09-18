@@ -22,6 +22,11 @@ export const dashboardPayloadSchema = z.object({
   keys: z.unknown(),
 });
 
+export const accountBalanceSchema = z.object({
+  balance: z.unknown(),
+  today_tokens: z.unknown(),
+});
+
 export const assistantKeyOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -55,6 +60,7 @@ export const assistantConfigSchema = z.object({
 export type ServiceBootstrap = z.infer<typeof serviceBootstrapSchema>;
 export type LoginOutcome = z.infer<typeof loginOutcomeSchema>;
 export type DashboardPayload = z.infer<typeof dashboardPayloadSchema>;
+export type AccountBalance = z.infer<typeof accountBalanceSchema>;
 export type AssistantStatus = z.infer<typeof assistantStatusSchema>;
 export type AssistantReply = z.infer<typeof assistantReplySchema>;
 export type AssistantConfig = z.infer<typeof assistantConfigSchema>;

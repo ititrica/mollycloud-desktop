@@ -1,0 +1,4302 @@
+[
+  {
+    "id": "community-fa047a4aa650",
+    "name": "1mcp/agent",
+    "homepage": "https://github.com/1mcp-app/agent",
+    "description": "一个统一的模型上下文协议服务器实现，将多个MCP服务器聚合为一个。",
+    "category": "聚合器",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f1560a4938a3",
+    "name": "OpenMCP",
+    "homepage": "https://github.com/wegotdocs/open-mcp",
+    "description": "10秒内将Web API转换为MCP服务器并将其添加到开源注册表中: https://open-mcp.org",
+    "category": "聚合器",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6c5bc3ddcfce",
+    "name": "tigranbs/mcgravity",
+    "homepage": "https://github.com/tigranbs/mcgravity",
+    "description": "一个代理工具，用于将多个MCP服务器组合成一个统一的端点。通过跨多个MCP服务器负载均衡请求来扩展您的AI工具，类似于Nginx对Web服务器的工作方式。",
+    "category": "聚合器",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a71d473bf7a6",
+    "name": "MetaMCP",
+    "homepage": "https://github.com/metatool-ai/metatool-app",
+    "description": "MetaMCP是一个统一的中间件MCP服务器，通过GUI管理您的MCP连接。",
+    "category": "聚合器",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-af90c489dce5",
+    "name": "MCP Access Point",
+    "homepage": "https://github.com/sxhxliang/mcp-access-point",
+    "description": "一键将Web API转成为MCP服务器，而无需对服务器端代码进行任何修改。",
+    "category": "聚合器",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-de135700f5c0",
+    "name": "hamflx/imagen3-mcp",
+    "homepage": "https://github.com/hamflx/imagen3-mcp",
+    "description": "一个通过 MCP 使用 Google Imagen 3.0 API 的强大图像生成工具。使用文本提示生成具有高级摄影、艺术和逼真控制的高质量图像。",
+    "category": "聚合器",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-509018921276",
+    "name": "YangLiangwei/PersonalizationMCP",
+    "homepage": "https://github.com/YangLiangwei/PersonalizationMCP",
+    "description": "全面的个人数据聚合MCP服务器，集成Steam、YouTube、Bilibili、Spotify、Reddit等平台。具有OAuth2认证、自动令牌管理和90+工具，用于游戏、音乐、视频和社交平台数据访问。",
+    "category": "聚合器",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-45d235e6b412",
+    "name": "BB-fat/browser-use-rs",
+    "homepage": "https://github.com/BB-fat/browser-use-rs",
+    "description": "使用 Rust 构建的轻量级浏览器自动化 MCP 服务器，无任何外部依赖。",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-713aaa178a48",
+    "name": "@blackwhite084/playwright-plus-python-mcp",
+    "homepage": "https://github.com/blackwhite084/playwright-plus-python-mcp",
+    "description": "使用 Playwright 进行浏览器自动化的 MCP 服务器，更适合llm",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e201d542a2ad",
+    "name": "eat-pray-ai/yutu",
+    "homepage": "https://github.com/eat-pray-ai/yutu",
+    "description": "全功能 YouTube MCP 服务器和命令行工具，自动化 YouTube 运营",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-fb69620b4dbf",
+    "name": "@executeautomation/playwright-mcp-server",
+    "homepage": "https://github.com/executeautomation/mcp-playwright",
+    "description": "使用 Playwright 进行浏览器自动化和网页抓取的 MCP 服务器",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-407ecd4d9192",
+    "name": "@automatalabs/mcp-server-playwright",
+    "homepage": "https://github.com/Automata-Labs-team/MCP-Server-Playwright",
+    "description": "使用 Playwright 实现浏览器自动化的 MCP 服务器",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e39101e95eb1",
+    "name": "brutalzinn/simple-mcp-selenium",
+    "homepage": "https://github.com/brutalzinn/simple-mcp-selenium",
+    "description": "一个用于在 Cursor IDE 中使用自然语言控制浏览器的 MCP Selenium 服务器。非常适合测试、自动化和多用户场景。",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-cced5fe781b3",
+    "name": "@modelcontextprotocol/server-puppeteer",
+    "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+    "description": "用于网页抓取和交互的浏览器自动化",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b459296b0b92",
+    "name": "@kimtaeyoon83/mcp-server-youtube-transcript",
+    "homepage": "https://github.com/kimtaeyoon83/mcp-server-youtube-transcript",
+    "description": "获取 YouTube 字幕和文字记录以供 AI 分析",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-eaa7c840ed6d",
+    "name": "@recursechat/mcp-server-apple-shortcuts",
+    "homepage": "https://github.com/recursechat/mcp-server-apple-shortcuts",
+    "description": "MCP 服务器与 Apple Shortcuts 的集成",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6e1031758ebd",
+    "name": "@fradser/mcp-server-apple-reminders",
+    "homepage": "https://github.com/FradSer/mcp-server-apple-reminders",
+    "description": "macOS 上与 Apple Reminders 集成的 MCP 服务器",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1647be13149a",
+    "name": "freema/firefox-devtools-mcp",
+    "homepage": "https://github.com/freema/firefox-devtools-mcp",
+    "description": "通过 WebDriver BiDi 进行 Firefox 浏览器自动化，用于测试、网页抓取和浏览器控制。支持 snapshot/UID 为基础的交互、网络监控、控制台捕获和屏幕截图",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7090a5e47d16",
+    "name": "kimtth/mcp-aoai-web-browsing",
+    "homepage": "https://github.com/kimtth/mcp-aoai-web-browsing",
+    "description": "使用 Azure OpenAI 和 Playwright 的\"最小\"服务器/客户端 MCP 实现。",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c71f2c489e70",
+    "name": "@pskill9/web-search",
+    "homepage": "https://github.com/pskill9/web-search",
+    "description": "一个支持使用 Google 搜索结果进行免费网页搜索的 MCP 服务器，无需 API 密钥",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bd4c36de652e",
+    "name": "@co-browser/browser-use-mcp-server",
+    "homepage": "https://github.com/co-browser/browser-use-mcp-server",
+    "description": "browser-use是一个封装了SSE传输协议的MCP服务器。包含一个dockerfile用于在docker中运行chromium浏览器+VNC服务器。",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ced176db516e",
+    "name": "@34892002/bilibili-mcp-js",
+    "homepage": "https://github.com/34892002/bilibili-mcp-js",
+    "description": "一个支持搜索 B站 内容的 MCP 服务器。提供LangChain调用示例、测试脚本。",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0d5988787c7f",
+    "name": "@getrupt/ashra-mcp",
+    "homepage": "https://github.com/getrupt/ashra-mcp",
+    "description": "从任何网站提取结构化数据。只需输入提示即可获取JSON。",
+    "category": "浏览器自动化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b242fd21a1ed",
+    "name": "cantian-ai/bazi-mcp",
+    "homepage": "https://github.com/cantian-ai/bazi-mcp",
+    "description": "提供全面精准的八字排盘和测算信息",
+    "category": "艺术与文化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2b7989ad55f9",
+    "name": "fatenava/fatenava-mcp",
+    "homepage": "https://github.com/fatenava/fatenava-mcp",
+    "description": "一站式命理排盘:八字(四柱)、紫微斗数、西洋占星本命盘三合一——真太阳时校正,多语言输入(中/英/日/韩),免费、无需注册。`npx -y fatenava-mcp`",
+    "category": "艺术与文化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0010357cfd67",
+    "name": "burningion/video-editing-mcp",
+    "homepage": "https://github.com/burningion/video-editing-mcp",
+    "description": "从您的视频集合中添加、分析、搜索和生成视频剪辑",
+    "category": "艺术与文化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7069655a57ff",
+    "name": "gavxm/ani-mcp",
+    "homepage": "https://github.com/gavxm/ani-mcp",
+    "description": "AniList MCP 服务器，提供品味感知推荐、观看分析、社交工具和完整的列表管理。",
+    "category": "艺术与文化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-9c2bc422fbe3",
+    "name": "r-huijts/rijksmuseum-mcp",
+    "homepage": "https://github.com/r-huijts/rijksmuseum-mcp",
+    "description": "荷兰国立博物馆 API 集成，支持艺术品搜索、详情查询和收藏品浏览",
+    "category": "艺术与文化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-24a0c5c2ae8b",
+    "name": "tasopen/mcp-alphabanana",
+    "homepage": "https://github.com/tasopen/mcp-alphabanana",
+    "description": "使用 Google Gemini（Nano Banana 2 / Pro）生成图像素材的本地 MCP 服务器。支持透明 PNG/WebP 输出、精确缩放/裁剪、最多 14 张参考图，以及 Google Search grounding。",
+    "category": "艺术与文化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-729013dde750",
+    "name": "yuna0x0/anilist-mcp",
+    "homepage": "https://github.com/yuna0x0/anilist-mcp",
+    "description": "集成 AniList API 获取动画和漫画信息的 MCP 服务器",
+    "category": "艺术与文化",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ab5234cb99df",
+    "name": "genomoncology/biomcp",
+    "homepage": "https://github.com/genomoncology/biomcp",
+    "description": "生物医学研究 MCP 服务器，提供 PubMed、ClinicalTrials.gov 和 MyVariant.info 的访问。",
+    "category": "生物学、医学和生物信息学",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-86075c89805f",
+    "name": "longevity-genie/biothings-mcp",
+    "homepage": "https://github.com/longevity-genie/biothings-mcp",
+    "description": "与 BioThings API 交互的 MCP 服务器，包括基因、遗传变异、药物和分类信息。",
+    "category": "生物学、医学和生物信息学",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0be2157afdd9",
+    "name": "longevity-genie/gget-mcp",
+    "homepage": "https://github.com/longevity-genie/gget-mcp",
+    "description": "提供强大的生物信息学工具包的 MCP 服务器，用于基因组查询和分析，封装了流行的 `gget` 库。",
+    "category": "生物学、医学和生物信息学",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-431d6313f3e0",
+    "name": "longevity-genie/opengenes-mcp",
+    "homepage": "https://github.com/longevity-genie/opengenes-mcp",
+    "description": "OpenGenes 项目的衰老和长寿研究可查询数据库的 MCP 服务器。",
+    "category": "生物学、医学和生物信息学",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-17a52d7b54fb",
+    "name": "longevity-genie/synergy-age-mcp",
+    "homepage": "https://github.com/longevity-genie/synergy-age-mcp",
+    "description": "长寿中协同和拮抗遗传相互作用的 SynergyAge 数据库的 MCP 服务器。",
+    "category": "生物学、医学和生物信息学",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-31589150fa1b",
+    "name": "wso2/fhir-mcp-server",
+    "homepage": "https://github.com/wso2/fhir-mcp-server",
+    "description": "快速医疗互操作性资源 (FHIR) API 的模型上下文协议服务器。提供与 FHIR 服务器的无缝集成，使 AI 助手能够在 SMART-on-FHIR 身份验证支持下搜索、检索、创建、更新和分析临床医疗数据。",
+    "category": "生物学、医学和生物信息学",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f56a7768e8ef",
+    "name": "Nebula-Block-Data/nebulablock-mcp-server",
+    "homepage": "https://github.com/Nebula-Block-Data/nebulablock-mcp-server",
+    "description": "集成 fastmcp 库，使 NebulaBlock 的全部 API 功能以工具形式对外提供。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c7bdc684b929",
+    "name": "4everland/4everland-hosting-mcp",
+    "homepage": "https://github.com/4everland/4everland-hosting-mcp",
+    "description": "面向4EVERLAND Hosting的MCP服务器实现，支持AI生成的代码快速部署到去中心化存储网络，如Greenfield、IPFS和Arweave。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-93ce3fe6d5d4",
+    "name": "qiniu/qiniu-mcp-server",
+    "homepage": "https://github.com/qiniu/qiniu-mcp-server",
+    "description": "基于七牛云产品构建的 MCP，支持访问七牛云存储、智能多媒体服务等。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-57ccfa678b7f",
+    "name": "Cloudflare MCP Server",
+    "homepage": "https://github.com/cloudflare/mcp-server-cloudflare",
+    "description": "与 Cloudflare 服务集成，包括 Workers、KV、R2 和 D1",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e52e5af247f2",
+    "name": "alexbakers/mcp-ipfs",
+    "homepage": "https://github.com/alexbakers/mcp-ipfs",
+    "description": "上传和操作 IPFS 存储",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-60dc7529f731",
+    "name": "alexei-led/aws-mcp-server",
+    "homepage": "https://github.com/alexei-led/aws-mcp-server",
+    "description": "一款轻量但功能强大的服务器，使AI助手能够在支持多架构的安全Docker环境中执行AWS CLI命令、使用Unix管道，并为常见AWS任务应用提示模板。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-278acbe97b6a",
+    "name": "aliyun/alibaba-cloud-ops-mcp-server",
+    "homepage": "https://github.com/aliyun/alibaba-cloud-ops-mcp-server",
+    "description": "一款MCP服务器，使AI助手能够运维管理阿里云上的资源，支持ECS、云监控、OOS和其他各种广泛使用的云产品。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ff372a9f403b",
+    "name": "Kubernetes MCP Server",
+    "homepage": "https://github.com/strowk/mcp-k8s-go",
+    "description": "🏎️ ☁️ 通过 MCP 操作 Kubernetes 集群",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b90af31f50b0",
+    "name": "@flux159/mcp-server-kubernetes",
+    "homepage": "https://github.com/Flux159/mcp-server-kubernetes",
+    "description": "📇 ☁️/🏠 使用 Typescript 实现 Kubernetes 集群中针对 pod、部署、服务的操作。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-349920a15ddc",
+    "name": "@manusa/Kubernetes MCP Server",
+    "homepage": "https://github.com/manusa/kubernetes-mcp-server",
+    "description": "🏎️ 🏠 一个功能强大的Kubernetes MCP服务器，额外支持OpenShift。除了为**任何**Kubernetes资源提供CRUD操作外，该服务器还提供专用工具与您的集群进行交互。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-861bdf25738c",
+    "name": "mctlhq/mctl-mcp",
+    "homepage": "https://github.com/mctlhq/mctl-mcp",
+    "description": "面向 Kubernetes 管理和自动化 GitOps 的 AI 原生 platform（30+ 工具）。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-86fa3a444c7e",
+    "name": "mrostamii/rancher-mcp-server",
+    "homepage": "https://github.com/mrostamii/rancher-mcp-server",
+    "description": "面向 Rancher 生态的 MCP 服务器，支持多集群 Kubernetes 操作、Harvester HCI 管理（虚拟机、存储、网络）以及 Fleet GitOps 工具。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b5e1201b6b6b",
+    "name": "wenhuwang/mcp-k8s-eye",
+    "homepage": "https://github.com/wenhuwang/mcp-k8s-eye",
+    "description": "wenhuwang/mcp-k8s-eye",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a94fb9412546",
+    "name": "johnneerdael/netskope-mcp",
+    "homepage": "https://github.com/johnneerdael/netskope-mcp",
+    "description": "提供对 Netskope Private Access 环境中所有组件的访问权限，包含详细的设置信息和 LLM 使用示例。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-601e015c8645",
+    "name": "nwiizo/tfmcp",
+    "homepage": "https://github.com/nwiizo/tfmcp",
+    "description": "🦀 🏠 - 一个Terraform MCP服务器，允许AI助手管理和操作Terraform环境，实现读取配置、分析计划、应用配置以及管理Terraform状态的功能。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e50108bec1ab",
+    "name": "bright8192/esxi-mcp-server",
+    "homepage": "https://github.com/bright8192/esxi-mcp-server",
+    "description": "提供对 VMware ESXi/vCenter 管理服务器，提供简单的 REST API 接口来管理虚拟机。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b5c76c7d7852",
+    "name": "weibaohui/k8m",
+    "homepage": "https://github.com/weibaohui/k8m",
+    "description": "🏎️ ☁️/🏠 提供MCP多集群k8s管理操作，提供管理界面、日志，内置近50种工具，覆盖常见运维开发场景，支持常规资源、CRD资源。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3ff9c9000cd1",
+    "name": "rrmistry/tilt-mcp",
+    "homepage": "https://github.com/rrmistry/tilt-mcp",
+    "description": "一个与 Tilt 集成的 Model Context Protocol 服务器，为 Kubernetes 开发环境提供对 Tilt 资源、日志和管理操作的程序化访问。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-50a3e411fbba",
+    "name": "silenceper/mcp-k8s",
+    "homepage": "https://github.com/silenceper/mcp-k8s",
+    "description": "silenceper/mcp-k8s",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-52066143e252",
+    "name": "portainer/portainer-mcp",
+    "homepage": "https://github.com/portainer/mcp-server",
+    "description": "一个用于管理 Portainer 容器管理平台的 MCP 服务器，支持通过自然语言交互来管理容器、镜像、网络和卷等资源。",
+    "category": "云平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-24733a2f8449",
+    "name": "jinzcdev/leetcode-mcp-server",
+    "homepage": "https://github.com/jinzcdev/leetcode-mcp-server",
+    "description": "一个专为 LeetCode(力扣) 设计的 MCP 服务，实现自动化获取编程题目、题解文章、提交记录等公开数据，并支持用户认证（用于笔记、解题进度等私有数据），同时支持 `leetcode.com`（国际版）和 `leetcode.cn`（中国版）双站点。",
+    "category": "编程智能体",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a8638ff440b6",
+    "name": "freema/openclaw-mcp",
+    "homepage": "https://github.com/freema/openclaw-mcp",
+    "description": "用于 OpenClaw AI 助手集成的 MCP 服务器。通过同步/异步工具、OAuth 2.1 认证和面向 Claude.ai 的 SSE 传输，使 Claude 能够将任务委派给 OpenClaw 代理。",
+    "category": "命令行",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ff8005a8585a",
+    "name": "ferrislucas/iterm-mcp",
+    "homepage": "https://github.com/ferrislucas/iterm-mcp",
+    "description": "一个为 iTerm 终端提供访问能力的 MCP 服务器。您可以执行命令，并就终端中看到的内容进行提问交互。",
+    "category": "命令行",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-84862f585366",
+    "name": "g0t4/mcp-server-commands",
+    "homepage": "https://github.com/g0t4/mcp-server-commands",
+    "description": "使用`run_command`和`run_script`工具运行任何命令。",
+    "category": "命令行",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-331d27cd872c",
+    "name": "MladenSU/cli-mcp-server",
+    "homepage": "https://github.com/MladenSU/cli-mcp-server",
+    "description": "具有安全执行和可定制安全策略的命令行界面",
+    "category": "命令行",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-cac4d163b4fb",
+    "name": "tumf/mcp-shell-server",
+    "homepage": "https://github.com/tumf/mcp-shell-server",
+    "description": "tumf/mcp-shell-server",
+    "category": "命令行",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-be4a23548452",
+    "name": "zcaceres/gtasks-mcp",
+    "homepage": "https://github.com/zcaceres/gtasks-mcp",
+    "description": "📇 ☁️ - 用于管理 Google Tasks 的 MCP 服务器",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-349b4cc7bf09",
+    "name": "hannesrudolph/imessage-query-fastmcp-mcp-server",
+    "homepage": "https://github.com/hannesrudolph/imessage-query-fastmcp-mcp-server",
+    "description": "MCP 服务器通过模型上下文协议 (MCP) 提供对 iMessage 数据库的安全访问，使 LLM 能够通过适当的电话号码验证和附件处理来查询和分析 iMessage 对话",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-61bdff875424",
+    "name": "FastAlertNow/mcp-server",
+    "homepage": "https://github.com/FastAlertNow/mcp-server",
+    "description": "FastAlert MCP 服务器 - FastAlert 的官方 Model Context Protocol (MCP) 服务器。该服务器允许 AI 代理（如 Claude、ChatGPT 和 Cursor）列出您的频道，并通过 FastAlert API 直接发送通知。 !FastAlert 图标",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b2f49b331599",
+    "name": "@modelcontextprotocol/server-slack",
+    "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/slack",
+    "description": "用于频道管理和消息传递的 Slack 工作区集成",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-55568b7835d0",
+    "name": "@keturiosakys/bluesky-context-server",
+    "homepage": "https://github.com/keturiosakys/bluesky-context-server",
+    "description": "Bluesky 实例集成，用于查询和交互",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b2e24cccccc5",
+    "name": "MarkusPfundstein/mcp-gsuite",
+    "homepage": "https://github.com/MarkusPfundstein/mcp-gsuite",
+    "description": "🐍 ☁️ - 与 Gmail 和 Google 日历集成。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-383df519884d",
+    "name": "adhikasp/mcp-twikit",
+    "homepage": "https://github.com/adhikasp/mcp-twikit",
+    "description": "与 Twitter 搜索和时间线进行交互",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d2498d401444",
+    "name": "gotoolkits/wecombot",
+    "homepage": "https://github.com/gotoolkits/mcp-wecombot-server.git",
+    "description": "🚀 ☁️  - MCP服务器 Tools 应用程序，用于向企业微信群机器人发送各种类型的消息。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c79fe319ba34",
+    "name": "AbdelStark/nostr-mcp",
+    "homepage": "https://github.com/AbdelStark/nostr-mcp",
+    "description": "🌐 ☁️ - Nostr MCP 服务器，支持与 Nostr 交互，可发布笔记等功能。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-841f6ba2ce21",
+    "name": "elie222/inbox-zero",
+    "homepage": "https://github.com/elie222/inbox-zero/tree/main/apps/mcp-server",
+    "description": "🐍 ☁️ - 一款专为 Inbox Zero 设计的MCP服务器。在Gmail基础上新增功能，例如识别需要回复或跟进处理的邮件。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e2667df1e2ba",
+    "name": "carterlasalle/mac_messages_mcp",
+    "homepage": "https://github.com/carterlasalle/mac_messages_mcp",
+    "description": "一款通过模型上下文协议（MCP）安全连接iMessage数据库的MCP服务器，支持大语言模型查询与分析iMessage对话。该系统具备完善的电话号码验证、附件处理、联系人管理、群聊操作功能，并全面支持消息收发。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1371dd4ae372",
+    "name": "sawa-zen/vrchat-mcp",
+    "homepage": "https://github.com/sawa-zen/vrchat-mcp",
+    "description": "📇 🏠 这是一个与VRChat API交互的MCP服务器。您可以获取VRChat的好友、世界、化身等信息。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c8688f9f7f5a",
+    "name": "line/line-bot-mcp-server",
+    "homepage": "https://github.com/line/line-bot-mcp-server",
+    "description": "整合 LINE 官方账号的 MCP 服务器",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3e66b1149fe4",
+    "name": "ztxtxwd/open-feishu-mcp-server",
+    "homepage": "https://github.com/ztxtxwd/open-feishu-mcp-server",
+    "description": "一个内置飞书OAuth认证的模型上下文协议(MCP)服务器，支持远程连接并提供全面的飞书文档管理工具，包括块创建、内容更新和高级功能。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0c12df9a7acf",
+    "name": "arpitbatra123/mcp-googletasks",
+    "homepage": "https://github.com/arpitbatra123/mcp-googletasks",
+    "description": "📇 ☁️ - 一个用于连接Google Tasks API的MCP服务器",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0ab8709b340f",
+    "name": "teddyzxcv/ntfy-mcp",
+    "homepage": "https://github.com/teddyzxcv/ntfy-mcp",
+    "description": "teddyzxcv/ntfy-mcp",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1933faac962e",
+    "name": "YCloud-Developers/ycloud-whatsapp-mcp-server",
+    "homepage": "https://github.com/YCloud-Developers/ycloud-whatsapp-mcp-server",
+    "description": "一个通过 YCloud 平台发送 WhatsApp Business 消息的 MCP 服务器。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3402c82bfe36",
+    "name": "jaipandya/producthunt-mcp-server",
+    "homepage": "https://github.com/jaipandya/producthunt-mcp-server",
+    "description": "Product Hunt 的 MCP 服务器。与热门帖子、评论、收藏集、用户等进行交互。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-eada8a065d1d",
+    "name": "Danielpeter-99/calcom-mcp",
+    "homepage": "https://github.com/Danielpeter-99/calcom-mcp",
+    "description": "用于 Cal.com 的 MCP 服务器。通过 LLM 管理事件类型、创建预约，并访问 Cal.com 的日程数据。",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ecfe96f6cc5d",
+    "name": "areweai/tsgram-mcp",
+    "homepage": "https://github.com/areweai/tsgram-mcp",
+    "description": "TSgram: 在 TypeScript 中实现的 Telegram + Claude，支持手机端访问本地工作区。随时随地读写代码并 vibe code！",
+    "category": "社交",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-21b12a0c3a09",
+    "name": "sergehuber/inoyu-mcp-unomi-server",
+    "homepage": "https://github.com/sergehuber/inoyu-mcp-unomi-server",
+    "description": "MCP 服务器用于访问和更新 Apache Unomi CDP 服务器上的配置文件。",
+    "category": "客户数据平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-888b74d190d8",
+    "name": "OpenDataMCP/OpenDataMCP",
+    "homepage": "https://github.com/OpenDataMCP/OpenDataMCP",
+    "description": "使用模型上下文协议将任何开放数据连接到任何 LLM。",
+    "category": "客户数据平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8470e3d6198d",
+    "name": "tinybirdco/mcp-tinybird",
+    "homepage": "https://github.com/tinybirdco/mcp-tinybird",
+    "description": "MCP 服务器可从任何 MCP 客户端与 Tinybird Workspace 进行交互。",
+    "category": "客户数据平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-42dcd3e51ed4",
+    "name": "@iaptic/mcp-server-iaptic",
+    "homepage": "https://github.com/iaptic/mcp-server-iaptic",
+    "description": "连接 iaptic 平台，让您轻松查询客户购买记录、交易数据以及应用营收统计信息。",
+    "category": "客户数据平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-553e9a0c742e",
+    "name": "@antv/mcp-server-chart",
+    "homepage": "https://github.com/antvis/mcp-server-chart",
+    "description": "一个基于 AntV 生成数据可视化图表的 MCP Server 插件。",
+    "category": "客户数据平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-dde85a1e547d",
+    "name": "hustcc/mcp-echarts",
+    "homepage": "https://github.com/hustcc/mcp-echarts",
+    "description": "AI 动态生成 Apache ECharts 语法的可视化图表 MCP。",
+    "category": "客户数据平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8691a6bcdccb",
+    "name": "hustcc/mcp-mermaid",
+    "homepage": "https://github.com/hustcc/mcp-mermaid",
+    "description": "AI 动态生成 Mermaid 语法的可视化图表 MCP。",
+    "category": "客户数据平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-beaa4343057e",
+    "name": "aliyun/alibabacloud-tablestore-mcp-server",
+    "homepage": "https://github.com/aliyun/alibabacloud-tablestore-mcp-server",
+    "description": "阿里云表格存储(Tablestore)的 MCP 服务器实现，特性包括添加文档、基于向量和标量进行语义搜索、RAG友好。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-61837887a50b",
+    "name": "cr7258/elasticsearch-mcp-server",
+    "homepage": "https://github.com/cr7258/elasticsearch-mcp-server",
+    "description": "集成 Elasticsearch 的 MCP 服务器实现",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4c435f3a415c",
+    "name": "domdomegg/airtable-mcp-server",
+    "homepage": "https://github.com/domdomegg/airtable-mcp-server",
+    "description": "Airtable 数据库集成，具有架构检查、读写功能",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-510bc0e0a008",
+    "name": "rashidazarang/airtable-mcp",
+    "homepage": "https://github.com/rashidazarang/airtable-mcp",
+    "description": "将AI工具直接连接至Airtable。通过自然语言查询、创建、更新及删除记录。通过标准化MCP接口实现的功能包括：基库管理、表格操作、结构修改、记录筛选以及数据迁移。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-159e13cb211e",
+    "name": "LucasHild/mcp-server-bigquery",
+    "homepage": "https://github.com/LucasHild/mcp-server-bigquery",
+    "description": "BigQuery 数据库集成了架构检查和查询功能",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-dd0025afb53a",
+    "name": "c4pt0r/mcp-server-tidb",
+    "homepage": "https://github.com/c4pt0r/mcp-server-tidb",
+    "description": "TiDB 数据库集成，包括表结构的建立 DDL 和 SQL 的执行",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-22e80ea8ae3e",
+    "name": "crystaldba/postgres-mcp",
+    "homepage": "https://github.com/crystaldba/postgres-mcp",
+    "description": "全能型 MCP 服务器，用于 Postgres 开发和运维，提供性能分析、调优和健康检查等工具",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-981c2cdee3d2",
+    "name": "tradercjz/dolphindb-mcp-server",
+    "homepage": "https://github.com/tradercjz/dolphindb-mcp-server",
+    "description": "TDolphinDB数据库集成，具备模式检查与查询功能",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1d30c64acc72",
+    "name": "ergut/mcp-bigquery-server",
+    "homepage": "https://github.com/ergut/mcp-bigquery-server",
+    "description": "Google BigQuery 集成的服务器实现，可实现直接 BigQuery 数据库访问和查询功能",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-27418038cc05",
+    "name": "ClickHouse/mcp-clickhouse",
+    "homepage": "https://github.com/ClickHouse/mcp-clickhouse",
+    "description": "集成 Apache Kafka 和 Timeplus。可以获取Kafka中的最新数据，并通过 Timeplus 来 SQL 查询。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4b54508ba234",
+    "name": "@gannonh/firebase-mcp",
+    "homepage": "https://github.com/gannonh/firebase-mcp",
+    "description": "包括认证、Firestore和存储在内的Firebase服务。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-57c1dd0a5df1",
+    "name": "jovezhong/mcp-timeplus",
+    "homepage": "https://github.com/jovezhong/mcp-timeplus",
+    "description": "用于Apache Kafka和Timeplus的MCP服务器。能够列出Kafka主题、轮询Kafka消息、将Kafka数据本地保存，并通过Timeplus使用SQL查询流数据。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-fd7111542cf4",
+    "name": "@fireproof-storage/mcp-database-server",
+    "homepage": "https://github.com/fireproof-storage/mcp-database-server",
+    "description": "Fireproof 分布式账本数据库，支持多用户数据同步",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f77010f7befe",
+    "name": "designcomputer/mysql_mcp_server",
+    "homepage": "https://github.com/designcomputer/mysql_mcp_server",
+    "description": "MySQL 数据库集成可配置的访问控制、模式检查和全面的安全指南",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5c646ac7a4a3",
+    "name": "wenb1n-dev/mysql_mcp_server_pro",
+    "homepage": "https://github.com/wenb1n-dev/mysql_mcp_server_pro",
+    "description": "支持SSE，STDIO；不仅止于mysql的增删改查功能；还包含了数据库异常分析能力；根据角色控制数据库权限；且便于开发者们进行个性化的工具扩展",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-76262949522c",
+    "name": "wenb1n-dev/SmartDB_MCP",
+    "homepage": "https://github.com/wenb1n-dev/SmartDB_MCP",
+    "description": "通用型数据库mcp服务器，支持多库同时连接，提供数据库操作，健康分析，sql优化等工具，支持MySQL, PostgreSQL, SQL Server, MariaDB,达梦,Oracle等主流数据库，支持Streamable Http,SSE，STDIO；支持OAuth 2.0；且便于开发者们进行个性化的工具扩展",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f3c46ca6af2f",
+    "name": "f4ww4z/mcp-mysql-server",
+    "homepage": "https://github.com/f4ww4z/mcp-mysql-server",
+    "description": "基于 Node.js 的 MySQL 数据库集成，提供安全的 MySQL 数据库操作",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6e96913495c4",
+    "name": "FreePeak/db-mcp-server",
+    "homepage": "https://github.com/FreePeak/db-mcp-server",
+    "description": "一款基于Golang构建的高性能多数据库MCP服务器，支持MySQL和PostgreSQL（即将支持NoSQL）。内置查询执行、事务管理、模式探索、查询构建以及性能分析工具，与Cursor无缝集成优化数据库工作流程。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-eb0729993bd2",
+    "name": "@modelcontextprotocol/server-postgres",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/postgres",
+    "description": "PostgreSQL 数据库集成了模式检查和查询功能",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d190b59632c8",
+    "name": "@modelcontextprotocol/server-sqlite",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
+    "description": "具有内置分析功能的 SQLite 数据库操作",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-553568100405",
+    "name": "@joshuarileydev/supabase-mcp-server",
+    "homepage": "https://github.com/joshuarileydev/supabase",
+    "description": "Supabase MCP 服务器用于管理和创建 Supabase 中的项目和组织",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a523f8712bf0",
+    "name": "ktanaka101/mcp-server-duckdb",
+    "homepage": "https://github.com/ktanaka101/mcp-server-duckdb",
+    "description": "DuckDB 数据库集成了模式检查和查询功能",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5b90ee98e0f5",
+    "name": "Dataring-engineering/mcp-server-trino",
+    "homepage": "https://github.com/Dataring-engineering/mcp-server-trino",
+    "description": "用于查询和访问Trino集群数据的Trino MCP服务器。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3ae922862346",
+    "name": "tuannvm/mcp-trino",
+    "homepage": "https://github.com/tuannvm/mcp-trino",
+    "description": "用于 Trino 的 Model Context Protocol (MCP) 服务器的 Go 实现.",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7a9aa67fbdce",
+    "name": "memgraph/mcp-memgraph",
+    "homepage": "https://github.com/memgraph/ai-toolkit/tree/main/integrations/mcp-memgraph",
+    "description": "Memgraph MCP 서버 - 包含一个对Memgraph执行查询的工具以及一个模式资源。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-391152b64ac7",
+    "name": "furey/mongodb-lens",
+    "homepage": "https://github.com/furey/mongodb-lens",
+    "description": "MongoDB Lens：功能全面的MongoDB数据库MCP服务器",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d4fc59f7d5a9",
+    "name": "QuantGeekDev/mongo-mcp",
+    "homepage": "https://github.com/QuantGeekDev/mongo-mcp",
+    "description": "MongoDB 集成使 LLM 能够直接与数据库交互。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-328bba43ec52",
+    "name": "kiliczsh/mcp-mongo-server",
+    "homepage": "https://github.com/kiliczsh/mcp-mongo-server",
+    "description": "MongoDB 的模型上下文协议服务器",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c1c3f1b34272",
+    "name": "KashiwaByte/vikingdb-mcp-server",
+    "homepage": "https://github.com/KashiwaByte/vikingdb-mcp-server",
+    "description": "VikingDB 数据库集成了collection和index的基本信息介绍，并提供向量存储和查询的功能.",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1753a59c9fd3",
+    "name": "neo4j-contrib/mcp-neo4j",
+    "homepage": "https://github.com/neo4j-contrib/mcp-neo4j",
+    "description": "Neo4j 的模型上下文协议",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-701a9a6c48be",
+    "name": "niledatabase/nile-mcp-server",
+    "homepage": "https://github.com/niledatabase/nile-mcp-server",
+    "description": "Nile 的 Postgres 平台 MCP 服务器 - 使用 LLM 管理和查询 Postgres 数据库、租户、用户和认证",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-cec14842d82c",
+    "name": "isaacwasserman/mcp-snowflake-server",
+    "homepage": "https://github.com/isaacwasserman/mcp-snowflake-server",
+    "description": "Snowflake 集成实现，支持读取和（可选）写入操作，并具备洞察跟踪功能",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-be171133a687",
+    "name": "hannesrudolph/sqlite-explorer-fastmcp-mcp-server",
+    "homepage": "https://github.com/hannesrudolph/sqlite-explorer-fastmcp-mcp-server",
+    "description": "一个 MCP 服务器，通过模型上下文协议 （MCP） 提供对 SQLite 数据库的安全只读访问。该服务器是使用 FastMCP 框架构建的，它使 LLM 能够探索和查询具有内置安全功能和查询验证的 SQLite 数据库。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c9f7b597a8ef",
+    "name": "sirmews/mcp-pinecone",
+    "homepage": "https://github.com/sirmews/mcp-pinecone",
+    "description": "Pinecone 与矢量搜索功能的集成",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4ca6fdb714f3",
+    "name": "runekaagaard/mcp-alchemy",
+    "homepage": "https://github.com/runekaagaard/mcp-alchemy",
+    "description": "基于SQLAlchemy的通用数据库集成，支持PostgreSQL、MySQL、MariaDB、SQLite、Oracle、MS SQL Server等众多数据库。具有架构和关系检查以及大型数据集分析功能。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0dedf82b5dc1",
+    "name": "subnetmarco/pgmcp",
+    "homepage": "https://github.com/subnetmarco/pgmcp",
+    "description": "具有自动流传输、只读安全性和通用数据库兼容性的自然语言PostgreSQL查询。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0775bf7852ce",
+    "name": "pgtuner_mcp",
+    "homepage": "https://github.com/isdaniel/pgtuner_mcp",
+    "description": "提供 AI 驱动的 PostgreSQL 性能调优能力。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d919c814ecc4",
+    "name": "Zhwt/go-mcp-mysql",
+    "homepage": "https://github.com/Zhwt/go-mcp-mysql",
+    "description": "基于 Go 的开箱即用的 MySQL MCP 服务器，支持只读模式和自动 Schema 检查。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0773be816ad1",
+    "name": "mcp-server-jdbc",
+    "homepage": "https://github.com/quarkiverse/quarkus-mcp-servers/tree/main/jdbc",
+    "description": "连接到任何兼容JDBC的数据库，执行查询、插入、更新、删除等操作。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-21af86dd143c",
+    "name": "pab1it0/adx-mcp-server",
+    "homepage": "https://github.com/pab1it0/adx-mcp-server",
+    "description": "查询和分析Azure Data Explorer数据库",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d4fe0afc1f5a",
+    "name": "pab1it0/prometheus-mcp-server",
+    "homepage": "https://github.com/pab1it0/prometheus-mcp-server",
+    "description": "查询并分析开源监控系统Prometheus。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-88a78fd42b68",
+    "name": "prisma/mcp",
+    "homepage": "https://github.com/prisma/mcp",
+    "description": "使 LLM 能够管理 Prisma Postgres 数据库（例如创建新数据库并运行迁移或查询）。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1101a4b8712e",
+    "name": "neondatabase/mcp-server-neon",
+    "homepage": "https://github.com/neondatabase/mcp-server-neon",
+    "description": "用于通过 Neon Serverless Postgres 创建和管理 Postgres 数据库的MCP服务器",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3aa2782665b4",
+    "name": "XGenerationLab/xiyan_mcp_server",
+    "homepage": "https://github.com/XGenerationLab/xiyan_mcp_server",
+    "description": "一个支持通过自然语言查询从数据库获取数据的MCP服务器，由XiyanSQL作为文本转SQL的大语言模型提供支持。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-46b716d893c5",
+    "name": "bytebase/dbhub",
+    "homepage": "https://github.com/bytebase/dbhub",
+    "description": "支持主流数据库的通用数据库MCP服务器。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2575af6163ab",
+    "name": "GreptimeTeam/greptimedb-mcp-server",
+    "homepage": "https://github.com/GreptimeTeam/greptimedb-mcp-server",
+    "description": "查询 GreptimeDB 的 MCP 服务。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f42e1cd58ddf",
+    "name": "idoru/influxdb-mcp-server",
+    "homepage": "https://github.com/idoru/influxdb-mcp-server",
+    "description": "针对 InfluxDB OSS API v2 运行查询",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-238edf7afbf9",
+    "name": "xing5/mcp-google-sheets",
+    "homepage": "https://github.com/xing5/mcp-google-sheets",
+    "description": "一个用于与 Google Sheets 交互的模型上下文协议服务器。该服务器通过 Google Sheets API 提供创建、读取、更新和管理电子表格的工具。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8a8dbf7bd41f",
+    "name": "freema/mcp-gsheets",
+    "homepage": "https://github.com/freema/mcp-gsheets",
+    "description": "具有全面读取、写入、格式化和工作表管理功能的 Google Sheets API 集成 MCP 服务器。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a057ee69a76f",
+    "name": "qdrant/mcp-server-qdrant",
+    "homepage": "https://github.com/qdrant/mcp-server-qdrant",
+    "description": "一个Qdrant MCP服务器",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-155b0a09fd48",
+    "name": "ydb/ydb-mcp",
+    "homepage": "https://github.com/ydb-platform/ydb-mcp",
+    "description": "MCP 服务器：用于与 YDB 数据库交互。",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7ae169ea4ebd",
+    "name": "yincongcyincong/VictoriaMetrics-mcp-server",
+    "homepage": "https://github.com/yincongcyincong/VictoriaMetrics-mcp-server",
+    "description": "VictoriaMetrics 数据库 MCP 服务器.",
+    "category": "数据库",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-dd1a5047b53f",
+    "name": "flowcore/mcp-flowcore-platform",
+    "homepage": "https://github.com/flowcore-io/mcp-flowcore-platform",
+    "description": "与 Flowcore 交互以执行操作、提取数据以及分析、交叉引用和利用数据核心或公共数据核心中的任何数据；全部通过人类语言完成。",
+    "category": "数据平台",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-de08040c3631",
+    "name": "JamesANZ/system-prompts-mcp-server",
+    "homepage": "https://github.com/JamesANZ/system-prompts-mcp-server",
+    "description": "将大量编码助手的系统提示提供为 MCP 工具，支持模型感知推荐与人格激活，可模拟 Cursor、Devin 等代理。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-25708987ae32",
+    "name": "21st-dev/Magic-MCP",
+    "homepage": "https://github.com/21st-dev/magic-mcp",
+    "description": "打造受21世纪顶尖设计工程师启发的精致UI组件。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ff40f6131c0b",
+    "name": "a-25/ios-mcp-code-quality-server",
+    "homepage": "https://github.com/a-25/ios-mcp-code-quality-server",
+    "description": "iOS代码质量分析和测试自动化服务器。提供全面的Xcode测试执行、SwiftLint集成和详细的故障分析。支持CLI和MCP服务器两种模式，适用于开发者直接使用和AI助手集成。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2bebe3e3812d",
+    "name": "FI-Mihej/codebase-agent-mcp",
+    "homepage": "https://github.com/FI-Mihej/codebase-agent-mcp",
+    "description": "一个子级编排器(同时充当 MCP 服务器和 MCP 客户端)。它将文档分析、源代码分析，以及与相关上下文提供型 MCP 服务器的交互，委托给本地或低成本的 OpenAI 兼容大语言模型(LLM)处理。这可以显著降低顶级 LLM 编码代理的令牌(Token)消耗和上下文规模。 `uvx codebase-agent-mcp`",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4518acba2c3f",
+    "name": "Hypersequent/qasphere-mcp",
+    "homepage": "https://github.com/Hypersequent/qasphere-mcp",
+    "description": "与QA Sphere测试管理系统集成，使LLM能够发现、总结和操作测试用例，并可直接从AI驱动的IDE访问",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-24cf555d1162",
+    "name": "Coment-ML/Opik-MCP",
+    "homepage": "https://github.com/comet-ml/opik-mcp",
+    "description": "使用自然语言与您的LLM可观测性、Opik捕获的追踪和监控数据进行对话。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-9d17274aa5e7",
+    "name": "GLips/Figma-Context-MCP",
+    "homepage": "https://github.com/GLips/Figma-Context-MCP",
+    "description": "为编码代理提供直接访问Figma数据的权限，助力其一次性完成设计实现。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f40ae5840017",
+    "name": "mhmzdev/Figma-Flutter-MCP",
+    "homepage": "https://github.com/mhmzdev/Figma-Flutter-MCP",
+    "description": "为编码代理提供直接访问Figma数据的权限，帮助他们编写Flutter代码来构建应用程序，包括资源导出、组件维护和全屏实现。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c458da06528b",
+    "name": "QuantGeekDev/docker-mcp",
+    "homepage": "https://github.com/QuantGeekDev/docker-mcp",
+    "description": "通过 MCP 进行 Docker 容器管理和操作",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-48185eebb199",
+    "name": "zcaceres/fetch-mcp",
+    "homepage": "https://github.com/zcaceres/fetch-mcp",
+    "description": "一个灵活获取 JSON、文本和 HTML 数据的 MCP 服务器",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8fb1d01539a2",
+    "name": "kealuya/mcp-jina-ai",
+    "homepage": "https://github.com/kealuya/mcp-jina-ai",
+    "description": "集成 Jina.ai 将目标网页进行总结，转换成对LLM友好的Markdown格式返回",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8e401f3ad1b1",
+    "name": "r-huijts/xcode-mcp-server",
+    "homepage": "https://github.com/r-huijts/xcode-mcp-server",
+    "description": "Xcode 集成，支持项目管理、文件操作和构建自动化",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-14e146e26d78",
+    "name": "snaggle-ai/openapi-mcp-server",
+    "homepage": "https://github.com/snaggle-ai/openapi-mcp-server",
+    "description": "使用开放 API 规范 (v3) 连接任何 HTTP/REST API 服务器",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8f46af5a6638",
+    "name": "endorhq/cli",
+    "homepage": "https://github.com/endorhq/cli",
+    "description": "Endor 让您的 AI 代理在隔离沙盒中运行 MariaDB、Postgres、Redis、Memcached、Alpine 或 Valkey 等服务。获取预配置的应用程序，启动时间不到 5 秒.",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1dafdd12b120",
+    "name": "jetbrains/mcpProxy",
+    "homepage": "https://github.com/JetBrains/mcpProxy",
+    "description": "连接到 JetBrains IDE",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d6431e776cef",
+    "name": "Kapeli/dash-mcp-server",
+    "homepage": "https://github.com/Kapeli/dash-mcp-server",
+    "description": "Dash 的 MCP 服务器，macOS API 文档浏览器。即时搜索超过 200 个文档集。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-39f0119a2137",
+    "name": "tumf/mcp-text-editor",
+    "homepage": "https://github.com/tumf/mcp-text-editor",
+    "description": "面向行的文本文件编辑器。针对 LLM 工具进行了优化，具有高效的部分文件访问功能，可最大限度地减少令牌使用量。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ad88beee3525",
+    "name": "@joshuarileydev/simulator-mcp-server",
+    "homepage": "https://github.com/JoshuaRileyDev/simulator-mcp-server",
+    "description": "用于控制 iOS 模拟器的 MCP 服务器",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4d935c46ae45",
+    "name": "@joshuarileydev/app-store-connect-mcp-server",
+    "homepage": "https://github.com/JoshuaRileyDev/app-store-connect-mcp-server",
+    "description": "一个 MCP 服务器，用于与 iOS 开发者的 App Store Connect API 进行通信",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-07b3eb464f96",
+    "name": "@sammcj/mcp-package-version",
+    "homepage": "https://github.com/sammcj/mcp-package-version",
+    "description": "MCP 服务器可帮助 LLM 在编写代码时建议最新的稳定软件包版本。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b4fa9728d52f",
+    "name": "davidan90/time-node-mcp",
+    "homepage": "https://github.com/davidan90/time-node-mcp",
+    "description": "支持时区的日期和时间操作，支持 IANA 时区、时区转换和夏令时处理。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-14267b1aea6c",
+    "name": "delano/postman-mcp-server",
+    "homepage": "https://github.com/delano/postman-mcp-server",
+    "description": "与 Postman API 进行交互",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2acf7b17f4d5",
+    "name": "vivekVells/mcp-pandoc",
+    "homepage": "https://github.com/vivekVells/mcp-pandoc",
+    "description": "基于 Pandoc 的 MCP 服务器，支持 Markdown、HTML、PDF、DOCX（.docx）、csv 等格式之间的无缝转换",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-dd161863bc42",
+    "name": "pskill9/website-downloader",
+    "homepage": "https://github.com/pskill9/website-downloader",
+    "description": "这个 MCP 服务器提供了使用 wget 下载完整网站的工具，可保留网站结构并转换链接以支持本地访问",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6356eac33e06",
+    "name": "public-ui/kolibri",
+    "homepage": "https://github.com/public-ui/kolibri",
+    "description": "流式 KoliBri MCP 服务器（NPM：`@public-ui/mcp`），通过托管的 HTTP 端点或本地 `kolibri-mcp` CLI 提供 200+ 份确保无障碍的 Web 组件示例、规范、文档和场景。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0dac3f92702a",
+    "name": "yiwenlu66/PiloTY",
+    "homepage": "https://github.com/yiwenlu66/PiloTY",
+    "description": "用于PTY操作的AI助手，使智能体能够通过有状态会话、SSH连接和后台进程管理来控制交互式终端",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8d75ab26aeb0",
+    "name": "@lamemind/mcp-server-multiverse",
+    "homepage": "https://github.com/lamemind/mcp-server-multiverse",
+    "description": "一种中间件服务器，允许多个相同MCP服务器的隔离实例以独立的命名空间和配置共存。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-18c9bb4448de",
+    "name": "j4c0bs/mcp-server-sql-analyzer",
+    "homepage": "https://github.com/j4c0bs/mcp-server-sql-analyzer",
+    "description": "基于 SQLGlot 的 MCP 服务器，提供 SQL 分析、代码检查和方言转换功能",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-34b046567ec9",
+    "name": "@haris-musa/excel-mcp-server",
+    "homepage": "https://github.com/haris-musa/excel-mcp-server",
+    "description": "一个Excel操作服务器，提供工作簿创建、数据操作、格式设置及高级功能（图表、数据透视表、公式）。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ec1f00fafd86",
+    "name": "xcodebuild",
+    "homepage": "https://github.com/ShenghaiWang/xcodebuild",
+    "description": "xcodebuild",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4006742517b4",
+    "name": "@jasonjmcghee/claude-debugs-for-you",
+    "homepage": "https://github.com/jasonjmcghee/claude-debugs-for-you",
+    "description": "一个MCP服务器及VS Code扩展，支持通过断点和表达式评估实现（语言无关的）自动调试。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d1b2de7df796",
+    "name": "@Jktfe/serveMyAPI",
+    "homepage": "https://github.com/Jktfe/serveMyAPI",
+    "description": "一个个人MCP（模型上下文协议）服务器，用于通过macOS钥匙串安全存储和跨项目访问API密钥。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-479b2d34cfb5",
+    "name": "@xzq.xu/jvm-mcp-server",
+    "homepage": "https://github.com/xzq-xu/jvm-mcp-server",
+    "description": "一个基于JVM的MCP（模型上下文协议）服务器的实现项目。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8035ca3f4703",
+    "name": "@yangkyeongmo@/mcp-server-apache-airflow",
+    "homepage": "https://github.com/yangkyeongmo/mcp-server-apache-airflow",
+    "description": "使用官方客户端连接至Apache Airflow的MCP服务器。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0e0141ae212e",
+    "name": "hyperb1iss/droidmind",
+    "homepage": "https://github.com/hyperb1iss/droidmind",
+    "description": "通过MCP利用AI控制安卓设备，实现设备操控、调试、系统分析及UI自动化，并配备全面的安全框架。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6d2273909b3e",
+    "name": "XixianLiang/HarmonyOS-mcp-server",
+    "homepage": "https://github.com/XixianLiang/HarmonyOS-mcp-server",
+    "description": "通过MCP利用AI控制鸿蒙(next)设备，实现设备操控及UI自动化",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-86fff95bbc9a",
+    "name": "Rootly-AI-Labs/Rootly-MCP-server",
+    "homepage": "https://github.com/Rootly-AI-Labs/Rootly-MCP-server",
+    "description": "用于事件管理平台 Rootly](https://rootly.com/) 的 MCP 服务器",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-10d40d77d8b9",
+    "name": "YuChenSSR/mindmap-mcp-server",
+    "homepage": "https://github.com/YuChenSSR/mindmap-mcp-server",
+    "description": "用于生成漂亮交互式思维导图mindmap的模型上下文协议（MCP）服务器。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f93ae9ff4b42",
+    "name": "InhiblabCore/mcp-image-compression",
+    "homepage": "https://github.com/InhiblabCore/mcp-image-compression",
+    "description": "用于本地压缩各种图片格式的 MCP 服务器。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0b315d0db1ce",
+    "name": "SDGLBL/mcp-claude-code",
+    "homepage": "https://github.com/SDGLBL/mcp-claude-code",
+    "description": "使用 MCP 实现的 Claude Code 功能，支持 AI 代码理解、修改和项目分析，并提供全面的工具支持。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-79f2cbae9406",
+    "name": "selvage-lab/selvage",
+    "homepage": "https://github.com/selvage-lab/selvage",
+    "description": "基于 LLM 的代码审查 MCP 服务器，具备 AST 驱动的智能上下文提取功能，支持 Claude、GPT、Gemini 以及通过 OpenRouter 的 20 余种模型。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a5b7c74bf5db",
+    "name": "IlyaGulya/gradle-mcp-server",
+    "homepage": "https://github.com/IlyaGulya/gradle-mcp-server",
+    "description": "使用 Gradle Tooling API 来检查项目、执行任务并在每个测试的级别进行测试结果报告的 Gradle 集成",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6e9b3c53daa1",
+    "name": "gofireflyio/firefly-mcp",
+    "homepage": "https://github.com/gofireflyio/firefly-mcp",
+    "description": "集成、发现、管理并通过Firefly规范化云资源。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-19f4b051c518",
+    "name": "api7/apisix-mcp",
+    "homepage": "https://github.com/api7/apisix-mcp",
+    "description": "api7/apisix-mcp",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0bd88a9c51d2",
+    "name": "ios-simulator-mcp",
+    "homepage": "https://github.com/joshuayoes/ios-simulator-mcp",
+    "description": "用于与 iOS 模拟器交互的模型上下文协议 (MCP) 服务器。此服务器允许您通过获取有关 iOS 模拟器的信息、控制 UI 交互和检查 UI 元素来与 iOS 模拟器交互。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-34f91b30f817",
+    "name": "higress-group/higress-ops-mcp-server",
+    "homepage": "https://github.com/higress-group/higress-ops-mcp-server",
+    "description": "支持对 Higress 网关进行全面的配置和管理。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-608fb4a00938",
+    "name": "ReAPI-com/mcp-openapi",
+    "homepage": "https://github.com/ReAPI-com/mcp-openapi",
+    "description": "MCP服务器让LLM能够了解您的OpenAPI规范的所有信息，以发现、解释和生成代码/模拟数据",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0c325da9721c",
+    "name": "automation-ai-labs/mcp-link",
+    "homepage": "https://github.com/automation-ai-labs/mcp-link",
+    "description": "无缝集成任何 API 与 AI 代理（通过 OpenAPI 架构）",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-973f0f0020c1",
+    "name": "cjo4m06/mcp-shrimp-task-manager",
+    "homepage": "https://github.com/cjo4m06/mcp-shrimp-task-manager",
+    "description": "一款专为编程开发设计的任务管理系统，通过先进的任务记忆、自我反思和依赖管理，增强如 Cursor AI 等编码代理的能力。 ShrimpTaskManager",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2a194f7b4269",
+    "name": "axliupore/mcp-code-runner",
+    "homepage": "https://github.com/axliupore/mcp-code-runner",
+    "description": "一个MCP服务器，用于在本地通过docker运行代码，并支持多种编程语言。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-aadb3074fd0d",
+    "name": "TencentEdgeOne/edgeone-pages-mcp",
+    "homepage": "https://github.com/TencentEdgeOne/edgeone-pages-mcp",
+    "description": "基于 EdgeOne Pages 的 MCP 服务器，支持代码部署为在线页面。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4bf51eb07c26",
+    "name": "yikakia/godoc-mcp-server",
+    "homepage": "https://github.com/yikakia/godoc-mcp-server",
+    "description": "查询 pkg.go.dev 上的 golang 包信息",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a04aacadd812",
+    "name": "lpigeon/ros-mcp-server",
+    "homepage": "https://github.com/lpigeon/ros-mcp-server",
+    "description": "ROS MCP服务器通过将用户的自然语言指令转换为ROS或ROS2控制指令，以支持机器人的控制。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2f0e685c22b4",
+    "name": "freema/mcp-design-system-extractor",
+    "homepage": "https://github.com/freema/mcp-design-system-extractor",
+    "description": "从 Storybook 设计系统中提取组件信息。提供 HTML、样式、props、依赖项、主题令牌和组件元数据，用于 AI 驱动的设计系统分析。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8563658f3377",
+    "name": "HainanZhao/mcp-gitlab-jira",
+    "homepage": "https://github.com/HainanZhao/mcp-gitlab-jira",
+    "description": "GitLab 和 Jira 的统一 MCP 服务器：通过 AI 代理管理项目、合并请求、文件、发布和工单。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-22c5f739223e",
+    "name": "gitkraken/gk-cli",
+    "homepage": "https://github.com/gitkraken/gk-cli",
+    "description": "一個用於與 GitKraken API 互動的命令列工具（CLI）。通過 gk mcp 提供一個 MCP 伺服器，不僅封裝了 GitKraken API，還支援 Jira、GitHub、GitLab 等多種服務。可與本地工具和遠端服務協同運作。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bc7324bcd7aa",
+    "name": "lpigeon/unitree-go2-mcp-server",
+    "homepage": "https://github.com/lpigeon/unitree-go2-mcp-server",
+    "description": "Unitree Go2 MCP服务器是一个基于MCP构建的服务器，允许用户通过由大语言模型解释的自然语言指令来控制Unitree Go2机器人。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ee0009e88636",
+    "name": "zaizaizhao/mcp-swagger-server",
+    "homepage": "https://github.com/zaizaizhao/mcp-swagger-server",
+    "description": "mcp-swagger-server将任何符合 OpenAPI/Swagger 规范的 REST API 转换为 Model Context Protocol (MCP) 格式,以支持ai客户端调用。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0c947dd653c9",
+    "name": "veelenga/claude-mermaid",
+    "homepage": "https://github.com/veelenga/claude-mermaid/",
+    "description": "Claude Code的Mermaid图表渲染MCP服务器，具有实时重新加载功能，支持多种导出格式（SVG、PNG、PDF）和主题。",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-01956ce0bfc2",
+    "name": "logisky/logisheets-mcp",
+    "homepage": "https://github.com/logisky/logisheets-mcp",
+    "description": "面向智能体的真正 Excel 兼容电子表格引擎，基于 LogiSheets（Rust 编写，通过 WASM 运行）。确定性公式，模型无需心算；命名区块以（区块、键、字段）寻址而非坐标，插入行后引用依然指向原来的含义；字段公式按整列声明一次；批量情景扫描与反解目标值都可一次调用完成；最终产出可直接打开的真实 `.xlsx`。本地运行，不开任何网络端口。`npx logisheets-mcp`",
+    "category": "开发者工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-903ab4158fc3",
+    "name": "@reading-plus-ai/mcp-server-data-exploration",
+    "homepage": "https://github.com/reading-plus-ai/mcp-server-data-exploration",
+    "description": "支持对基于 .csv 的数据集进行自主数据探索，以最小的成本提供智能见解。",
+    "category": "数据科学工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d333caf2fbb6",
+    "name": "zcaceres/markdownify-mcp",
+    "homepage": "https://github.com/zcaceres/markdownify-mcp",
+    "description": "一个 MCP 服务器，可将几乎任何文件或网络内容转换为 Markdown",
+    "category": "数据科学工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b75051007eb5",
+    "name": "DataEval/dingo",
+    "homepage": "https://github.com/DataEval/dingo",
+    "description": "Dingo 的 MCP 服务端。Dingo是一款全面的数据质量评估工具。支持与 Dingo 基于规则和 LLM 的评估功能进行交互以及列出可用规则和提示词。",
+    "category": "数据科学工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2b2bab33ccf8",
+    "name": "abhiphile/fermat-mcp",
+    "homepage": "https://github.com/abhiphile/fermat-mcp",
+    "description": "终极数学引擎，将 SymPy、NumPy 和 Matplotlib 统一在一个强大的服务器中。非常适合需要符号代数、数值计算和数据可视化的开发人员和研究人员。",
+    "category": "数据科学工具",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-134918a490bd",
+    "name": "@modelcontextprotocol/server-filesystem",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/filesystem",
+    "description": "直接访问本地文件系统。",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4aa2196f0c6e",
+    "name": "@modelcontextprotocol/server-google-drive",
+    "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/gdrive",
+    "description": "Google Drive 集成，用于列出、阅读和搜索文件",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-51e0964c25c7",
+    "name": "8b-is/smart-tree",
+    "homepage": "https://github.com/8b-is/smart-tree",
+    "description": "AI 原生目录可视化，具有语义分析、AI 消费的超压缩格式和 10 倍令牌减少。支持具有智能文件分类的量子语义模式。",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4a4048f11d56",
+    "name": "FI-Mihej/text_file_read_and_refactor_mcp",
+    "homepage": "https://github.com/FI-Mihej/text_file_read_and_refactor_mcp",
+    "description": "一个注重令牌效率的 Python stdio MCP 服务器，提供安全的文本文件搜索、读取和重构工具。所有工具都会自动识别并处理文件的 BOM 和字符编码；编辑工具会以文件原有的字符编码和 BOM 保存文件。 `uvx text-file-read-and-refactor-mcp`",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3e4df267ab48",
+    "name": "hmk/box-mcp-server",
+    "homepage": "https://github.com/hmk/box-mcp-server",
+    "description": "Box 集成，支持文件列表、阅读和搜索功能",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-fa751b923d4f",
+    "name": "mark3labs/mcp-filesystem-server",
+    "homepage": "https://github.com/mark3labs/mcp-filesystem-server",
+    "description": "用于本地文件系统访问的 Golang 实现。",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-28c89f038158",
+    "name": "mamertofabian/mcp-everything-search",
+    "homepage": "https://github.com/mamertofabian/mcp-everything-search",
+    "description": "使用 Everything SDK 实现的快速 Windows 文件搜索",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5f4aeb101692",
+    "name": "cyberchitta/llm-context.py",
+    "homepage": "https://github.com/cyberchitta/llm-context.py",
+    "description": "通过 MCP 或剪贴板与 LLM 共享代码上下文",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e840fe6ce24b",
+    "name": "filesystem@quarkiverse/quarkus-mcp-servers",
+    "homepage": "https://github.com/quarkiverse/quarkus-mcp-servers/tree/main/filesystem",
+    "description": "一个基于Java和Quarkus实现的文件系统，支持浏览和编辑文件。提供jar包或原生镜像两种形式。",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-92ad581cfc21",
+    "name": "Xuanwo/mcp-server-opendal",
+    "homepage": "https://github.com/Xuanwo/mcp-server-opendal",
+    "description": "使用 Apache OpenDAL™ 访问任何存储",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1b77502e9f38",
+    "name": "exoticknight/mcp-file-merger",
+    "homepage": "https://github.com/exoticknight/mcp-file-merger",
+    "description": "文件合并工具，适配AI Chat长度限制",
+    "category": "文件系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a2b266ba090e",
+    "name": "heurist-network/heurist-mesh-mcp-server",
+    "homepage": "https://github.com/heurist-network/heurist-mesh-mcp-server",
+    "description": "通过Heurist Mesh网络访问专业化的web3 AI代理，用于区块链分析、智能合约安全审计、代币指标评估及链上交互。提供全面的DeFi分析工具、NFT估值及跨多链交易监控功能",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7cfafb2bc914",
+    "name": "hoqqun/stooq-mcp",
+    "homepage": "https://github.com/hoqqun/stooq-mcp",
+    "description": "无需API密钥即可从Stooq获取实时股票价格。支持全球市场（美国、日本、英国、德国）。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-79c4a0381f63",
+    "name": "iiatlas/hledger-mcp",
+    "homepage": "https://github.com/iiAtlas/hledger-mcp",
+    "description": "在你的 LLM 中进行复式纯文本记账！这个 MCP 提供对本地 HLedger 记账日记账的全面读取，以及（可选的）写入访问。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ee10ddce3e92",
+    "name": "@base/base-mcp",
+    "homepage": "https://github.com/base/base-mcp",
+    "description": "集成Base网络的链上工具，支持与Base网络及Coinbase API交互，实现钱包管理、资金转账、智能合约和DeFi操作",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d97d7d596644",
+    "name": "QuantGeekDev/coincap-mcp",
+    "homepage": "https://github.com/QuantGeekDev/coincap-mcp",
+    "description": "使用 CoinCap 的公共 API 集成实时加密货币市场数据，无需 API 密钥即可访问加密货币价格和市场信息",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-45b22127dfe5",
+    "name": "anjor/coinmarket-mcp-server",
+    "homepage": "https://github.com/anjor/coinmarket-mcp-server",
+    "description": "Coinmarket API 集成以获取加密货币列表和报价",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e53dc44d1379",
+    "name": "berlinbra/alpha-vantage-mcp",
+    "homepage": "https://github.com/berlinbra/alpha-vantage-mcp",
+    "description": "Alpha Vantage API 集成，用于获取股票和加密货币信息",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-94139f485be5",
+    "name": "debridge-finance/debridge-mcp",
+    "homepage": "https://github.com/debridge-finance/debridge-mcp",
+    "description": "通过deBridge协议实现EVM和Solana区块链之间的跨链兑换和桥接。使AI代理能够发现最优路径、评估费用并发起非托管交易。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-cb24485f8197",
+    "name": "ferdousbhai/tasty-agent",
+    "homepage": "https://github.com/ferdousbhai/tasty-agent",
+    "description": "Tastyworks API 集成，用于管理 Tastytrade 平台的交易活动",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-29d3dd53d7ce",
+    "name": "ferdousbhai/investor-agent",
+    "homepage": "https://github.com/ferdousbhai/investor-agent",
+    "description": "整合雅虎财经以获取股市数据，包括期权推荐",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-53444c6fd8ba",
+    "name": "mcpdotdirect/evm-mcp-server",
+    "homepage": "https://github.com/mcpdotdirect/evm-mcp-server",
+    "description": "全面支持30多种EVM网络的区块链服务，涵盖原生代币、ERC20、NFT、智能合约、交易及ENS解析。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-737dd1cb2236",
+    "name": "bankless/onchain-mcp",
+    "homepage": "https://github.com/Bankless/onchain-mcp/",
+    "description": "Bankless链上API，用于与智能合约交互、查询交易及代币信息",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-df993c10d07e",
+    "name": "kukapay/cryptopanic-mcp-server",
+    "homepage": "https://github.com/kukapay/cryptopanic-mcp-server",
+    "description": "为AI代理提供由CryptoPanic驱动的最新加密货币新闻。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2b3d4c5d4f44",
+    "name": "kukapay/whale-tracker-mcp",
+    "homepage": "https://github.com/kukapay/whale-tracker-mcp",
+    "description": "一个用于追踪加密货币大额交易的MCP服务器。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2e1ddee1e762",
+    "name": "kukapay/crypto-feargreed-mcp",
+    "homepage": "https://github.com/kukapay/crypto-feargreed-mcp",
+    "description": "提供实时和历史加密恐惧与贪婪指数数据。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-53dda6d1caa2",
+    "name": "kukapay/dune-analytics-mcp",
+    "homepage": "https://github.com/kukapay/dune-analytics-mcp",
+    "description": "一个将Dune Analytics数据桥接到AI代理的mcp服务器。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-06d50f73cb3f",
+    "name": "kukapay/pancakeswap-poolspy-mcp",
+    "homepage": "https://github.com/kukapay/pancakeswap-poolspy-mcp",
+    "description": "一个追踪Pancake Swap上新创建资金池的MCP服务器。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a27e6932f88f",
+    "name": "kukapay/uniswap-poolspy-mcp",
+    "homepage": "https://github.com/kukapay/uniswap-poolspy-mcp",
+    "description": "一个MCP服务器，用于追踪Uniswap在多个区块链上新创建的流动性池。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-aff48f922966",
+    "name": "kukapay/uniswap-trader-mcp",
+    "homepage": "https://github.com/kukapay/uniswap-trader-mcp",
+    "description": "一个MCP服务器，用于AI代理在多个区块链上的Uniswap去中心化交易所自动执行代币交换。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6e6fac0a3830",
+    "name": "kukapay/token-minter-mcp",
+    "homepage": "https://github.com/kukapay/token-minter-mcp",
+    "description": "一个MCP服务器，为AI代理提供工具以跨多个区块链铸造ERC-20代币。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-34ddf6a5423e",
+    "name": "kukapay/thegraph-mcp",
+    "homepage": "https://github.com/kukapay/thegraph-mcp",
+    "description": "一个MCP服务器，通过The Graph提供的索引区块链数据为AI代理提供支持。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1cc869eacb1a",
+    "name": "longportapp/openapi",
+    "homepage": "https://github.com/longportapp/openapi/tree/main/mcp",
+    "description": "🐍 ☁️ - LongPort OpenAPI 提供港美股等市场的股票实时行情数据，通过 MCP 提供 AI 接入分析、交易能力。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2a62e22f85e1",
+    "name": "pwh-pwh/coin-mcp-server",
+    "homepage": "https://github.com/pwh-pwh/coin-mcp-server",
+    "description": "使用 Bitget 公共 API 去获取加密货币最新价格",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-53faf90d6bc9",
+    "name": "HuggingAGI/mcp-baostock-server",
+    "homepage": "https://github.com/HuggingAGI/mcp-baostock-server",
+    "description": "基于 baostock 的 MCP 服务器,提供对中国股票市场数据的访问和分析功能。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-42096693fa23",
+    "name": "Wuye-AI/mcp-server-wuye-ai",
+    "homepage": "https://github.com/wuye-ai/mcp-server-wuye-ai",
+    "description": "接入 CRIC物业AI 平台的 MCP 服务器。CRIC物业AI 是克而瑞专为物业行业打造的智能 AI 助理。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-9546ad7a371a",
+    "name": "zlinzzzz/finData-mcp-server",
+    "homepage": "https://github.com/zlinzzzz/finData-mcp-server",
+    "description": "一个获取专业级金融数据的MCP服务器，支持Tushare等多种数据供应商。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f2d8c1ed6fe3",
+    "name": "JamesANZ/evm-mcp",
+    "homepage": "https://github.com/JamesANZ/evm-mcp",
+    "description": "一个MCP服务器，提供对以太坊虚拟机（EVM）JSON-RPC方法的完整访问。可与任何EVM兼容的节点提供商配合使用，包括Infura、Alchemy、QuickNode、本地节点等。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5ba05a427898",
+    "name": "JamesANZ/prediction-market-mcp",
+    "homepage": "https://github.com/JamesANZ/prediction-market-mcp",
+    "description": "一个MCP服务器，提供来自Polymarket、PredictIt和Kalshi等多个平台的实时预测市场数据。使AI助手能够通过统一接口查询当前赔率、价格和市场信息。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-fdc9256be1ff",
+    "name": "JamesANZ/bitcoin-mcp",
+    "homepage": "https://github.com/JamesANZ/bitcoin-mcp",
+    "description": "一个MCP服务器，使AI模型能够查询比特币区块链。",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-eaca51d23469",
+    "name": "litsen/lfwin-payment-mcp",
+    "homepage": "https://github.com/litsen/lfwin-payment-mcp",
+    "description": "酷收银支付MCP Server - AI原生支付网关（收银台/退款/查单）",
+    "category": "金融与金融科技",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-193c27ad53a9",
+    "name": "Coding-Solo/godot-mcp",
+    "homepage": "https://github.com/Coding-Solo/godot-mcp",
+    "description": "一个用于与Godot游戏引擎交互的MCP服务器，提供编辑、运行、调试和管理Godot项目中场景的工具。",
+    "category": "游戏",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d2b59324f19b",
+    "name": "rishijatia/fantasy-pl-mcp",
+    "homepage": "https://github.com/rishijatia/fantasy-pl-mcp/",
+    "description": "用于实时 Fantasy Premier League 数据和分析工具的 MCP 服务器。",
+    "category": "游戏",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-932a70b309ef",
+    "name": "CoderGamester/mcp-unity",
+    "homepage": "https://github.com/CoderGamester/mcp-unity",
+    "description": "Unity3d 游戏引擎集成 MCP 服务器",
+    "category": "游戏",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5ba2617a2c1f",
+    "name": "opgginc/opgg-mcp",
+    "homepage": "https://github.com/opgginc/opgg-mcp",
+    "description": "访问英雄联盟、云顶之弈、无界英雄等热门游戏的实时游戏数据，提供英雄分析、电竞赛程、元组合和角色统计。",
+    "category": "游戏",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4446cd04e617",
+    "name": "jinzcdev/markmap-mcp-server",
+    "homepage": "https://github.com/jinzcdev/markmap-mcp-server",
+    "description": "基于 markmap 构建的 MCP 服务器，可将 **Markdown** 转换为交互式的 **思维导图**。支持多格式导出（PNG/JPG/SVG）、浏览器在线预览、一键复制 Markdown 和动态可视化功能。",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-21f9cae94c81",
+    "name": "@modelcontextprotocol/server-memory",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/memory",
+    "description": "基于知识图谱的长期记忆系统用于维护上下文",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-30c714c2d548",
+    "name": "/CheMiguel23/MemoryMesh",
+    "homepage": "https://github.com/CheMiguel23/MemoryMesh",
+    "description": "增强基于图形的记忆，重点关注 AI 角色扮演和故事生成",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-86cce3bab605",
+    "name": "/topoteretes/cognee",
+    "homepage": "https://github.com/topoteretes/cognee/tree/dev/cognee-mcp",
+    "description": "AI应用程序和Agent的内存管理器使用各种图存储和向量存储，并允许从 30 多个数据源提取数据",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-68f0bfa2cb70",
+    "name": "@hannesrudolph/mcp-ragdocs",
+    "homepage": "https://github.com/hannesrudolph/mcp-ragdocs",
+    "description": "MCP 服务器实现提供了通过矢量搜索检索和处理文档的工具，使 AI 助手能够利用相关文档上下文来增强其响应能力",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0fae1f2f9003",
+    "name": "@kaliaboi/mcp-zotero",
+    "homepage": "https://github.com/kaliaboi/mcp-zotero",
+    "description": "为 LLM 提供的连接器，用于操作 Zotero Cloud 上的文献集合和资源",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2035283ff83e",
+    "name": "mcp-summarizer",
+    "homepage": "https://github.com/0xshellming/mcp-summarizer",
+    "description": "AI摘要生成MCP服务器，支持多种内容类型：纯文本、网页、PDF文档、EPUB电子书、HTML内容",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d05f407f6e58",
+    "name": "apecloud/ApeRAG",
+    "homepage": "https://github.com/apecloud/ApeRAG",
+    "description": "生产级RAG平台，结合Graph RAG、向量搜索和全文搜索。构建知识图谱和上下文工程的最佳选择",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-eb40c032fc5f",
+    "name": "graphlit-mcp-server",
+    "homepage": "https://github.com/graphlit/graphlit-mcp-server",
+    "description": "将来自Slack、Discord、网站、Google Drive、Linear或GitHub的任何内容摄取到Graphlit项目中，然后在诸如Cursor、Windsurf或Cline等MCP客户端中搜索并检索相关知识。",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f30c01b037f6",
+    "name": "@mem0ai/mem0-mcp",
+    "homepage": "https://github.com/mem0ai/mem0-mcp",
+    "description": "用于 Mem0 的模型上下文协议服务器，帮助管理编码偏好和模式，提供工具用于存储、检索和语义处理代码实现、最佳实践和技术文档，适用于 Cursor 和 Windsurf 等 IDE",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f9bdd8d86164",
+    "name": "@ragieai/mcp-server",
+    "homepage": "https://github.com/ragieai/ragie-mcp-server",
+    "description": "从您的 Ragie (RAG) 知识库中检索上下文，该知识库连接到 Google Drive、Notion、JIRA 等多种集成。",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-cf83070406c5",
+    "name": "redleaves/context-keeper",
+    "homepage": "https://github.com/redleaves/context-keeper",
+    "description": "LLM驱动的智能上下文与记忆管理系统，采用宽召回+精排序RAG架构。支持多维度检索（向量/时间线/知识图谱）、短期/长期记忆智能转换，完整实现MCP协议（HTTP/WebSocket/SSE）。",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-16a7277d62ee",
+    "name": "@upstash/context7",
+    "homepage": "https://github.com/upstash/context7",
+    "description": "最新的LLM和AI代码编辑器的代码文档。",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a6a4b6363821",
+    "name": "JamesANZ/memory-mcp",
+    "homepage": "https://github.com/JamesANZ/memory-mcp",
+    "description": "一个MCP服务器，使用MongoDB存储和检索来自多个LLM的记忆。提供保存、检索、添加和清除带有时间戳和LLM识别的对话记忆的工具。",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-57a18adcc9fe",
+    "name": "JamesANZ/cross-llm-mcp",
+    "homepage": "https://github.com/JamesANZ/cross-llm-mcp",
+    "description": "一个MCP服务器，实现跨LLM通信和记忆共享，使不同的AI模型能够在对话间协作和共享上下文。",
+    "category": "知识与记忆",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e5a756863638",
+    "name": "JamesANZ/us-legal-mcp",
+    "homepage": "https://github.com/JamesANZ/us-legal-mcp",
+    "description": "一个提供全面美国法规的 MCP 服务器。",
+    "category": "法律",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c476ca854377",
+    "name": "@modelcontextprotocol/server-google-maps",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/google-maps",
+    "description": "Google 地图集成，提供位置服务、路线规划和地点详细信息",
+    "category": "位置服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-aa0a089b7847",
+    "name": "SecretiveShell/MCP-timeserver",
+    "homepage": "https://github.com/SecretiveShell/MCP-timeserver",
+    "description": "访问任意时区的时间并获取当前本地时间",
+    "category": "位置服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a7e8b89fe997",
+    "name": "webcoderz/MCP-Geo",
+    "homepage": "https://github.com/webcoderz/MCP-Geo",
+    "description": "支持 nominatim、ArcGIS、Bing 的地理编码 MCP 服务器",
+    "category": "位置服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-051aa09207bb",
+    "name": "@briandconnelly/mcp-server-ipinfo",
+    "homepage": "https://github.com/briandconnelly/mcp-server-ipinfo",
+    "description": "使用 IPInfo API 获取 IP 地址的地理位置和网络信息",
+    "category": "位置服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3e7e2be6a0db",
+    "name": "isdaniel/mcp_weather_server",
+    "homepage": "https://github.com/isdaniel/mcp_weather_server",
+    "description": "从 https://api.open-meteo.com API 获取天气信息。",
+    "category": "位置服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-40020bee5165",
+    "name": "QGIS MCP",
+    "homepage": "https://github.com/jjsantos01/qgis_mcp",
+    "description": "通过MCP将QGIS桌面端与Claude AI连接。该集成支持提示辅助的项目创建、图层加载、代码执行等功能。",
+    "category": "位置服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-835744decd0c",
+    "name": "kukapay/nearby-search-mcp",
+    "homepage": "https://github.com/kukapay/nearby-search-mcp",
+    "description": "一个基于IP定位检测的附近地点搜索MCP服务器。",
+    "category": "位置服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ebdefc7699ca",
+    "name": "gaopengbin/cesium-mcp",
+    "homepage": "https://github.com/gaopengbin/cesium-mcp",
+    "description": "通过 MCP 用 AI 操控三维地球。将任何 MCP 兼容的 AI 智能体接入 CesiumJS - 相机飞行、GeoJSON/3D Tiles 图层、标记点、空间分析、热力图等 19 个自然语言工具。",
+    "category": "位置服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3a6e78031252",
+    "name": "AdsMCP/tiktok-ads-mcp-server",
+    "homepage": "https://github.com/AdsMCP/tiktok-ads-mcp-server",
+    "description": "TikTok Ads API 集成的模型上下文协议服务器，让 AI 助手能够通过 OAuth 认证流程管理广告活动、分析性能指标、处理受众和创意内容",
+    "category": "营销",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-9a24a2732bef",
+    "name": "Open Strategy Partners Marketing Tools",
+    "homepage": "https://github.com/open-strategy-partners/osp_marketing_tools",
+    "description": "Open Strategy Partners 提供的营销工具套件，包含写作风格指南、编辑规范和产品营销价值图谱创建工具",
+    "category": "营销",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3cbfca574791",
+    "name": "rooquiz/rooquiz-mcp",
+    "homepage": "https://github.com/rooquiz/rooquiz-mcp",
+    "description": "在 RooQuiz 上创建和运营测评——知识问答、计分测验以及“你是哪种 X”结果型测验，支持 AI 辅助出题和多语言镜像翻译；并打通转化漏斗：管理结果页捕获的销售线索（打标签、分配、评论）、答题者、提交记录、预约和转化统计。托管的 Streamable HTTP 端点 `https://payload.rooquiz.com/api/mcp`，OAuth 2.1 动态客户端注册，无需 API 密钥。",
+    "category": "营销",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0cce3069db7d",
+    "name": "@modelcontextprotocol/server-sentry",
+    "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/sentry",
+    "description": "Sentry.io 集成用于错误跟踪和性能监控",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bf0b8de09d40",
+    "name": "@MindscapeHQ/server-raygun",
+    "homepage": "https://github.com/MindscapeHQ/mcp-server-raygun",
+    "description": "Raygun API V3 集成用于崩溃报告和真实用户监控",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e567a937d8be",
+    "name": "metoro-io/metoro-mcp-server",
+    "homepage": "https://github.com/metoro-io/metoro-mcp-server",
+    "description": "查询并与 Metoro 监控的 kubernetes 环境交互",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-9e46c3d7e189",
+    "name": "grafana/mcp-grafana",
+    "homepage": "https://github.com/grafana/mcp-grafana",
+    "description": "在 Grafana 实例中搜索仪表盘、调查事件并查询数据源",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-88cc6610addb",
+    "name": "tumf/grafana-loki-mcp",
+    "homepage": "https://github.com/tumf/grafana-loki-mcp",
+    "description": "一个 MCP 服务器，允许通过 Grafana API 查询 Loki 日志。",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ec2a1cff1e77",
+    "name": "pydantic/logfire-mcp",
+    "homepage": "https://github.com/pydantic/logfire-mcp",
+    "description": "通过Logfire提供对OpenTelemetry追踪和指标的访问",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c3588e7dacae",
+    "name": "seekrays/mcp-monitor",
+    "homepage": "https://github.com/seekrays/mcp-monitor",
+    "description": "一款通过模型上下文协议（MCP）暴露系统指标的监控工具。该工具允许大型语言模型通过兼容MCP的接口实时获取系统信息（支持CPU、内存、磁盘、网络、主机、进程）。",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5053e7f9f851",
+    "name": "hyperb1iss/lucidity-mcp",
+    "homepage": "https://github.com/hyperb1iss/lucidity-mcp",
+    "description": "通过基于提示的智能分析，从代码复杂度到安全漏洞等10个关键维度，提升AI生成代码的质量",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1318e4d63537",
+    "name": "inventer-dev/mcp-internet-speed-test",
+    "homepage": "https://github.com/inventer-dev/mcp-internet-speed-test",
+    "description": "互联网速度测试，包括下载/上传速度、延迟、抖动分析和地理映射的CDN服务器检测等网络性能指标",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f476be49c3e5",
+    "name": "VictoriaMetrics-Community/mcp-victoriametrics",
+    "homepage": "https://github.com/VictoriaMetrics-Community/mcp-victoriametrics",
+    "description": "与 VictoriaMetrics API 和文档 完整集成，监控你的 VictoriaMetrics 实例及排查问题。",
+    "category": "监测",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d7b135f8031f",
+    "name": "scrapeless-ai/scrapeless-mcp-server",
+    "homepage": "https://github.com/scrapeless-ai/scrapeless-mcp-server",
+    "description": "Scrapeless模型上下文协议服务作为MCP服务器连接器，连接到Google SERP API，使得在MCP生态系统内无需离开即可进行网页搜索。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-96ead94ac60c",
+    "name": "brave/brave-search-mcp-server",
+    "homepage": "https://github.com/brave/brave-search-mcp-server",
+    "description": "使用 Brave 的搜索 API 实现网页搜索功能",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a5ba46a043c1",
+    "name": "DappierAI/dappier-mcp",
+    "homepage": "https://github.com/DappierAI/dappier-mcp",
+    "description": "Dappier 的 MCP 服务器可让 AI 代理快速、免费地进行实时网页搜索，并访问来自可靠媒体品牌的新闻、金融市场、体育、娱乐、天气等优质数据。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-af0fd49264ea",
+    "name": "Dumpling-AI/mcp-server-dumplingai",
+    "homepage": "https://github.com/Dumpling-AI/mcp-server-dumplingai",
+    "description": "通过 Dumpling AI 提供的数据访问、网页抓取与文档转换 API",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-92ea20152c3d",
+    "name": "@angheljf/nyt",
+    "homepage": "https://github.com/angheljf/nyt",
+    "description": "使用 NYTimes API 搜索文章",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3622efe5d775",
+    "name": "@modelcontextprotocol/server-fetch",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/fetch",
+    "description": "高效获取和处理网页内容，供 AI 使用",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6765cf52f851",
+    "name": "ac3xx/mcp-servers-kagi",
+    "homepage": "https://github.com/ac3xx/mcp-servers-kagi",
+    "description": "Kagi 搜索 API 集成",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-084da3f43141",
+    "name": "exa-labs/exa-mcp-server",
+    "homepage": "https://github.com/exa-labs/exa-mcp-server",
+    "description": "模型上下文协议 (MCP) 服务器让 Claude 等 AI 助手可以使用 Exa AI Search API 进行网络搜索。此设置允许 AI 模型以安全且可控的方式获取实时网络信息。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2b90a6b3cbc2",
+    "name": "fatwang2/search1api-mcp",
+    "homepage": "https://github.com/fatwang2/search1api-mcp",
+    "description": "通过 search1api 搜索（需要付费 API 密钥）",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7be80c81f948",
+    "name": "Crawleo/Crawleo-MCP",
+    "homepage": "https://github.com/Crawleo/Crawleo-MCP",
+    "description": "Crawleo Search & Crawl API",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f3267f1cc9bb",
+    "name": "Tomatio13/mcp-server-tavily",
+    "homepage": "https://github.com/Tomatio13/mcp-server-tavily",
+    "description": "Tavily AI 搜索 API",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bd018379f760",
+    "name": "kshern/mcp-tavily",
+    "homepage": "https://github.com/kshern/mcp-tavily.git",
+    "description": "Tavily AI 搜索 API",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-819ee21fc9f2",
+    "name": "blazickjp/arxiv-mcp-server",
+    "homepage": "https://github.com/blazickjp/arxiv-mcp-server",
+    "description": "搜索 ArXiv 研究论文",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6b0d6844a182",
+    "name": "mzxrai/mcp-webresearch",
+    "homepage": "https://github.com/mzxrai/mcp-webresearch",
+    "description": "在 Google 上搜索并对任何主题进行深度研究",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-19996eaebfa3",
+    "name": "andybrandt/mcp-simple-arxiv",
+    "homepage": "https://github.com/andybrandt/mcp-simple-arxiv",
+    "description": "🐍 ☁️  MCP for LLM 用于搜索和阅读 arXiv 上的论文)",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5dc3ce3af0f2",
+    "name": "andybrandt/mcp-simple-pubmed",
+    "homepage": "https://github.com/andybrandt/mcp-simple-pubmed",
+    "description": "🐍 ☁️  MCP 用于搜索和阅读 PubMed 中的医学/生命科学论文。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c3b363c1b99c",
+    "name": "apify/mcp-server-rag-web-browser",
+    "homepage": "https://github.com/apify/mcp-server-rag-web-browser",
+    "description": "一个用于 Apify 的 RAG Web 浏览器 Actor 的 MCP 服务器，可以执行网页搜索、抓取 URL，并以 Markdown 格式返回内容。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0925c7e721b8",
+    "name": "SecretiveShell/MCP-searxng",
+    "homepage": "https://github.com/SecretiveShell/MCP-searxng",
+    "description": "用于连接到 searXNG 实例的 MCP 服务器",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5675caeae27c",
+    "name": "Bigsy/Clojars-MCP-Server",
+    "homepage": "https://github.com/Bigsy/Clojars-MCP-Server",
+    "description": "Clojars MCP 服务器，提供 Clojure 库的最新依赖信息",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ba2f157b3d14",
+    "name": "Ihor-Sokoliuk/MCP-SearXNG",
+    "homepage": "https://github.com/ihor-sokoliuk/mcp-searxng",
+    "description": "SearXNG 的模型上下文协议服务器",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1466368e1ad4",
+    "name": "erithwik/mcp-hn",
+    "homepage": "https://github.com/erithwik/mcp-hn",
+    "description": "一个用于搜索 Hacker News、获取热门故事等的 MCP 服务器。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4a1416aba8d0",
+    "name": "chanmeng/google-news-mcp-server",
+    "homepage": "https://github.com/ChanMeng666/server-google-news",
+    "description": "Google News 集成，具有自动主题分类、多语言支持，以及通过 SerpAPI 提供的标题、故事和相关主题的综合搜索功能。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-cd959bc28998",
+    "name": "hellokaton/unsplash-mcp-server",
+    "homepage": "https://github.com/hellokaton/unsplash-mcp-server",
+    "description": "用于集成 Unsplash 图片搜索功能",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6f2e248ab214",
+    "name": "devflowinc/trieve",
+    "homepage": "https://github.com/devflowinc/trieve/tree/main/clients/mcp-server",
+    "description": "通过 Trieve 爬取、嵌入、分块、搜索和检索数据集中的信息",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8ba02ffbabd3",
+    "name": "nickclyde/duckduckgo-mcp-server",
+    "homepage": "https://github.com/nickclyde/duckduckgo-mcp-server",
+    "description": "使用DuckDuckGo进行网络搜索",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-73f551fb9fb3",
+    "name": "zhsama/duckduckgo-mcp-server",
+    "homepage": "https://github.com/zhsama/duckduckgo-mcp-server/",
+    "description": "这是一个基于TypeScript的MCP服务器，提供DuckDuckGo搜索功能。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a7b74c5fe5d2",
+    "name": "vectorize-io/vectorize-mcp-server",
+    "homepage": "https://github.com/vectorize-io/vectorize-mcp-server/",
+    "description": "Vectorize 用于高级检索的MCP服务器，私有Deep Research，任意文件转Markdown提取及文本分块处理。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a5d3ddeee83b",
+    "name": "jae-jae/fetcher-mcp",
+    "homepage": "https://github.com/jae-jae/fetcher-mcp",
+    "description": "用于通过Playwright无头浏览器获取网页内容的MCP服务器，支持JavaScript渲染与智能内容提取，并输出Markdown或HTML格式。",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c97a7eb90556",
+    "name": "yamanoku/baseline-mcp-server",
+    "homepage": "https://github.com/yamanoku/baseline-mcp-server",
+    "description": "使用Web平台API查询Baseline状态的MCP服务器",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-246399193d10",
+    "name": "Pearch-ai/mcp_pearch",
+    "homepage": "https://github.com/Pearch-ai/mcp_pearch",
+    "description": "最佳人才搜索引擎，帮您节省寻找人才的时间",
+    "category": "搜索",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-92a801536e79",
+    "name": "AIM-Intelligence/AIM-Guard-MCP",
+    "homepage": "https://github.com/AIM-Intelligence/AIM-MCP",
+    "description": "安全导向的 MCP 服务器，为 AI 代理提供安全指导和内容分析。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0f7fac8a45a4",
+    "name": "bx33661/Wireshark-MCP",
+    "homepage": "https://github.com/bx33661/Wireshark-MCP",
+    "description": "具有抓包、协议统计、字段提取和安全分析功能的 Wireshark 网络数据包分析 MCP 服务器。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2b6f6f0bf5ce",
+    "name": "firstorderai/authenticator_mcp",
+    "homepage": "https://github.com/firstorderai/authenticator_mcp",
+    "description": "一个安全的 MCP（Model Context Protocol）服务器，使 AI 代理能够与认证器应用程序交互。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b00bf49e4143",
+    "name": "dnstwist MCP Server",
+    "homepage": "https://github.com/BurtTheCoder/mcp-dnstwist",
+    "description": "dnstwist 的 MCP 服务器，这是一个强大的 DNS 模糊测试工具，可帮助检测域名抢注、钓鱼和企业窃密行为",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-65c352525433",
+    "name": "fosdickio/binary_ninja_mcp",
+    "homepage": "https://github.com/Vector35/binaryninja-mcp",
+    "description": "Binary Ninja 的 MCP 服务器和桥接器。提供二进制分析和逆向工程工具。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b2af09d8e224",
+    "name": "jtang613/GhidrAssistMCP",
+    "homepage": "https://github.com/jtang613/GhidrAssistMCP",
+    "description": "一个用于 Ghidra 的原生 Model Context Protocol 服务器。包含图形界面配置和日志记录，31 个强大工具，无需外部依赖。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d103733c6a16",
+    "name": "Maigret MCP Server",
+    "homepage": "https://github.com/BurtTheCoder/mcp-maigret",
+    "description": "maigret 的 MCP 服务器，maigret 是一款强大的 OSINT 工具，可从各种公共来源收集用户帐户信息。此服务器提供用于在社交网络中搜索用户名和分析 URL 的工具。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b57cdd6d6935",
+    "name": "Shodan MCP Server",
+    "homepage": "https://github.com/BurtTheCoder/mcp-shodan",
+    "description": "MCP 服务器用于查询 Shodan API 和 Shodan CVEDB。此服务器提供 IP 查找、设备搜索、DNS 查找、漏洞查询、CPE 查找等工具。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bab17d314f0a",
+    "name": "VirusTotal MCP Server",
+    "homepage": "https://github.com/BurtTheCoder/mcp-virustotal",
+    "description": "用于查询 VirusTotal API 的 MCP 服务器。此服务器提供用于扫描 URL、分析文件哈希和检索 IP 地址报告的工具。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4a10673f4080",
+    "name": "ORKL MCP Server",
+    "homepage": "https://github.com/fr0gger/MCP_Security",
+    "description": "用于查询 ORKL API 的 MCP 服务器。此服务器提供获取威胁报告、分析威胁行为者和检索威胁情报来源的工具。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-000351caa568",
+    "name": "Security Audit MCP Server",
+    "homepage": "https://github.com/qianniuspace/mcp-security-audit",
+    "description": "Security Audit MCP Server",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bc28162913c4",
+    "name": "zoomeye-ai/mcp_zoomeye",
+    "homepage": "https://github.com/zoomeye-ai/mcp_zoomeye",
+    "description": "使用 ZoomEye API 搜索全球网络空间资产",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4d2aa8226f74",
+    "name": "ConechoAI/openai-websearch-mcp",
+    "homepage": "https://github.com/ConechoAI/openai-websearch-mcp/",
+    "description": "将OpenAI内置的`web_search`工具封转成MCP服务器使用.",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-decf13e7aa58",
+    "name": "roadwy/cve-search_mcp",
+    "homepage": "https://github.com/roadwy/cve-search_mcp",
+    "description": "CVE-Search MCP服务器， 提供CVE漏洞信息查询、漏洞产品信息查询等功能。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-f5b03761075e",
+    "name": "intruder-io/intruder-mcp",
+    "homepage": "https://github.com/intruder-io/intruder-mcp",
+    "description": "MCP 服务器用于访问 Intruder，帮助你识别、理解并修复基础设施中的安全漏洞。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ab854581e1a3",
+    "name": "joergmichno/clawguard-mcp",
+    "homepage": "https://github.com/joergmichno/clawguard-mcp",
+    "description": "Security scanner for AI agents that detects prompt injections using 42+ regex patterns",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-aa67a11ea202",
+    "name": "quantakrypto/pqc-tools",
+    "homepage": "https://github.com/quantakrypto/pqc-tools",
+    "description": "面向 AI 编程代理的后量子就绪工具。扫描代码中易受量子攻击的密码算法（RSA/ECDH/ECDSA/DH），解释 harvest-now-decrypt-later（先收集、后解密）风险，提供 NIST ML-KEM/ML-DSA/SLH-DSA（及混合）迁移指南，验证修复并检查依赖。仅为基于内容的咨询类工具。可本地运行（`npx @quantakrypto/mcp`）或使用 mcp.quantakrypto.com 的托管 OAuth 端点。",
+    "category": "安全",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2f1d6269673d",
+    "name": "adancurusul/embedded-debugger-mcp",
+    "homepage": "https://github.com/adancurusul/embedded-debugger-mcp",
+    "description": "基于probe-rs的嵌入式调试模型上下文协议服务器 - 支持通过J-Link、ST-Link等进行ARM Cortex-M、RISC-V调试",
+    "category": "嵌入式系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3a83e83602d6",
+    "name": "adancurusul/serial-mcp-server",
+    "homepage": "https://github.com/adancurusul/serial-mcp-server",
+    "description": "全面的串口通信MCP服务器",
+    "category": "嵌入式系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b041932a0031",
+    "name": "stack-chan/stack-chan",
+    "homepage": "https://github.com/stack-chan/stack-chan",
+    "description": "JavaScript驱动的M5Stack嵌入式超可爱机器人，具有MCP服务器功能，支持AI控制的交互和情感。",
+    "category": "嵌入式系统",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ea8b9403eaaf",
+    "name": "effytech/freshdesk-mcp",
+    "homepage": "https://github.com/effytech/freshdesk_mcp",
+    "description": "与Freshdesk集成的MCP服务器，使AI模型能够与Freshdesk模块交互并执行各种支持操作。",
+    "category": "客户支持与服务管理",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-44b0493fd65a",
+    "name": "nguyenvanduocit/jira-mcp",
+    "homepage": "https://github.com/nguyenvanduocit/jira-mcp",
+    "description": "一款基于Go语言的Jira MCP连接器，使Claude等AI助手能够与Atlassian Jira交互。该工具为AI模型提供了一个无缝接口，可执行包括问题管理、Sprint计划和工作流转换在内的常见Jira操作。",
+    "category": "客户支持与服务管理",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bf8fbdbe36ea",
+    "name": "r-huijts/firstcycling-mcp",
+    "homepage": "https://github.com/r-huijts/firstcycling-mcp",
+    "description": "通过自然语言访问自行车比赛数据、结果和统计信息。功能包括从 firstcycling.com 获取参赛名单、比赛结果和车手信息。",
+    "category": "体育",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5d9b65e42ca8",
+    "name": "willvelida/mcp-afl-server",
+    "homepage": "https://github.com/willvelida/mcp-afl-server",
+    "description": "MMCP 服务器集成了 Squiggle API，提供有关澳大利亚橄榄球联盟球队、排名、比赛结果、预测和实力排名的信息。",
+    "category": "体育",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4fa858efa9bf",
+    "name": "translated/lara-mcp",
+    "homepage": "https://github.com/translated/lara-mcp",
+    "description": "Lara翻译API的MCP服务器，提供强大的翻译功能，支持语言检测和上下文感知翻译。",
+    "category": "翻译服务",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d9649e246039",
+    "name": "Airbnb MCP Server",
+    "homepage": "https://github.com/openbnb-org/mcp-server-airbnb",
+    "description": "提供搜索Airbnb房源及获取详细信息的工具。",
+    "category": "旅行与交通",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4a34c84bb5fa",
+    "name": "NS Travel Information MCP Server",
+    "homepage": "https://github.com/r-huijts/ns-mcp-server",
+    "description": "了解荷兰铁路 (NS) 的旅行信息、时刻表和实时更新",
+    "category": "旅行与交通",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-548c5deca2e7",
+    "name": "KyrieTangSheng/mcp-server-nationalparks",
+    "homepage": "https://github.com/KyrieTangSheng/mcp-server-nationalparks",
+    "description": "美国国家公园管理局 API 集成，提供美国国家公园的详细信息、警报、游客中心、露营地和活动的最新信息",
+    "category": "旅行与交通",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2630ff348d6c",
+    "name": "pab1it0/tripadvisor-mcp",
+    "homepage": "https://github.com/pab1it0/tripadvisor-mcp",
+    "description": "一个MCP服务器，使LLM能够通过标准化的MCP接口与Tripadvisor API交互，支持位置数据、评论和照片",
+    "category": "旅行与交通",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-946d5b7d4d3e",
+    "name": "@modelcontextprotocol/server-github",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/github",
+    "description": "GitHub API集成用于仓库管理、PR、问题等",
+    "category": "版本控制",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-9365302adb6a",
+    "name": "@modelcontextprotocol/server-gitlab",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/gitlab",
+    "description": "GitLab平台集成用于项目管理和CI/CD操作",
+    "category": "版本控制",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bb57cc7ecbaf",
+    "name": "@modelcontextprotocol/server-git",
+    "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/git",
+    "description": "直接的Git仓库操作，包括读取、搜索和分析本地仓库",
+    "category": "版本控制",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1ef668920679",
+    "name": "Tiberriver256/mcp-server-azure-devops",
+    "homepage": "https://github.com/Tiberriver256/mcp-server-azure-devops",
+    "description": "Azure DevOps 集成，用于管理存储库、工作项目和管道",
+    "category": "版本控制",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-307e3374342c",
+    "name": "adhikasp/mcp-git-ingest",
+    "homepage": "https://github.com/adhikasp/mcp-git-ingest",
+    "description": "使用 LLM 阅读和分析 GitHub 存储库",
+    "category": "版本控制",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-39408ef8f192",
+    "name": "kopfrechner/gitlab-mr-mcp",
+    "homepage": "https://github.com/kopfrechner/gitlab-mr-mcp",
+    "description": "与 GitLab 项目问题和合并请求无缝互动。",
+    "category": "版本控制",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-63f9b90932d7",
+    "name": "kaiyuanxiaobing/atomgit-mcp-server",
+    "homepage": "https://github.com/kaiyuanxiaobing/atomgit-mcp-server",
+    "description": "AtomGit API 集成用于仓库管理、问题、拉取请求等功能。",
+    "category": "版本控制",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1df837ba5750",
+    "name": "2niuhe/plantuml_web",
+    "homepage": "https://github.com/2niuhe/plantuml_web",
+    "description": "一个基于Web的PlantUML前端，集成MCP服务器，支持PlantUML图像生成和语法验证。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-b0cebb8c3d6e",
+    "name": "2niuhe/qrcode_mcp",
+    "homepage": "https://github.com/2niuhe/qrcode_mcp",
+    "description": "QR码生成MCP服务器，可将任何文本（包括中文字符）转换为QR码，支持自定义颜色和base64编码输出。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0d5c381bfdcd",
+    "name": "apify/actors-mcp-server",
+    "homepage": "https://github.com/apify/actors-mcp-server",
+    "description": "使用超过 3,000 个预构建的云工具（称为 Actors）从网站、电商、社交媒体、搜索引擎、地图等提取数据。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-affa36b3acd8",
+    "name": "githejie/mcp-server-calculator",
+    "homepage": "https://github.com/githejie/mcp-server-calculator",
+    "description": "使LLM能够使用计算器进行精确的数值计算",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-cdd56424270b",
+    "name": "ivo-toby/contentful-mcp",
+    "homepage": "https://github.com/ivo-toby/contentful-mcp",
+    "description": "更新、创建、删除 Contentful Space 中的内容、内容模型和资产",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-96ff318aad43",
+    "name": "mzxrai/mcp-openai",
+    "homepage": "https://github.com/mzxrai/mcp-openai",
+    "description": "与 OpenAI 最智能的模型聊天",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c0cb23e264d6",
+    "name": "mrjoshuak/godoc-mcp",
+    "homepage": "https://github.com/mrjoshuak/godoc-mcp",
+    "description": "高效的 Go 文档服务器，让 AI 助手可以智能访问包文档和类型，而无需阅读整个源文件",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-60d6951ed7f2",
+    "name": "pierrebrunelle/mcp-server-openai",
+    "homepage": "https://github.com/pierrebrunelle/mcp-server-openai",
+    "description": "直接从Claude查询OpenAI模型，使用MCP协议",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-82c71f2c6cef",
+    "name": "@modelcontextprotocol/server-everything",
+    "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+    "description": "MCP服务器，涵盖MCP协议的所有功能",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8301b5f30872",
+    "name": "MarkusPfundstein/mcp-obsidian",
+    "homepage": "https://github.com/MarkusPfundstein/mcp-obsidian",
+    "description": "通过REST API与Obsidian交互",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1fc5f104e5e3",
+    "name": "calclavia/mcp-obsidian",
+    "homepage": "https://github.com/calclavia/mcp-obsidian",
+    "description": "这是一个连接器，允许Claude Desktop（或任何MCP兼容应用程序）读取和搜索包含Markdown笔记的目录（如Obsidian库）。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-39385a8a3ea9",
+    "name": "anaisbetts/mcp-youtube",
+    "homepage": "https://github.com/anaisbetts/mcp-youtube",
+    "description": "获取YouTube字幕",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-072356bc3e4c",
+    "name": "danhilse/notion_mcp",
+    "homepage": "https://github.com/danhilse/notion_mcp",
+    "description": "与Notion API集成，管理个人待办事项列表",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-dc6ea368204a",
+    "name": "rusiaaman/wcgw",
+    "homepage": "https://github.com/rusiaaman/wcgw/blob/main/src/wcgw/client/mcp_server/Readme.md",
+    "description": "自动化shell执行、计算机控制和编码代理。（Mac）",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-568033737fa2",
+    "name": "reeeeemo/ancestry-mcp",
+    "homepage": "https://github.com/reeeeemo/ancestry-mcp",
+    "description": "允许AI读取.ged文件和基因数据",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-bde3ac7201df",
+    "name": "sirmews/apple-notes-mcp",
+    "homepage": "https://github.com/sirmews/apple-notes-mcp",
+    "description": "允许AI读取本地Apple Notes数据库（仅限macOS）",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0e64b1d9b01c",
+    "name": "henilcalagiya/mcp-apple-notes",
+    "homepage": "https://github.com/henilcalagiya/mcp-apple-notes",
+    "description": "使用模型上下文协议（MCP）自动化Apple Notes的强大工具。支持HTML内容的完整CRUD操作、文件夹管理和搜索功能。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a6ca6945b8ab",
+    "name": "suekou/mcp-notion-server",
+    "homepage": "https://github.com/suekou/mcp-notion-server",
+    "description": "与Notion API交互",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ef7dd373024a",
+    "name": "amidabuddha/unichat-mcp-server",
+    "homepage": "https://github.com/amidabuddha/unichat-mcp-server",
+    "description": "使用MCP协议通过工具或预定义的提示发送请求给OpenAI、MistralAI、Anthropic、xAI或Google AI。需要供应商API密钥",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-0cb2c4e5ee1f",
+    "name": "evalstate/mcp-miro",
+    "homepage": "https://github.com/evalstate/mcp-miro",
+    "description": "访问 MIRO 白板，批量创建和读取项目。需要 REST API 的 OAUTH 密钥。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3991353693c9",
+    "name": "@tacticlaunch/mcp-linear",
+    "homepage": "https://github.com/tacticlaunch/mcp-linear",
+    "description": "与Linear项目管理系统集成",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e3a40a734d39",
+    "name": "KS-GEN-AI/jira-mcp-server",
+    "homepage": "https://github.com/KS-GEN-AI/jira-mcp-server",
+    "description": "通过 JQL 和 API 读取 Jira 数据，并执行创建和编辑工单的请求",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-616ab2f2594e",
+    "name": "KS-GEN-AI/confluence-mcp-server",
+    "homepage": "https://github.com/KS-GEN-AI/confluence-mcp-server",
+    "description": "通过 CQL 获取 Confluence 数据并阅读页面",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-fb062c5edd2b",
+    "name": "sooperset/mcp-atlassian",
+    "homepage": "https://github.com/sooperset/mcp-atlassian",
+    "description": "Confluence工作区的自然语言搜索和内容访问",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-9bffc075e7f6",
+    "name": "pyroprompts/any-chat-completions-mcp",
+    "homepage": "https://github.com/pyroprompts/any-chat-completions-mcp",
+    "description": "与任何其他OpenAI SDK兼容的聊天完成API对话，例如Perplexity、Groq、xAI等",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-50df7a2c1b40",
+    "name": "anaisbetts/mcp-installer",
+    "homepage": "https://github.com/anaisbetts/mcp-installer",
+    "description": "一个MCP服务器，可以为您安装其他MCP服务器",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3714db19bbeb",
+    "name": "tanigami/mcp-server-perplexity",
+    "homepage": "https://github.com/tanigami/mcp-server-perplexity",
+    "description": "与 Perplexity API 交互。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2372614090b0",
+    "name": "andybrandt/mcp-simple-timeserver",
+    "homepage": "https://github.com/andybrandt/mcp-simple-timeserver",
+    "description": "MCP 服务器允许检查客户端计算机上的本地时间或 NTP 服务器上的当前 UTC 时间",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7403d979b320",
+    "name": "andybrandt/mcp-simple-openai-assistant",
+    "homepage": "https://github.com/andybrandt/mcp-simple-openai-assistant",
+    "description": "🐍 ☁️  MCP 与 OpenAI 助手对话（Claude 可以使用任何 GPT 模型作为他的助手）",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-049194eeaa2d",
+    "name": "@evalstate/mcp-hfspace",
+    "homepage": "https://github.com/evalstate/mcp-hfspace",
+    "description": "直接从 Claude 使用 HuggingFace Spaces。使用开源图像生成、聊天、视觉任务等。支持图像、音频和文本上传/下载。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-641cf0e98b48",
+    "name": "zueai/mcp-manager",
+    "homepage": "https://github.com/zueai/mcp-manager",
+    "description": "简单的 Web UI 用于安装和管理 Claude 桌面应用程序的 MCP 服务器。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-fd794e3aa8c8",
+    "name": "wong2/mcp-cli",
+    "homepage": "https://github.com/wong2/mcp-cli",
+    "description": "用于测试 MCP 服务器的 CLI 工具",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-eb363e2f918b",
+    "name": "isaacwasserman/mcp-vegalite-server",
+    "homepage": "https://github.com/isaacwasserman/mcp-vegalite-server",
+    "description": "使用 VegaLite 格式和渲染器从获取的数据生成可视化效果。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-aa0b15f9626d",
+    "name": "tevonsb/homeassistant-mcp",
+    "homepage": "https://github.com/tevonsb/homeassistant-mcp",
+    "description": "访问家庭助理数据和控制设备（灯、开关、恒温器等）。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-874ee3ff3ac1",
+    "name": "allenporter/mcp-server-home-assistant",
+    "homepage": "https://github.com/allenporter/mcp-server-home-assistant",
+    "description": "通过模型上下文协议服务器暴露所有 Home Assistant 语音意图，实现智能家居控制",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d87f36f2e595",
+    "name": "@magarcia/mcp-server-giphy",
+    "homepage": "https://github.com/magarcia/mcp-server-giphy",
+    "description": "通过Giphy API从庞大的Giphy图库中搜索并获取GIF动图。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7132fda7b153",
+    "name": "nguyenvanduocit/all-in-one-model-context-protocol",
+    "homepage": "https://github.com/nguyenvanduocit/all-in-one-model-context-protocol",
+    "description": "一些对开发者有用的工具，几乎涵盖工程师所需的一切：Confluence、Jira、YouTube、运行脚本、知识库RAG、抓取URL、管理YouTube频道、电子邮件、日历、GitLab",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-689a9995b2b2",
+    "name": "@joshuarileydev/mac-apps-launcher-mcp-server",
+    "homepage": "https://github.com/JoshuaRileyDev/mac-apps-launcher",
+    "description": "用于列出和启动 MacOS 上的应用程序的 MCP 服务器",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d026d397d1b1",
+    "name": "ZeparHyfar/mcp-datetime",
+    "homepage": "https://github.com/ZeparHyfar/mcp-datetime",
+    "description": "MCP 服务器提供多种格式的日期和时间函数",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-e2b441a98da1",
+    "name": "SecretiveShell/MCP-wolfram-alpha",
+    "homepage": "https://github.com/SecretiveShell/MCP-wolfram-alpha",
+    "description": "用于查询Wolfram Alpha API的MCP服务器。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-08642dee8b53",
+    "name": "apinetwork/piapi-mcp-server",
+    "homepage": "https://github.com/apinetwork/piapi-mcp-server",
+    "description": "apinetwork/piapi-mcp-server",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-3d2a8b1021f1",
+    "name": "gotoolkits/DifyWorkflow",
+    "homepage": "https://github.com/gotoolkits/mcp-difyworkflow-server",
+    "description": "🏎️ ☁️ MCP 服务器 Tools 实现查询与执行 Dify AI 平台上自定义的工作流",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-fc5ad66cea0d",
+    "name": "@pskill9/hn-server",
+    "homepage": "https://github.com/pskill9/hn-server",
+    "description": "📇 ☁️ 解析 news.ycombinator.com（Hacker News）的 HTML 内容，为不同类型的故事（热门、最新、问答、展示、工作）提供结构化数据",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-16bd8b769eda",
+    "name": "@mediar-ai/screenpipe",
+    "homepage": "https://github.com/mediar-ai/screenpipe",
+    "description": "🎖️ 🦀 🏠 🍎 本地优先的系统，支持屏幕/音频捕获并带有时间戳索引、SQL/嵌入存储、语义搜索、LLM 驱动的历史分析和事件触发动作 - 通过 NextJS 插件生态系统实现构建上下文感知的 AI 代理",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-75500a4f78c3",
+    "name": "akseyh/bear-mcp-server",
+    "homepage": "https://github.com/akseyh/bear-mcp-server",
+    "description": "允许 AI 读取您的 Bear Notes（仅支持 macOS）",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-063836afa95e",
+    "name": "mcp-server-jfx",
+    "homepage": "https://github.com/quarkiverse/quarkus-mcp-servers/tree/main/jfx",
+    "description": "在JavaFX画布上绘制。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-2660de0b8dc2",
+    "name": "hmk/attio-mcp-server",
+    "homepage": "https://github.com/hmk/attio-mcp-server",
+    "description": "📇 ☁️ 允许AI客户端在Attio CRM中管理记录和笔记",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1e6d8b43fb50",
+    "name": "roychri/mcp-server-asana",
+    "homepage": "https://github.com/roychri/mcp-server-asana",
+    "description": "📇 ☁️ 这个Asana的模型上下文协议（MCP）服务器实现允许你通过MCP客户端（如Anthropic的Claude桌面应用等）与Asana API进行交互。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7978ff696170",
+    "name": "ws-mcp",
+    "homepage": "https://github.com/nick1udwig/ws-mcp",
+    "description": "使用 WebSocket 包装 MCP 服务器（用于 kitbitz）",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4194f19f860c",
+    "name": "AbdelStark/bitcoin-mcp",
+    "homepage": "https://github.com/AbdelStark/bitcoin-mcp",
+    "description": "₿ 一个模型上下文协议（MCP）服务器，使 AI 模型能够与比特币交互，允许它们生成密钥、验证地址、解码交易、查询区块链等",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5d01bc1e43d6",
+    "name": "louiscklaw/hko-mcp",
+    "homepage": "https://github.com/louiscklaw/hko-mcp",
+    "description": "一个 MCP 服务器，演示如何从香港天文台获取天气数据",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-a8fd10c1e136",
+    "name": "tomekkorbak/strava-mcp-server",
+    "homepage": "https://github.com/tomekkorbak/strava-mcp-server",
+    "description": "An MCP server for Strava, an app for tracking physical exercise",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4a8e65555dd0",
+    "name": "tomekkorbak/oura-mcp-server",
+    "homepage": "https://github.com/tomekkorbak/oura-mcp-server",
+    "description": "An MCP server for Oura, an app for tracking sleep",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-ea4161325430",
+    "name": "rember/rember-mcp",
+    "homepage": "https://github.com/rember/rember-mcp",
+    "description": "Create spaced repetition flashcards in Rember to remember anything you learn in your chats.",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-535bed800570",
+    "name": "hiromitsusasaki/raindrop-io-mcp-server",
+    "homepage": "https://github.com/hiromitsusasaki/raindrop-io-mcp-server",
+    "description": "An integration that allows LLMs to interact with Raindrop.io bookmarks using the Model Context Protocol (MCP).",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-11f79202b63c",
+    "name": "@integromat/make-mcp-server",
+    "homepage": "https://github.com/integromat/make-mcp-server",
+    "description": "Turn your Make scenarios into callable tools for AI assistants.",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-4012ae4e69cc",
+    "name": "NON906/omniparser-autogui-mcp",
+    "homepage": "https://github.com/NON906/omniparser-autogui-mcp",
+    "description": "🐍 Automatic operation of on-screen GUI.",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-97062c4735f7",
+    "name": "kj455/mcp-kibela",
+    "homepage": "https://github.com/kj455/mcp-kibela",
+    "description": "📇 ☁️ Kibela 与 MCP 的集成",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-475814a89578",
+    "name": "blurrah/mcp-graphql",
+    "homepage": "https://github.com/blurrah/mcp-graphql",
+    "description": "Allows the AI to query GraphQL servers",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-d1a3a1847386",
+    "name": "fotoetienne/gqai",
+    "homepage": "https://github.com/fotoetienne/gqai",
+    "description": "使用常规 GraphQL 查询/变异定义工具，gqai 会自动为您生成 MCP 服务器。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6a58d585b1d3",
+    "name": "@awkoy/replicate-flux-mcp",
+    "homepage": "https://github.com/awkoy/replicate-flux-mcp",
+    "description": "通过Replicate API提供图像生成功能。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-c7422896b229",
+    "name": "kenliao94/mcp-server-rabbitmq",
+    "homepage": "https://github.com/kenliao94/mcp-server-rabbitmq",
+    "description": "Enable interaction (admin operation, message enqueue/dequeue) with RabbitMQ",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8245c8dca5ad",
+    "name": "marcelmarais/Spotify",
+    "homepage": "https://github.com/marcelmarais/spotify-mcp-server",
+    "description": "📇 🏠 Control Spotify playback and manage playlists.",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-355ab309f7c2",
+    "name": "NakaokaRei/swift-mcp-gui",
+    "homepage": "https://github.com/NakaokaRei/swift-mcp-gui.git",
+    "description": "MCP服务器，可以执行键盘输入、鼠标移动等命令",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-683572d74c96",
+    "name": "awwaiid/mcp-server-taskwarrior",
+    "homepage": "https://github.com/awwaiid/mcp-server-taskwarrior",
+    "description": "An MCP server for basic local taskwarrior usage (add, update, remove tasks)",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-6c74df79c77d",
+    "name": "kelvin6365/plane-mcp-server",
+    "homepage": "https://github.com/kelvin6365/plane-mcp-server",
+    "description": "🏎️ 🏠 此 MCP 伺服器將協助您透過 Plane 的 API 管理專案和問題",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-14990106626a",
+    "name": "yuna0x0/hackmd-mcp",
+    "homepage": "https://github.com/yuna0x0/hackmd-mcp",
+    "description": "允许 AI 模型与 HackMD 交互",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-79525f22e717",
+    "name": "pwh-pwh/cal-mcp",
+    "homepage": "https://github.com/pwh-pwh/cal-mcp",
+    "description": "MCP服务器，可以计算数学表达式",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-aa847d57e4d8",
+    "name": "HenryHaoson/Yuque-MCP-Server",
+    "homepage": "https://github.com/HenryHaoson/Yuque-MCP-Server",
+    "description": "📇 ☁️ 用于与语雀API集成的Model-Context-Protocol (MCP)服务器，允许AI模型管理文档、与知识库交互、搜索内容以及访问语雀平台的统计数据。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-7758cb54a555",
+    "name": "tumf/web3-mcp",
+    "homepage": "https://github.com/tumf/web3-mcp",
+    "description": "包装Ankr Advanced API的MCP服务器实现。可以访问以太坊、BSC、Polygon、Avalanche等多条区块链上的NFT、代币和区块链数据。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-5483bb980369",
+    "name": "ttommyth/interactive-mcp",
+    "homepage": "https://github.com/ttommyth/interactive-mcp",
+    "description": "通过在 MCP 循环中直接添加本地用户提示和聊天功能，启用交互式 LLM 工作流程。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-1dd39867a582",
+    "name": "brianxiadong/ones-wiki-mcp-server",
+    "homepage": "https://github.com/brianxiadong/ones-wiki-mcp-server",
+    "description": "一个基于 Spring AI MCP 的服务，用于检索 ONES Wiki 内容并将其转换为 AI 友好的文本格式。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-233432e4c0ef",
+    "name": "caol64/wenyan-mcp",
+    "homepage": "https://github.com/caol64/wenyan-mcp",
+    "description": "文颜 MCP Server， 让 AI 将 Markdown 文章自动排版后发布至微信公众号。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-08d19a0ca44f",
+    "name": "growilabs/growi-mcp-server",
+    "homepage": "https://github.com/growilabs/growi-mcp-server",
+    "description": "与 GROWI API 集成的官方 MCP 服务器。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-8fca81813ff1",
+    "name": "JamesANZ/medical-mcp",
+    "homepage": "https://github.com/JamesANZ/medical-mcp",
+    "description": "一个MCP服务器，提供对医疗信息、药物数据库和医疗保健资源的访问。使AI助手能够查询医疗数据、药物相互作用和临床指南。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  },
+  {
+    "id": "community-dbf386dcd3ac",
+    "name": "SPL-BGU/PlanningCopilot",
+    "homepage": "https://github.com/SPL-BGU/PlanningCopilot",
+    "description": "一种增强型 LLM 工具系统，支持完整的 PDDL 规划流程，无需领域训练即可提高 PDDL 问题的解决可靠性。",
+    "category": "其他工具和集成",
+    "source": "awesome",
+    "fields": [],
+    "recipe": null
+  }
+]
