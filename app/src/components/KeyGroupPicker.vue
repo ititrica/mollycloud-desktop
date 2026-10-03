@@ -6,16 +6,17 @@ import type { KeyGroup, KeyGroupChanged, KeyGroups } from '../contracts';
 import { providerNames } from '../keyGroups';
 import GroupBadge from './GroupBadge.vue';
 import AppIcon from './AppIcon.vue';
-const props = defineProps<{ value: KeyGroup | null; keyId?: string; keyName?: string; disabled?: boolean; groups?: KeyGroups }>();
-const emit = defineEmits<{ selected:[KeyGroup]; changed:[KeyGroupChanged]; opened:[boolean] }>();
+const props = defineProps<{ value: KeyGroup | null; keyId?: string; keyName?: string; disabled?: boolean; groups?: KeyGroups; inline?:boolean }>();
+const emit = defineEmits<{ selected:[KeyGroup]; changed:[KeyGroupChanged]; opened:[boolean]; busy:[boolean] }>();
 const open = ref(false), loading = ref(false), saving = ref(false), query = ref(''), error = ref('');
 const data = ref<KeyGroups>({groups:[],rates_available:false});
 const search = ref<InstanceType<typeof NInput> | null>(null), trigger = ref<HTMLButtonElement | null>(null);
 const activeIndex = ref(0), listId = useId();
 let generation = 0;
 let disposed=false;
+watch(saving,value=>emit('busy',value),{flush:'sync'});
 onBeforeUnmount(()=>{disposed=true;++generation;});
-onMounted(()=>{if(!props.groups)void load();});
+onMounted(()=>{if(props.inline)void toggle(true);else if(!props.groups)void load();});
 const available = computed(() => props.groups ?? data.value);
 const current = computed(() => available.value.groups.find(g=>g.id===props.value?.id) ?? props.value);
 const filtered = computed(() => available.value.groups.filter(g=>`${g.name} ${g.description} ${providerNames[g.platform] ?? g.platform}`.toLowerCase().includes(query.value.toLowerCase().trim())));
@@ -54,12 +55,13 @@ function keydown(event:KeyboardEvent){
   }
   if(event.key==='Enter'){event.preventDefault();const group=filtered.value[activeIndex.value];if(group)void select(group);}
 }
+defineExpose({focusSearch:()=>{void nextTick(()=>search.value?.focus());}});
 </script>
 <template>
-  <n-popover :show="open" trigger="click" placement="bottom-start" :show-arrow="false" :disabled="disabled" :style="{padding:'0',maxWidth:'calc(100vw - 40px)'}" @update:show="toggle">
-    <template #trigger><button ref="trigger" class="key-group-trigger" type="button" :disabled="disabled || saving" aria-haspopup="listbox" :aria-expanded="open" :aria-controls="listId" :aria-label="keyId ? `切换 ${keyName ?? '密钥'} 的分组` : '选择密钥分组'" @keydown.down.prevent="toggle(true)"><GroupBadge v-if="current" :group="current" show-rate/><span v-else class="key-group-empty">未选择</span><span class="key-group-trigger__hint">选择分组</span><AppIcon name="chevron"/></button></template>
-    <div class="key-group-menu" :aria-busy="loading || saving" @keydown="keydown">
-      <div class="key-group-search"><n-input ref="search" v-model:value="query" placeholder="搜索分组…" aria-label="搜索分组" role="combobox" aria-autocomplete="list" :aria-expanded="true" :aria-controls="listId" :aria-activedescendant="activeId" :disabled="saving" clearable><template #prefix><AppIcon name="search"/></template></n-input></div>
+  <component :is="inline ? 'div' : NPopover" v-bind="inline ? {} : {show:open,trigger:'click',placement:'bottom-start',showArrow:false,disabled,style:{padding:'0',maxWidth:'calc(100vw - 40px)'}}" @update:show="toggle">
+    <template v-if="!inline" #trigger><button ref="trigger" class="key-group-trigger" type="button" :disabled="disabled || saving" aria-haspopup="listbox" :aria-expanded="open" :aria-controls="listId" :aria-label="keyId ? `切换 ${keyName ?? '密钥'} 的分组` : '选择密钥分组'" @keydown.down.prevent="toggle(true)"><GroupBadge v-if="current" :group="current" show-rate/><span v-else class="key-group-empty">未选择</span><span class="key-group-trigger__hint">选择分组</span><AppIcon name="chevron"/></button></template>
+    <div class="key-group-menu" :style="inline ? {width:'100%'} : undefined" :aria-busy="loading || saving" @keydown="keydown">
+      <div class="key-group-search"><n-input ref="search" v-model:value="query" placeholder="搜索分组…" aria-label="搜索分组" role="combobox" aria-autocomplete="list" :aria-expanded="true" :aria-controls="listId" :aria-activedescendant="activeId" :disabled="saving" clearable @keydown.stop="keydown"><template #prefix><AppIcon name="search"/></template></n-input></div>
       <div v-if="loading" class="key-group-message" role="status"><n-spin size="small"/> 正在加载分组…</div>
       <div v-else :id="listId" class="key-group-options" role="listbox" aria-label="可用分组">
         <button v-for="(group,index) in filtered" :id="`${listId}-${index}`" :key="group.id" class="key-group-option" :class="{'is-current':group.id===value?.id,'is-active':index===activeIndex}" type="button" role="option" :aria-selected="group.id===value?.id" :disabled="saving" :tabindex="-1" @pointermove="activeIndex=index" @click="select(group)">
@@ -72,5 +74,5 @@ function keydown(event:KeyboardEvent){
       <p v-if="!loading && !available.rates_available && available.groups.length" class="key-group-note">暂显示默认倍率，实际计费以服务端为准。</p>
       <div v-if="error" class="key-group-error" role="alert">{{ error }}<n-button v-if="!saving" text size="small" @click="load">刷新分组</n-button></div>
     </div>
-  </n-popover>
+  </component>
 </template>

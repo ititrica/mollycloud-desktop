@@ -22,7 +22,7 @@ export function mockEmbeddedWindow(native?: Pick<NativeInternals, "invoke">, nat
     __TAURI_EVENT_PLUGIN_INTERNALS__: { value: nativePresent ? parentEvents : undefined },
     isTauri: { value: nativePresent },
   });
-  const child = { location: { origin: "http://localhost:24320", search: "?ui-preview=ccswitch" } } as BridgeWindow;
+  const child = { location: { origin: "http://localhost:24320", search: "?ui-preview=ccswitch" }, addEventListener: vi.fn() } as unknown as BridgeWindow;
   Object.defineProperties(child, {
     parent: { value: parent },
     __TAURI_INTERNALS__: { value: nativePresent ? childInternals : undefined },

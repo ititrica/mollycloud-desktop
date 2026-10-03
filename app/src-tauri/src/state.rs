@@ -19,6 +19,7 @@ pub struct SessionSecrets {
 }
 
 pub struct RuntimeState {
+    pub key_provider_sync: Mutex<()>,
     pub api: Sub2ApiClient,
     pub session: Arc<Mutex<SessionSecrets>>,
     // The console and pet share rotating refresh tokens. Only one refresh/login
@@ -30,6 +31,7 @@ pub struct RuntimeState {
 impl RuntimeState {
     pub fn new() -> Result<Self, String> {
         Ok(Self {
+            key_provider_sync: Mutex::new(()),
             api: Sub2ApiClient::new()?,
             session: Arc::new(Mutex::new(SessionSecrets::default())),
             token_transition: Mutex::new(()),

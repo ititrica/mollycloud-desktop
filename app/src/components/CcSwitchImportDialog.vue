@@ -7,6 +7,9 @@ const props = defineProps<{
   show: boolean;
   keyId: string;
   initialName: string;
+  initialAgent?: CcSwitchAgent;
+  initialModel?: string;
+  apply?: boolean;
 }>();
 const emit = defineEmits<{
   "update:show": [show: boolean];
@@ -41,8 +44,8 @@ const modelOptions = computed(() => fetchedModels.value.map((model) => ({ label:
 
 function resetDraft(): void {
   draftName.value = props.initialName;
-  draftAgent.value = "codex";
-  draftModel.value = "gpt-5.5";
+  draftAgent.value = props.initialAgent ?? "codex";
+  draftModel.value = props.initialModel ?? "";
   selectedFetchedModel.value = null;
   fetchedModels.value = [];
   errorMessage.value = "";
@@ -76,6 +79,7 @@ async function fetchModels(): Promise<void> {
 }
 
 async function submit(): Promise<void> {
+  if (importing.value || !props.show) return;
   const name = draftName.value.trim();
   const model = draftModel.value.trim();
   if (!name) {
@@ -121,10 +125,10 @@ watch(() => props.show, (show) => {
     @update:show="cancel"
     @after-leave="emit('closed')"
   >
-    <div class="console-settings-dialog ccs-import-dialog" role="dialog" aria-modal="true" aria-labelledby="ccs-import-title" aria-describedby="ccs-import-description" data-agent-count="9" :aria-busy="fetchingModels || importing">
+    <div class="console-settings-dialog ccs-import-dialog" role="dialog" aria-modal="true" aria-labelledby="ccs-import-title" aria-describedby="ccs-import-description" :data-agent-count="agentOptions.length" :aria-busy="fetchingModels || importing">
       <header class="console-settings-header">
         <span class="console-settings-icon"><span class="ccs-import-mark">CC</span></span>
-        <div><h2 id="ccs-import-title">导入到内置 CC Switch</h2><p id="ccs-import-description">保存为供应商；导入后不会自动启用。</p></div>
+        <div><h2 id="ccs-import-title">密钥配置</h2><p id="ccs-import-description">{{ apply ? '保存后应用到所选工具。' : '保存模型配置，点击启用后用于工具。' }}</p></div>
       </header>
       <form class="console-settings-form" @submit.prevent="submit">
         <div class="console-settings-body ccs-import-body">
@@ -134,8 +138,8 @@ watch(() => props.show, (show) => {
           </label>
 
           <label class="ccs-import-field">
-            <span>导入到的 Agent</span>
-            <n-select v-model:value="draftAgent" :options="agentOptions" :disabled="importing" aria-label="导入到的 Agent" />
+            <span>工具</span>
+            <n-select v-model:value="draftAgent" :options="agentOptions" :disabled="importing" aria-label="工具" />
             <small>包含 CC Switch 当前支持的全部 Agent 与 Claude Desktop。</small>
           </label>
 
@@ -153,7 +157,7 @@ watch(() => props.show, (show) => {
         </div>
         <footer class="console-settings-actions">
           <n-button size="large" :disabled="importing" @click="cancel">取消</n-button>
-          <n-button class="ccs-import-submit" type="primary" size="large" attr-type="submit" :loading="importing">导入</n-button>
+          <n-button class="ccs-import-submit" type="primary" size="large" attr-type="submit" :loading="importing">{{ apply ? '保存并应用' : '保存配置' }}</n-button>
         </footer>
       </form>
     </div>

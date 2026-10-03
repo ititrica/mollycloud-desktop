@@ -4,6 +4,13 @@ import { mockEmbeddedWindow } from "./test-window";
 
 afterEach(() => { vi.unstubAllGlobals(); });
 describe("embedded command boundaries", () => {
+  it("routes only the explicit account-key operations through the host", async () => {
+    const native=vi.fn().mockResolvedValue(true);mockEmbeddedWindow({invoke:native});
+    await invoke('sync_molly_key_providers',{agent:'codex'});
+    await invoke('copy_api_key',{keyId:'42'});
+    expect(native).toHaveBeenNthCalledWith(1,'sync_molly_key_providers',{agent:'codex'});
+    expect(native).toHaveBeenNthCalledWith(2,'copy_api_key',{keyId:'42'});
+  });
   it("namespaces upstream commands and retains native plugin names", async () => {
     const native = vi.fn().mockResolvedValue(true);
     mockEmbeddedWindow({ invoke: native });

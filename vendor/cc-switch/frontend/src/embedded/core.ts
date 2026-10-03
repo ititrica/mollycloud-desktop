@@ -11,6 +11,9 @@ export function invoke<T>(command: string, args?: Record<string, unknown>, optio
   if (command === "open_provider_terminal") {
     return bridge.invoke<T>("launch_ccswitch_cli", { appType: args?.app, providerId: args?.providerId, cwd: args?.cwd });
   }
+  if (["sync_molly_key_providers", "copy_api_key", "copy_api_endpoint"].includes(command)) {
+    return bridge.invoke<T>(command, args);
+  }
   if (["register_ccswitch_web_import", "unregister_ccswitch_web_import", "ccswitch_web_import_handler"].includes(command)) {
     return bridge.invoke<T>(command, args);
   }

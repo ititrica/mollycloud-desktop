@@ -642,6 +642,18 @@ fn molly_provider_config(
     Ok(config)
 }
 
+pub(crate) fn molly_provider_id(account: &str, key: &str, agent: &str) -> String {
+    let mut hash = Sha256::new();
+    hash.update(account.as_bytes());
+    hash.update([0]);
+    hash.update(key.as_bytes());
+    if agent != "codex" {
+        hash.update([0]);
+        hash.update(agent.as_bytes());
+    }
+    format!("molly-{:x}", hash.finalize())
+}
+
 fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<String, String> {
     if input.account_id.trim().is_empty()
         || input.key_id.trim().is_empty()
@@ -659,15 +671,7 @@ fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<Stri
     if input.name.trim().is_empty() || input.model.trim().is_empty() {
         return Err("供应商名称和默认模型不能为空。".into());
     }
-    let mut hash = Sha256::new();
-    hash.update(input.account_id.as_bytes());
-    hash.update([0]);
-    hash.update(input.key_id.as_bytes());
-    if input.app != "codex" {
-        hash.update([0]);
-        hash.update(input.app.as_bytes());
-    }
-    let id = format!("molly-{:x}", hash.finalize());
+    let id = molly_provider_id(&input.account_id, &input.key_id, &input.app);
     let settings_config = molly_provider_config(&input, &id)?;
     let existing = db
         .get_provider_by_id(&id, &input.app)
@@ -692,6 +696,8 @@ fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<Stri
         input.app
     ));
     let mut meta = provider.meta.take().unwrap_or_default();
+    meta.molly_account_id = Some(input.account_id);
+    meta.molly_key_id = Some(input.key_id);
     if let Some(code) = input.usage_script {
         meta.usage_script = Some(
             serde_json::from_value(json!({

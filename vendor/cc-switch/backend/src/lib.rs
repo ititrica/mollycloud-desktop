@@ -72,6 +72,8 @@ pub use settings::{update_settings, AppSettings};
 pub use store::AppState;
 
 mod embedded;
+mod molly_keys;
+pub use molly_keys::{ensure_molly_official, find_molly_key_provider, reconcile_molly_key_providers};
 mod allowed_commands;
 mod isolation;
 mod proxy_ownership;

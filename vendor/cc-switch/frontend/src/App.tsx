@@ -65,6 +65,7 @@ import { listenToHost } from "@/embedded/bridge";
 import { DeepLinkImportDialog } from "@/components/DeepLinkImportDialog";
 import { ProfileSwitcher } from "@/components/profiles/ProfileSwitcher";
 import { ProviderList } from "@/components/providers/ProviderList";
+import { MollyKeyDirectory } from "@/components/providers/MollyKeyDirectory";
 import { AddProviderDialog } from "@/components/providers/AddProviderDialog";
 import { EditProviderDialog } from "@/components/providers/EditProviderDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -538,7 +539,19 @@ function App() {
 
   useEffect(() => {
     return listenToHost((message) => {
+      if (message.type === "keys-changed") {
+        if (message.notice) toast.success(message.notice);
+        void queryClient.invalidateQueries({queryKey:["molly-account-keys"]});
+        return;
+      }
       const app = message.app && EMBEDDED_APPS.includes(message.app as AppId) ? message.app as AppId : "codex";
+      if (message.type === "apply-provider" && message.providerId) {
+        void providersApi.switch(message.providerId, app).then(async result => {
+          await queryClient.invalidateQueries();
+          result.warnings?.forEach(w => toast.warning(w));
+          toast.success("已应用账户密钥配置");
+        }).catch(e => toast.error(extractErrorMessage(e)));
+      }
       setActiveApp(app);
       setCurrentView("providers");
       setPendingProvider(message.providerId ? { id: message.providerId } : null);
@@ -1119,7 +1132,7 @@ function App() {
                     className="space-y-4"
                   >
                     <ProviderList
-                      providers={providers}
+                      providers={Object.fromEntries(Object.entries(providers).filter(([,provider]) => !provider.meta?.mollyKeyId && !(provider.id.startsWith("molly-") && provider.notes?.startsWith("由 MollyCloud API 密钥页导入；"))))}
                       currentProviderId={currentProviderId}
                       appId={activeApp}
                       isLoading={isLoading}
@@ -1172,6 +1185,7 @@ function App() {
                             : undefined
                       }
                     />
+                    <MollyKeyDirectory appId={activeApp} currentProviderId={currentProviderId} providers={providers} />
                   </motion.div>
                 </AnimatePresence>
               </div>

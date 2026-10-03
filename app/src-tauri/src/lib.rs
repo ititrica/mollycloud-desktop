@@ -3,6 +3,7 @@ pub use console_plugins::require_skills_cli;
 mod audio;
 mod api;
 mod key_groups;
+mod molly_keys;
 mod subscriptions;
 mod payments;
 mod recharge;
@@ -1768,6 +1769,7 @@ pub fn run() {
             }
             let dispatch: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             key_groups::fetch_key_groups, key_groups::change_key_group, key_groups::create_api_key, key_groups::delete_api_key,
+            molly_keys::sync_molly_key_providers,
             subscriptions::fetch_subscriptions, subscriptions::reset_subscription, subscriptions::update_subscription_auto_renew,
             payments::payment_checkout, payments::payment_orders, payments::payment_create_order, payments::payment_order, payments::payment_cancel_order, payments::open_payment_order,
             recharge::open_recharge_view, recharge::close_recharge_view,

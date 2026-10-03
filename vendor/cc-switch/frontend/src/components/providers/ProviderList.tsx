@@ -310,8 +310,9 @@ export function ProviderList({
 
   const filteredProviders = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return sortedProviders;
-    return sortedProviders.filter((provider) => {
+    const pinned = [...sortedProviders].sort((a,b)=>Number(b.category==='official')-Number(a.category==='official'));
+    if (!keyword) return pinned;
+    return pinned.filter((provider) => {
       const fields = [provider.name, provider.notes, provider.websiteUrl];
       return fields.some((field) =>
         field?.toString().toLowerCase().includes(keyword),

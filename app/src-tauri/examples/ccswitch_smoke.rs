@@ -26,6 +26,28 @@ fn restore_session() -> Option<serde_json::Value> {
     None
 }
 
+// This command is exclusive to the isolated smoke executable; no real account
+// or credentials are consulted by the test window.
+#[tauri::command]
+fn sync_molly_key_providers(app: tauri::AppHandle, agent: String) -> Result<serde_json::Value,String> {
+    molly_ccswitch::ensure_molly_official(&app,&agent)?;
+    let saved = molly_ccswitch::find_molly_key_provider(&app,"smoke-account","smoke-key",&agent)?;
+    Ok(serde_json::json!({"agent":agent,"current_removed":false,"keys":[{
+        "id":"smoke-key","name":if agent=="mcode" {"Molly MiniMax Smoke"} else {"Molly Native Smoke"},
+        "key":"sk-••••test","status":"active","group":{"name":"Fixture","platform":"openai"},
+        "quota":0,"quota_used":0,"usage":null,"compatible":true,"error":null,
+        "provider_id":saved.as_ref().map(|(id,_)|id),"model":saved.map(|(_,model)|model).unwrap_or_default()
+    }]}))
+}
+
+#[tauri::command]
+fn prepare_smoke_opencode(app: tauri::AppHandle) -> Result<String,String> {
+    molly_ccswitch::import_molly_provider(&app,molly_ccswitch::MollyProviderImport{
+        account_id:"smoke-account".into(),key_id:"smoke-key".into(),name:"Molly Native Smoke".into(),app:"opencode".into(),
+        api_key:"sk-molly-smoke-not-a-real-key".into(),base_url:"https://example.test/v1".into(),model:"test-model".into(),usage_script:None
+    })
+}
+
 const TEST_SCRIPT: &str = r#"
 (() => {
   if (window.parent !== window) return;
@@ -34,6 +56,7 @@ const TEST_SCRIPT: &str = r#"
   let finished = false;
   let started = false;
   let frame;
+  let manualOpenCodeRequest=false;
   const checks = [];
   const check = (condition, name) => { if (!condition) throw new Error(name); checks.push(name); };
   const report = result => {
@@ -49,6 +72,7 @@ const TEST_SCRIPT: &str = r#"
   setTimeout(() => report({ok:false,error:'Native CC Switch timeout',...diagnostics()}),45000);
   window.addEventListener('message', async event => {
     if (!frame || event.source !== frame.contentWindow || event.origin !== location.origin || event.data?.source !== 'molly-ccswitch' || finished) return;
+    if(event.data.type==='key-action'&&event.data.app==='opencode'&&event.data.action==='configure-enable') {manualOpenCodeRequest=true;return;}
     if (event.data.type === 'load-error') {
       try {
         check(window.__smokeInitFailure, 'Expected initialization failure');
@@ -67,14 +91,17 @@ const TEST_SCRIPT: &str = r#"
       const providers = await cc('get_providers',{app:'codex'});
       const provider = Object.values(providers).find(item=>item.name==='Molly Native Smoke');
       check(Boolean(provider), 'Rust DB-only import is visible through native IPC');
-      check((await cc('get_current_provider',{app:'codex'})) !== provider.id, 'Import does not activate a provider');
+      await invoke('sync_molly_key_providers',{agent:'codex'});
+      check((await cc('get_current_provider',{app:'codex'})) === 'codex-official', 'First empty Official selection does not activate an account key');
       frame.contentWindow.postMessage({source:'mollycloud',type:'navigate',providerId:provider.id,app:'codex'},location.origin);
       await waitFor(()=>frame.contentDocument.querySelector('[data-provider-id="'+provider.id+'"]'), 'Provider card did not render');
       const card = frame.contentDocument.querySelector('[data-provider-id="'+provider.id+'"]');
       const activate = [...card.querySelectorAll('button')].find(button=>button.textContent.trim()==='启用');
-      check(Boolean(activate), 'Original React card exposes explicit activation');
+      check(Boolean(activate), 'Unified account key exposes explicit activation');
       activate.click();
       await waitFor(async()=>(await cc('get_current_provider',{app:'codex'}))===provider.id,'Activation did not finish');
+      await invoke('sync_molly_key_providers',{agent:'codex'});
+      check((await cc('get_current_provider',{app:'codex'}))===provider.id,'Repeated sync preserves the explicitly selected key');
       check(frame.contentDocument.body.textContent.includes('本机工具配置'), 'UI describes actual system targets');
       const live = await cc('read_live_provider_settings',{app:'codex'});
       check(Boolean(live?.config), 'Activation writes the actual tool configuration');
@@ -95,11 +122,25 @@ const TEST_SCRIPT: &str = r#"
       frame.contentWindow.postMessage({source:'mollycloud',type:'navigate',providerId:minimax.id,app:'mcode'},location.origin);
       await waitFor(()=>frame.contentDocument.querySelector('[data-provider-id="'+minimax.id+'"]'), 'MiniMax provider card did not render');
       const minimaxCard = frame.contentDocument.querySelector('[data-provider-id="'+minimax.id+'"]');
-      const add = [...minimaxCard.querySelectorAll('button')].find(button=>button.textContent.trim()==='添加');
+      const add = [...minimaxCard.querySelectorAll('button')].find(button=>button.textContent.trim()==='选择并添加');
       check(Boolean(add), 'MiniMax card exposes explicit additive activation');
       add.click();
       await waitFor(async()=>Boolean((await cc('read_live_provider_settings',{app:'mcode'}))[minimax.id]), 'MiniMax activation did not finish');
       check(!(await cc('get_current_provider',{app:'mcode'})), 'MiniMax keeps native default-model selection');
+      await invoke('sync_molly_key_providers',{agent:'opencode'});
+      check(Object.keys(await cc('get_providers',{app:'opencode'})).length===0,'OpenCode sync adds neither Official nor account providers');
+      frame.contentWindow.postMessage({source:'mollycloud',type:'navigate',app:'opencode'},location.origin);
+      await waitFor(()=>Boolean(frame.contentDocument.querySelector('.molly-key-record:not([data-provider-id])')),'OpenCode manual directory rendered');
+      const choose=[...frame.contentDocument.querySelectorAll('.molly-key-record button')].find(b=>b.textContent==='选择并添加');
+      check(Boolean(choose),'OpenCode exposes manual model selection');
+      choose.click();
+      await waitFor(()=>manualOpenCodeRequest,'OpenCode did not request host model selection');
+      check(Object.keys(await cc('get_providers',{app:'opencode'})).length===0,'Selecting OpenCode key waits for model confirmation');
+      const openCodeId=await invoke('prepare_smoke_opencode');
+      frame.contentWindow.postMessage({source:'mollycloud',type:'apply-provider',app:'opencode',providerId:openCodeId},location.origin);
+      await waitFor(async()=>(await cc('get_opencode_live_provider_ids')).includes(openCodeId),'OpenCode confirmed addition did not finish');
+      check((await cc('get_opencode_live_provider_ids')).includes('external'),'OpenCode keeps existing provider');
+      check(!(await cc('get_current_provider',{app:'opencode'})),'OpenCode does not change default selection');
       frame.contentWindow.__themeProbe = 42;
       for (const theme of ['dark','light']) {
         document.documentElement.dataset.theme = theme;
@@ -179,10 +220,14 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             smoke_report,
             bootstrap_public,
-            restore_session
+            restore_session,
+            sync_molly_key_providers,
+            prepare_smoke_opencode
         ])
         .setup(move |app| {
             if !failure_mode {
+                std::fs::create_dir_all(check_home.join(".config/opencode"))?;
+                std::fs::write(check_home.join(".config/opencode/opencode.json"),r#"{"model":"external/native","provider":{"external":{"npm":"@ai-sdk/openai-compatible","options":{"baseURL":"https://example.test/v1","apiKey":"mock-external"},"models":{"native":{}}}}}"#)?;
                 std::fs::create_dir_all(check_home.join(".minimax"))?;
                 std::fs::write(check_home.join(".minimax/config.yaml"), "defaultModel: minimax/native\nunknown: preserve-me\n")?;
                 molly_ccswitch::import_molly_provider(

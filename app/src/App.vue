@@ -18,31 +18,29 @@ import { useSlidingSelection } from "./useSlidingSelection";
 import { enterNavPanel, leaveNavPanel, cancelNavPanel } from "./navigationMotion";
 import AppIcon from "./components/AppIcon.vue";
 import CcSwitchImportDialog from "./components/CcSwitchImportDialog.vue";
-import CcSwitchPanel from "./components/CcSwitchPanel.vue";
+import CcSwitchPanel, { type CcKeyAction } from "./components/CcSwitchPanel.vue";
+import KeyGroupDialog from "./components/KeyGroupDialog.vue";
 import ImageWorkbenchPanel from "./components/ImageWorkbenchPanel.vue";
 import ConsoleSettingsDialog from "./components/ConsoleSettingsDialog.vue";
 import PetSettingsDialog from "./components/PetSettingsDialog.vue";
 import AssistantConversation from "./components/AssistantConversation.vue";
-import { keyUsage, keyQuota, costLabel } from "./keyUsage";
 import SkillManagerPanel from "./components/SkillManagerPanel.vue";
 const NetSpeedPanel = isWindows ? defineAsyncComponent(() => import("./components/NetSpeedPanel.vue")) : undefined;
-import KeyGroupPicker from "./components/KeyGroupPicker.vue";
 import CreateKeyDialog from "./components/CreateKeyDialog.vue";
 import DeleteKeyDialog from "./components/DeleteKeyDialog.vue";
-import { groupFromKey } from "./keyGroups";
 import RechargePanel from "./components/RechargePanel.vue";
 import SubscriptionsPanel from "./components/SubscriptionsPanel.vue";
 import type { SpeechStatus } from "./speech";
 import { emitTo } from "@tauri-apps/api/event";
 import { asArray, asRecord, type AccountBalance, type AssistantConfig, type DashboardPayload, type ServiceBootstrap, type KeyGroupChanged } from "./contracts";
 import { formatBalance, formatDate, formatMoney, formatTokens, numberValue, textValue } from "./format";
-import { desktopApi, type CcSwitchImportResult, type DesktopUpdate } from "./ipc";
+import { desktopApi, type CcSwitchImportResult, type DesktopUpdate, type CcSwitchAgent } from "./ipc";
 
 type Page = "overview" | "subscriptions" | "keys" | "usage" | "recharge" | "assistant" | "ccswitch" | "netspeed" | "images" | "skills";
 type Phase = "starting" | "login" | "two-factor" | "dashboard";
 type AssistantDisplayMessage = { role: "user" | "assistant"; content: string };
 type OverviewIcon = "wallet" | "spend" | "subscription" | "key" | "request" | "token" | "database" | "clock";
-type OverviewTarget = "recharge" | "subscriptions" | "keys" | "usage";
+type OverviewTarget = "recharge" | "subscriptions" | "ccswitch" | "usage";
 
 const phase = ref<Phase>("starting");
 watch(() => phase.value === "dashboard", (active) => {
@@ -73,6 +71,12 @@ const sidebarCollapsed = ref(false);
 const ccSwitchImportOpen = ref(false);
 const ccSwitchImportKeyId = ref("");
 const ccSwitchImportName = ref("");
+const ccSwitchImportAgent = ref<CcSwitchAgent>("codex");
+const ccSwitchImportModel = ref("");
+const ccSwitchImportApply = ref(false);
+const keyGroupOpen = ref(false);
+const keyGroupTarget = ref<Record<string,unknown>|null>(null);
+let keyActionFocus: {keyId?:string;action:string}|null = null;
 const createKeyOpen = ref(false);
 const deleteKeyOpen = ref(false);
 const deleteKeyTarget = ref({ id: "", name: "" });
@@ -91,7 +95,6 @@ const lastUpdated = ref<Date | null>(null);
 const assistantConfig = ref<AssistantConfig | null>(null);
 const petVisible = ref(false);
 const petToggleLoading = ref(false);
-const copiedKeyId = ref("");
 const importedProviders = ref<Record<string, CcSwitchImportResult>>({});
 const ccSwitchVisited = ref(false);
 const imageWorkbenchVisited = ref(false);
@@ -103,7 +106,6 @@ const primarySelection = computed(() => ["overview", "subscriptions", "usage", "
 useSlidingSelection(sidebarNav, primarySelection);
 useSlidingSelection(overviewNav, activePage, true);
 const consolePreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get("ui-preview") === "console";
-const endpointCopied = ref(false);
 const assistantMessages = ref<AssistantDisplayMessage[]>([]);
 const assistantDraft = ref("");
 const assistantSending = ref(false);
@@ -124,12 +126,12 @@ const updateDialogOpen = ref(false);
 const updateDialogError = ref("");
 const updateOpening = ref(false);
 const notifiedUpdateVersion = ref<string | null>(null);
-watch([desktopUpdate, phase, consoleSettingsOpen, petSettingsOpen, ccSwitchImportOpen, skillsModalOpen, subscriptionModalOpen, createKeyOpen, deleteKeyOpen], ([update, currentPhase]) => {
+watch([desktopUpdate, phase, consoleSettingsOpen, petSettingsOpen, ccSwitchImportOpen, skillsModalOpen, subscriptionModalOpen, createKeyOpen, deleteKeyOpen, keyGroupOpen], ([update, currentPhase]) => {
   if (!update || currentPhase !== "dashboard") {
     updateDialogOpen.value = false;
     return;
   }
-  if (consoleSettingsOpen.value || petSettingsOpen.value || ccSwitchImportOpen.value || skillsModalOpen.value || subscriptionModalOpen.value || createKeyOpen.value || deleteKeyOpen.value) return;
+  if (consoleSettingsOpen.value || petSettingsOpen.value || ccSwitchImportOpen.value || skillsModalOpen.value || subscriptionModalOpen.value || createKeyOpen.value || deleteKeyOpen.value || keyGroupOpen.value) return;
   if (currentPhase === "dashboard" && update && notifiedUpdateVersion.value !== update.version) {
     notifiedUpdateVersion.value = update.version;
     updateDialogError.value = "";
@@ -139,7 +141,6 @@ watch([desktopUpdate, phase, consoleSettingsOpen, petSettingsOpen, ccSwitchImpor
 let refreshTimer: number | undefined;
 let balanceRefreshTimer: number | undefined;
 let balanceRefreshInFlight = false;
-let copyFeedbackTimer: number | undefined;
 let unlistenAssistantConfig: (() => void) | undefined;
 let unlistenAssistantHistory: (() => void) | undefined;
 let unlistenSpeech: (() => void) | undefined;
@@ -158,7 +159,6 @@ watch(phase, (next) => {
 
 const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "project-key" | "key" | "usage" | "assistant" | "code" | "image" | "skills" | "island" }> = [
   { id: "overview", label: "概览", icon: "overview" },
-  { id: "keys", label: "API 密钥", icon: "project-key" },
   { id: "ccswitch", label: "CC Switch", icon: "code" },
   { id: "assistant", label: "Molly助手", icon: "assistant" },
   ...(isWindows ? [{ id: "netspeed" as const, label: "灵动岛", icon: "island" as const }] : []),
@@ -193,7 +193,6 @@ const isOverviewPage = computed(() => overviewPages.some((item) => item.id === a
 const isEmbeddedPage = computed(() => ["assistant", "ccswitch", "images"].includes(activePage.value));
 const isToolPage = computed(() => ["netspeed", "skills"].includes(activePage.value));
 const showAccountHeader = computed(() => !isEmbeddedPage.value && !isToolPage.value);
-const apiEndpoint = "https://mollycloud.cn/v1";
 const accountReminder = computed(() => {
   if (activePage.value === "subscriptions") {
     const expiring = subscriptions.value.find((item) => {
@@ -234,7 +233,7 @@ const visibleAccountReminder = computed(() => {
 
 const stats = computed<Array<{ label: string; value: string; detail: string; tone: string; icon: OverviewIcon; target: OverviewTarget }>>(() => [
   { label: "余额", value: formatBalance(user.value.balance), detail: "可用余额", tone: "lime", icon: "wallet", target: "recharge" },
-  { label: "API 密钥", value: String(numberValue(keyPage.value.total ?? usage.value.active_api_keys)), detail: `${numberValue(usage.value.active_api_keys)} 个启用`, tone: "neutral", icon: "key", target: "keys" },
+  { label: "API 密钥", value: String(numberValue(keyPage.value.total ?? usage.value.active_api_keys)), detail: `${numberValue(usage.value.active_api_keys)} 个启用`, tone: "neutral", icon: "key", target: "ccswitch" },
   { label: "今日请求", value: numberValue(usage.value.today_requests).toLocaleString("zh-CN"), detail: `累计 ${numberValue(usage.value.total_requests).toLocaleString("zh-CN")}`, tone: "lime", icon: "request", target: "usage" },
   { label: "今日消费", value: formatMoney(usage.value.today_actual_cost), detail: `累计 ${formatMoney(usage.value.total_actual_cost)}`, tone: "neutral", icon: "spend", target: "usage" },
   { label: "今日 Token", value: formatTokens(usage.value.today_tokens), detail: "今日累计使用", tone: "amber", icon: "token", target: "usage" },
@@ -457,6 +456,9 @@ function startBalanceRefreshTimer(): void {
 async function signOut(): Promise<void> {
   deleteKeyOpen.value = false;
   createKeyOpen.value = false;
+  keyGroupOpen.value = false;
+  keyGroupTarget.value = null;
+  keyActionFocus = null;
   rechargeVisited.value = false;
   await desktopApi.logout();
   if (refreshTimer) window.clearInterval(refreshTimer);
@@ -561,6 +563,7 @@ function handleAssistantKeydown(event: KeyboardEvent): void {
 
 function selectPage(page: Page): void {
   if (assistantSettingsBusy.value) return;
+  if (page === "keys") page = "ccswitch";
   activePage.value = page;
   if (page === "recharge") rechargeVisited.value = true;
   if (page === "ccswitch") ccSwitchVisited.value = true;
@@ -570,6 +573,33 @@ function selectPage(page: Page): void {
     void loadPetVisibility();
     void requestAssistantHistory();
   }
+}
+
+function restoreKeyActionFocus(): void {
+  const target = keyActionFocus;
+  void nextTick(() => {
+    if (createKeyTrigger.value?.isConnected) createKeyTrigger.value.focus();
+    else ccSwitchPanel.value?.focusKeyAction(target?.keyId, target?.action);
+  });
+}
+
+async function handleCcKeyAction(request: CcKeyAction): Promise<void> {
+  if (phase.value !== "dashboard" || createKeyOpen.value || deleteKeyOpen.value || keyGroupOpen.value || ccSwitchImportOpen.value) return;
+  // A host modal must receive keyboard input after a click inside the iframe.
+  window.focus();
+  keyActionFocus = {keyId:request.keyId,action:request.action.startsWith("configure") ? "configure" : request.action};
+  createKeyTrigger.value = null;
+  if (request.action === "create") { openCreateKey(); return; }
+  let item = keys.value.find(item => String(item.id) === request.keyId);
+  if (!item && !consolePreview) { await refreshDashboard(); item = keys.value.find(item => String(item.id) === request.keyId); }
+  if (phase.value !== "dashboard") return;
+  if (!item) { ccSwitchPanel.value?.notifyKeysChanged("密钥已不存在，请刷新列表"); return; }
+  if (request.action === "delete") { openDeleteKey(item); return; }
+  if (request.action === "group") { keyGroupTarget.value = item; keyGroupOpen.value = true; return; }
+  ccSwitchImportAgent.value = request.app as CcSwitchAgent;
+  ccSwitchImportModel.value = request.model ?? "";
+  ccSwitchImportApply.value = request.action === "configure-enable";
+  openCcSwitchImport(item);
 }
 
 function toggleSidebar(): void {
@@ -601,21 +631,22 @@ function closeConsoleWindow(): void {
 
 function openRecharge(): void { selectPage("recharge"); }
 
-function openCreateKey(event: MouseEvent): void {
-  createKeyTrigger.value = event.currentTarget as HTMLElement;
+function openCreateKey(event?: MouseEvent): void {
+  createKeyTrigger.value = event?.currentTarget as HTMLElement ?? null;
   createKeyOpen.value = true;
 }
-function openDeleteKey(item: Record<string, unknown>, event: MouseEvent): void {
-  deleteKeyTrigger.value = event.currentTarget as HTMLElement;
+function openDeleteKey(item: Record<string, unknown>, event?: MouseEvent): void {
+  deleteKeyTrigger.value = event?.currentTarget as HTMLElement ?? null;
   deleteKeyTarget.value = { id: String(item.id), name: textValue(item.name, '未命名') };
   deleteKeyOpen.value = true;
 }
 function handleKeyDeleted(keyId: string): void {
+  keyActionFocus = {action:'create'};
   deletedKeyIds.value.add(keyId);
   if (dashboard.value) asRecord(dashboard.value.keys).items = keys.value;
   delete importedProviders.value[keyId];
-  if (copiedKeyId.value === keyId) copiedKeyId.value = "";
   keyGroupSuccess.value = `已删除密钥 ${deleteKeyTarget.value.name}`;
+  ccSwitchPanel.value?.notifyKeysChanged(keyGroupSuccess.value);
   if (!consolePreview) void refreshDashboard();
 }
 function restoreDeleteKeyFocus(): void {
@@ -623,9 +654,9 @@ function restoreDeleteKeyFocus(): void {
   deleteKeyTrigger.value = null;
   // Wait for the modal focus trap to unmount before restoring the trigger.
   void nextTick(() => {
-    if (deleteKeyOpen.value || activePage.value !== 'keys') return;
+    if (deleteKeyOpen.value || activePage.value !== 'ccswitch') return;
     if (target?.isConnected) target.focus();
-    else document.querySelector<HTMLButtonElement>('.create-key-button')?.focus();
+    else restoreKeyActionFocus();
   });
 }
 function handleKeyCreated(item: Record<string, unknown>): void {
@@ -634,6 +665,7 @@ function handleKeyCreated(item: Record<string, unknown>): void {
     page.items = [item, ...keys.value];
   }
   keyGroupSuccess.value = `已创建密钥 ${textValue(item.name)}`;
+  ccSwitchPanel.value?.notifyKeysChanged(keyGroupSuccess.value);
   if (!consolePreview) void refreshDashboard();
 }
 function handleKeyGroupChanged(result: KeyGroupChanged): void {
@@ -644,6 +676,7 @@ function handleKeyGroupChanged(result: KeyGroupChanged): void {
     item.group = { ...asRecord(item.group), id: result.group.id, name: result.group.name, platform: result.group.platform, rate_multiplier: result.group.rate, description: result.group.description, subscription_type: result.group.subscription ? "subscription" : "standard" };
   }
   keyGroupSuccess.value = `分组已切换为 ${result.group.name}`;
+  ccSwitchPanel.value?.notifyKeysChanged(keyGroupSuccess.value);
   if (!consolePreview) void refreshDashboard();
 }
 
@@ -711,38 +744,6 @@ async function handleUserMenuSelect(key: string | number): Promise<void> {
   if (key === "sign-out") await signOut();
 }
 
-function showCopyFeedback(keyId = ""): void {
-  if (copyFeedbackTimer) window.clearTimeout(copyFeedbackTimer);
-  copiedKeyId.value = keyId;
-  endpointCopied.value = !keyId;
-  copyFeedbackTimer = window.setTimeout(() => {
-    copiedKeyId.value = "";
-    endpointCopied.value = false;
-  }, 1800);
-}
-
-async function copyEndpoint(): Promise<void> {
-  errorMessage.value = "";
-  try {
-    await desktopApi.copyApiEndpoint();
-    showCopyFeedback();
-  } catch (reason) {
-    errorMessage.value = friendlyError(reason);
-  }
-}
-
-async function copyKey(item: Record<string, unknown>): Promise<void> {
-  const keyId = String(item.id ?? "");
-  if (!keyId) return;
-  errorMessage.value = "";
-  try {
-    await desktopApi.copyApiKey(keyId, textValue(item.key));
-    showCopyFeedback(keyId);
-  } catch (reason) {
-    errorMessage.value = friendlyError(reason);
-  }
-}
-
 function openCcSwitchImport(item: Record<string, unknown>): void {
   const keyId = String(item.id ?? "");
   if (!keyId) return;
@@ -754,6 +755,8 @@ function openCcSwitchImport(item: Record<string, unknown>): void {
 }
 
 function restoreCcSwitchImportFocus(): void {
+  ccSwitchImportApply.value = false;
+  restoreKeyActionFocus();
   const keyId = ccSwitchImportKeyId.value;
   window.setTimeout(() => {
     const buttons = document.querySelectorAll<HTMLButtonElement>(".ccs-import-button");
@@ -763,7 +766,8 @@ function restoreCcSwitchImportFocus(): void {
 
 function handleCcSwitchImported(keyId: string, provider: CcSwitchImportResult): void {
   importedProviders.value[keyId] = provider;
-  ccSwitchPanel.value?.notifyProviderImported(provider);
+  ccSwitchPanel.value?.notifyProviderImported(provider, ccSwitchImportApply.value);
+  ccSwitchPanel.value?.notifyKeysChanged();
 }
 
 onMounted(async () => {
@@ -812,7 +816,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (refreshTimer) window.clearInterval(refreshTimer);
   if (balanceRefreshTimer) window.clearInterval(balanceRefreshTimer);
-  if (copyFeedbackTimer) window.clearTimeout(copyFeedbackTimer);
   unlistenAssistantConfig?.();
   unlistenAssistantHistory?.();
   unlistenAssistantState?.();
@@ -900,7 +903,7 @@ onBeforeUnmount(() => {
     </section>
   </main>
 
-  <main v-else class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }" :inert="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen || updateDialogOpen || createKeyOpen || deleteKeyOpen || subscriptionModalOpen">
+  <main v-else class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }" :inert="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen || updateDialogOpen || createKeyOpen || deleteKeyOpen || keyGroupOpen || subscriptionModalOpen">
     <aside :inert="skillsModalOpen" class="sidebar">
       <div class="sidebar-project-bar">
         <div class="sidebar-project-brand" aria-label="MollyCloud">
@@ -929,12 +932,6 @@ onBeforeUnmount(() => {
           <i class="selection-indicator" aria-hidden="true" />
           <button v-for="item in overviewPages" :key="item.id" type="button" :data-page="item.id" :aria-current="activePage === item.id ? 'page' : undefined" @click="selectPage(item.id)">{{ item.label }}</button>
         </nav>
-        <div v-else-if="activePage === 'keys'" class="key-toolbar" aria-label="密钥操作">
-          <n-button type="primary" class="create-key-button" @click="openCreateKey">＋ 创建密钥</n-button>
-          <button class="endpoint-copy-button" type="button" :class="{ copied: endpointCopied }" :aria-label="`复制 API 端点 ${apiEndpoint}`" :title="`API 端点：${apiEndpoint}，点击复制`" @click="copyEndpoint">
-            <code>{{ apiEndpoint }}</code><AppIcon name="copy" /><span v-if="endpointCopied" class="endpoint-copy-feedback" role="status">已复制</span>
-          </button>
-        </div>
         <div class="topbar-actions">
             <button class="account-refresh-button" :class="{ 'is-refreshing': refreshing }" type="button" :disabled="refreshing" :aria-busy="refreshing" aria-label="刷新账户数据" title="刷新账户数据" @click="refreshDashboard">
               <AppIcon name="refresh" />
@@ -994,24 +991,6 @@ onBeforeUnmount(() => {
 
       <div v-else-if="activePage === 'subscriptions'" key="subscriptions" class="page-content subscription-page">
         <SubscriptionsPanel :preview="consolePreview" :obscured="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen || updateDialogOpen || createKeyOpen || deleteKeyOpen || userMenuOpen" :server-utc-offset="textValue(asRecord(bootstrap?.settings).server_utc_offset, '')" @changed="refreshSubscriptionDashboard" @modal="subscriptionModalOpen = $event" />
-      </div>
-
-      <div v-else-if="activePage === 'keys'" key="keys" class="page-content keys-page">
-        <section class="key-directory" aria-label="API 密钥列表">
-          <p v-if="keyGroupSuccess" class="key-group-success" role="status">{{ keyGroupSuccess }}</p>
-          <div class="key-directory-heading">
-            <span class="key-directory-count">共 {{ keys.length }} 个密钥</span>
-          </div>
-          <div v-if="keys.length" class="key-list" role="list">
-            <article v-for="item in keys" :key="String(item.id)" class="key-record" role="listitem">
-              <div class="key-record__identity"><div><strong :title="textValue(item.name)">{{ textValue(item.name, '未命名') }}</strong><n-tag size="small" :bordered="false" :type="item.status === 'active' ? 'success' : 'default'">{{ item.status === 'active' ? '正常' : textValue(item.status) }}</n-tag></div><div class="key-cell"><code :title="textValue(item.key)">{{ textValue(item.key, 'sk-••••') }}</code><n-button class="key-copy-button" size="small" quaternary :aria-label="`复制 ${textValue(item.name, '未命名')} 的密钥`" @click="copyKey(item)"><AppIcon name="copy" />{{ copiedKeyId === String(item.id) ? '已复制' : '复制' }}</n-button></div></div>
-              <div class="key-record__group"><span class="key-field-label">分组</span><KeyGroupPicker :value="groupFromKey(item)" :key-id="String(item.id)" :key-name="textValue(item.name, '未命名')" @changed="handleKeyGroupChanged" /><small>{{ platformLabel(textValue(asRecord(item.group).platform, '')) }}</small></div>
-              <div class="key-record__quota"><span class="key-field-label">累计消费 <small>USD</small></span><strong>{{ costLabel(keyUsage(item).total) }}</strong><small>今日 {{ costLabel(keyUsage(item).today) }}</small><div v-if="keyQuota(item)" class="key-quota-limit"><span>额度 {{ keyQuota(item)!.used.toFixed(2) }} / {{ keyQuota(item)!.limit.toFixed(2) }}</span><i><b :style="{width: `${keyQuota(item)!.percentage}%`}" /></i></div></div>
-              <div class="ccs-import-actions"><n-button class="ccs-import-button" size="small" secondary :data-key-id="String(item.id)" @click="openCcSwitchImport(item)">导入到内置 CC Switch</n-button><n-button class="key-delete-button" size="small" quaternary type="error" :aria-label="`删除 ${textValue(item.name, '未命名')} 的密钥`" @click="openDeleteKey(item, $event)">删除</n-button></div>
-            </article>
-          </div>
-          <div v-else class="empty-state"><AppIcon name="key" /><h2>还没有 API 密钥</h2><p>创建一个密钥，开始接入模型服务。</p><n-button type="primary" @click="openCreateKey">创建密钥</n-button></div>
-        </section>
       </div>
 
       <div v-else-if="activePage === 'usage'" key="usage" class="page-content usage-page">
@@ -1079,7 +1058,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-if="ccSwitchVisited && pluginUsable('ccswitch')" :key="pluginKey('ccswitch')" v-show="activePage === 'ccswitch'" class="page-content ccswitch-page">
-        <CcSwitchPanel ref="ccSwitchPanel" :preview="consolePreview" :target="ccSwitchTarget" />
+        <CcSwitchPanel ref="ccSwitchPanel" :preview="consolePreview" :target="ccSwitchTarget" :preview-keys="keys" @key-action="handleCcKeyAction" />
       </div>
 
       <div v-if="imageWorkbenchVisited && pluginUsable('images')" :key="pluginKey('images')" v-show="activePage === 'images'" class="page-content embedded-page">
@@ -1105,13 +1084,17 @@ onBeforeUnmount(() => {
     <template #action><div class="desktop-update-actions"><n-button :disabled="updateOpening" @click="updateDialogOpen = false">稍后</n-button><n-button type="primary" :loading="updateOpening" @click="openDesktopUpdate">下载更新</n-button></div></template>
   </n-modal>
   <ConsoleSettingsDialog v-if="phase === 'dashboard'" v-model:show="consoleSettingsOpen" :initial-tab="settingsTab" @check-update="handleSettingsUpdateCheck" @closed="consoleSettingsButton?.focus()" />
-  <CreateKeyDialog v-if="phase === 'dashboard'" v-model:show="createKeyOpen" :preview="consolePreview" @created="handleKeyCreated" @closed="createKeyTrigger?.focus()" />
+  <CreateKeyDialog v-if="phase === 'dashboard'" v-model:show="createKeyOpen" :preview="consolePreview" @created="handleKeyCreated" @closed="restoreKeyActionFocus" />
+  <KeyGroupDialog v-if="phase === 'dashboard'" v-model:show="keyGroupOpen" :item="keyGroupTarget" @changed="handleKeyGroupChanged" @closed="restoreKeyActionFocus" />
   <DeleteKeyDialog v-if="phase === 'dashboard'" v-model:show="deleteKeyOpen" :key-id="deleteKeyTarget.id" :key-name="deleteKeyTarget.name" :preview="consolePreview" @deleted="handleKeyDeleted" @closed="restoreDeleteKeyFocus" />
   <CcSwitchImportDialog
     v-if="phase === 'dashboard'"
     v-model:show="ccSwitchImportOpen"
     :key-id="ccSwitchImportKeyId"
     :initial-name="ccSwitchImportName"
+    :initial-agent="ccSwitchImportAgent"
+    :initial-model="ccSwitchImportModel"
+    :apply="ccSwitchImportApply"
     @imported="handleCcSwitchImported"
     @closed="restoreCcSwitchImportFocus"
   />

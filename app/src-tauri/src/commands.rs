@@ -156,9 +156,7 @@ pub async fn fetch_dashboard(state: State<'_, RuntimeState>) -> Result<Dashboard
         state
             .api
             .get_authenticated("/usage/dashboard/stats", &token),
-        state
-            .api
-            .get_authenticated("/keys?page=1&page_size=100", &token),
+        crate::molly_keys::fetch_all_keys(&state.api, &token),
     )?;
     let ids = crate::account::key_ids(&keys);
     let stats = if ids.is_empty() { Value::Null } else { state.api.post_authenticated("/usage/dashboard/api-keys-usage", &serde_json::json!({"api_key_ids":ids}), &token).await.unwrap_or(Value::Null) };
@@ -222,9 +220,7 @@ pub async fn copy_api_key(key_id: String, state: State<'_, RuntimeState>) -> Res
         return Err("未找到要复制的 API 密钥".to_owned());
     }
     let token = state.access_token().await?;
-    let keys = state
-        .api
-        .get_authenticated("/keys?page=1&page_size=100", &token)
+    let keys = crate::molly_keys::fetch_all_keys(&state.api, &token)
         .await?;
     let key = keys
         .get("items")
@@ -250,9 +246,7 @@ pub async fn fetch_ccswitch_import_models(
         return Err("未找到要导入的 API 密钥".to_owned());
     }
     let token = state.access_token().await?;
-    let keys = state
-        .api
-        .get_authenticated("/keys?page=1&page_size=100", &token)
+    let keys = crate::molly_keys::fetch_all_keys(&state.api, &token)
         .await?;
     let api_key = keys
         .get("items")
@@ -282,6 +276,7 @@ pub async fn import_api_key_to_ccswitch(
     app: AppHandle,
 ) -> Result<CcSwitchImportOutcome, String> {
     crate::console_plugins::require(&app, "ccswitch")?;
+    let _serial = state.key_provider_sync.lock().await;
     if key_id.trim().is_empty() {
         return Err("未找到要导入的 API 密钥".to_owned());
     }
@@ -314,9 +309,7 @@ pub async fn import_api_key_to_ccswitch(
     let token = state.access_token().await?;
     let (user, keys) = tokio::try_join!(
         state.api.get_authenticated("/auth/me", &token),
-        state
-            .api
-            .get_authenticated("/keys?page=1&page_size=100", &token),
+        crate::molly_keys::fetch_all_keys(&state.api, &token),
     )?;
     let account_id = account_identity(&user)?;
     let item = keys
@@ -347,11 +340,16 @@ pub async fn import_api_key_to_ccswitch(
         model: model.to_owned(),
         usage_script: Some(usage_script.to_owned()),
     };
+    let session = state.session.lock().await;
+    if session.access_token.as_deref() != Some(&token) {
+        return Err("登录状态已改变，请重新配置密钥".into());
+    }
     let provider_id = tauri::async_runtime::spawn_blocking(move || {
         molly_ccswitch::import_molly_provider(&app, input)
     })
     .await
     .map_err(|_| "内置 CC Switch 导入任务未完成".to_owned())??;
+    drop(session);
     Ok(CcSwitchImportOutcome {
         provider_id,
         app: agent,
