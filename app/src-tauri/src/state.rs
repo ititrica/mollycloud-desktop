@@ -16,6 +16,13 @@ pub struct SessionSecrets {
     pub temp_token: Option<String>,
     pub refresh_token: Option<String>,
     pub persist_refresh_token: bool,
+    pub pending_login: Option<LoginCredentials>,
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct LoginCredentials {
+    pub email: String,
+    pub password: String,
 }
 
 pub struct RuntimeState {
@@ -44,6 +51,9 @@ impl RuntimeState {
         let access_token = required_string(data, "access_token")?;
         let refresh_token = required_string(data, "refresh_token")?;
         if remember_login {
+            if let Some(credentials) = self.session.lock().await.pending_login.clone() {
+                save_login_credentials(&credentials)?;
+            }
             save_refresh_token(&refresh_token)?;
         } else {
             delete_refresh_token()?;
@@ -57,9 +67,17 @@ impl RuntimeState {
         session.access_token = Some(access_token);
         session.expires_at = Some(Instant::now() + Duration::from_secs(expires_in));
         session.temp_token = None;
+        session.pending_login = None;
         session.refresh_token = Some(refresh_token);
         session.persist_refresh_token = remember_login;
         Ok(data.get("user").cloned().unwrap_or(Value::Null))
+    }
+
+    pub async fn remember_login_credentials(&self, email: &str, password: &str) {
+        self.session.lock().await.pending_login = Some(LoginCredentials {
+            email: email.into(),
+            password: password.into(),
+        });
     }
 
     pub async fn remember_temp_token(&self, data: &Value) -> Result<(), String> {
@@ -128,6 +146,7 @@ impl RuntimeState {
         session.access_token = None;
         session.expires_at = None;
         session.temp_token = None;
+        session.pending_login = None;
         session.refresh_token = None;
         session.persist_refresh_token = false;
         let _ = delete_refresh_token();
@@ -137,7 +156,7 @@ impl RuntimeState {
 pub fn load_refresh_token() -> Result<String, String> {
     match credential_entry()?.get_password() {
         Ok(token) => Ok(token),
-        Err(keyring::Error::NoEntry) => Err("没有可恢复的登录会话".to_owned()),
+        Err(crate::credential_store::Error::NoEntry) => Err("没有可恢复的登录会话".to_owned()),
         Err(_) => Err(format!("无法从{}读取登录会话", credential_store_name())),
     }
 }
@@ -149,21 +168,47 @@ fn save_refresh_token(token: &str) -> Result<(), String> {
 }
 
 fn delete_refresh_token() -> Result<(), String> {
+    let credentials = crate::credential_store::Entry::new(KEYRING_SERVICE, "login-credentials")
+        .map_err(|_| "无法访问自动登录设置")?;
+    match credentials.delete_credential() {
+        Ok(()) | Err(crate::credential_store::Error::NoEntry) => (),
+        Err(_) => return Err("无法清除自动登录设置".into()),
+    }
     let entry = credential_entry()?;
     match entry.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Ok(()) | Err(crate::credential_store::Error::NoEntry) => Ok(()),
         Err(_) => Err(format!("无法清除{}中的登录会话", credential_store_name())),
     }
 }
 
-fn credential_entry() -> Result<keyring::Entry, String> {
-    keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)
+pub fn load_login_credentials() -> Result<Option<LoginCredentials>, String> {
+    let entry = crate::credential_store::Entry::new(KEYRING_SERVICE, "login-credentials")
+        .map_err(|_| "无法读取自动登录设置")?;
+    match entry.get_password() {
+        Ok(value) => serde_json::from_str(&value)
+            .map(Some)
+            .map_err(|_| "自动登录设置已损坏".into()),
+        Err(crate::credential_store::Error::NoEntry) => Ok(None),
+        Err(_) => Err("无法读取自动登录设置".into()),
+    }
+}
+fn save_login_credentials(credentials: &LoginCredentials) -> Result<(), String> {
+    let entry = crate::credential_store::Entry::new(KEYRING_SERVICE, "login-credentials")
+        .map_err(|_| "无法保存自动登录设置")?;
+    let value = serde_json::to_string(credentials).map_err(|_| "无法保存自动登录设置")?;
+    entry
+        .set_password(&value)
+        .map_err(|_| "无法保存自动登录设置".into())
+}
+
+fn credential_entry() -> Result<crate::credential_store::Entry, String> {
+    crate::credential_store::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)
         .map_err(|_| format!("{}不可用", credential_store_name()))
 }
 
 pub(crate) fn credential_store_name() -> &'static str {
     #[cfg(target_os = "macos")]
-    return "macOS 钥匙串";
+    return "应用内加密存储";
     #[cfg(windows)]
     return "Windows 凭据管理器";
     #[cfg(not(any(windows, target_os = "macos")))]

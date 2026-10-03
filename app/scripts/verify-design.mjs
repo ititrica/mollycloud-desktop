@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const isWindows = targetPlatform() === 'windows';
-const navCount = isWindows ? 6 : 5;
+const navCount = isWindows ? 8 : 7;
 const trayName = isWindows ? '托盘' : '菜单栏';
 const baseUrl = process.env.MOLLY_UI_URL || 'http://localhost:24320';
 const appVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
@@ -125,7 +125,7 @@ async function key(key, code, virtualKey) {
   await page('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtualKey });
   await pause(150);
 }
-const names = ['overview', 'subscriptions', 'keys', 'usage', 'assistant', 'ccswitch', 'images', 'skills', 'recharge', ...(isWindows ? ['netspeed'] : [])];
+const names = ['overview', 'subscriptions', 'keys', 'usage', 'assistant', 'ccswitch', 'prompts', 'mcp', 'images', 'skills', 'recharge', ...(isWindows ? ['netspeed'] : [])];
 async function select(index) {
   const target = names[index] === 'keys' ? 'ccswitch' : names[index];
   if (['overview', 'subscriptions', 'usage', 'recharge'].includes(target)) {
@@ -164,7 +164,7 @@ async function verifySkills(width, height) {
   await waitFor(`!document.querySelector('.sidebar').inert`, 'Skills modal closes');
 }
 async function verifySubscriptions(width, height) {
-  await select(1); await ready('.subscription-card');
+  await select(names.indexOf('subscriptions')); await ready('.subscription-card');
   const state = `document.querySelector('.subscriptions-panel').__vueParentComponent.setupState`;
   check(await evaluate(`(() => {const cards=[...document.querySelectorAll('.subscription-card')].map(el=>el.getBoundingClientRect());return cards.length===2&&Math.abs(cards[0].y-cards[1].y)<1&&cards[1].x>cards[0].right&&document.querySelector('.subscription-card').textContent.includes('每周')&&document.querySelectorAll('.subscription-platform').length===2;})()`), `Website subscriptions use two cards per row ${width}`);
   await evaluate(`(async()=>{const loaded=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname==='/src/subscriptions.ts');window.__subApi=(await import(loaded.name)).subscriptionApi;window.__subOriginal={...window.__subApi};window.__subRows=JSON.parse(JSON.stringify(${state}.items));window.__subInitial=JSON.parse(JSON.stringify(window.__subRows));window.__subCalls=[];window.__renewCalls=[];localStorage.removeItem('mollycloud:preview:subscription-auto-renew-no-reminder:1');window.__subApi.list=async()=>JSON.parse(JSON.stringify(window.__subRows));window.__subApi.autoRenew=async(id,input)=>{window.__renewCalls.push({id,input});const row=window.__subRows.find(item=>item.id===id);if(input.enabled!=null)row.auto_renew_enabled=input.enabled;row.auto_renew_error='';return JSON.parse(JSON.stringify(row));};window.__subApi.reset=id=>{window.__subCalls.push(id);return new Promise(resolve=>{window.__finishReset=()=>{const i=window.__subRows.findIndex(row=>row.id===id);const updated={...window.__subRows[i],id:Math.max(...window.__subRows.map(row=>row.id))+10,weekly_usage_usd:0,expires_at:new Date(Date.now()+7*86400000).toISOString()};window.__subRows[i]=updated;resolve(JSON.parse(JSON.stringify(updated)));};});};})()`);
@@ -213,7 +213,7 @@ async function verifySubscriptions(width, height) {
 }
 
 async function verifyKeyGroupsAndRecharge(width, height) {
-  await select(2);
+  await select(names.indexOf('keys'));
   const d="document.querySelector('.ccswitch-frame').contentDocument";
   await waitFor(`Boolean(${d}?.querySelector('.molly-key-record'))`,'Unified account keys loaded');
   await evaluate(`${d}.querySelector('[data-key-action="group"]').click()`);
@@ -279,7 +279,7 @@ async function verifyKeyGroupsAndRecharge(width, height) {
   await evaluate(`document.querySelector('.confirm-delete-key').click()`);
   await waitFor(`!document.querySelector('.delete-key-dialog')&&Boolean(${d}.querySelector('.molly-keys-empty'))`,'Deleting final key shows empty state');
   await mutate(`state.deletedKeyIds.clear();state.dashboard.keys.items=window.__previewKeyRows;`);
-  await select(0);
+  await select(names.indexOf('overview'));
   await evaluate(`document.querySelector('.balance-chip').click()`);
   await ready('.payment-compose');await settleAnimations();
   check(await evaluate(`document.querySelector('.overview-subnav [aria-current="page"]').dataset.page==='recharge'&&!document.querySelector('.recharge-webview')`),`Balance opens native recharge ${width}`);
@@ -349,7 +349,7 @@ async function verifyKeyGroupsAndRecharge(width, height) {
   await evaluate(`window.__paymentTestApi.create=window.__originalPaymentCreate;delete window.__originalPaymentCreate;delete window.__paymentTestApi;`);
   await evaluate(`[...document.querySelectorAll('.recharge-panel button')].find(b=>b.textContent.includes('已核对，允许重新下单')).click()`);
   report.push({page:'native-keys-and-payments',width,height,paymentWindow:'standalone'});
-  await select(0);
+  await select(names.indexOf('overview'));
 }
 
 async function verifyCompactSidebar(width, height) {
@@ -603,7 +603,7 @@ async function verifyConsoleSettings(width, height) {
 }
 
 async function verifyPluginManager(width, height) {
-  await select(5);
+  await select(names.indexOf('ccswitch'));
   await waitFor(`Boolean(document.querySelector('.ccswitch-frame'))`, 'CC plugin mounted');
   await openSettings();
   await evaluate(`document.querySelectorAll('.settings-tabs button')[1].click()`);
@@ -621,13 +621,13 @@ async function verifyPluginManager(width, height) {
   await waitFor(`Boolean(document.querySelector('.ccswitch-frame'))`, 'Plugin restored');
   await choose('images', '卸载'); await choose('images', '确认卸载');
   await clickSettingsButton('完成');
-  await select(6);
+  await select(names.indexOf('images'));
   check(await evaluate(`Boolean(document.querySelector('.plugin-empty')) && !document.querySelector('.embedded-frame')`), `Image plugin is unavailable after uninstall ${width}`);
   await evaluate(`document.querySelector('.plugin-empty button').click()`);
   await ready('.plugin-manager');
   await choose('images', '安装随附版本');
   await clickSettingsButton('完成');
-  await select(0);
+  await select(names.indexOf('overview'));
   report.push({page:'plugin-lifecycle-preview',width,height});
 }
 async function verifyPetSettings(width, height) {
@@ -769,9 +769,9 @@ async function verifyMotion() {
   await evaluate(`document.querySelectorAll('.island-tabs button')[0].click()`);await pause(40);
   check(await evaluate(`!!document.querySelector('.island-metrics')&&document.querySelector('.island-tabs .selection-indicator').getAnimations().every(a=>a.playState!=='running')`),'Island tabs respect reduced motion');
   }
-  await select(2);
+  await select(names.indexOf('keys'));
   check(await evaluate(`document.querySelector('.sidebar .selection-indicator').getAnimations().filter(a=>a.playState==='running').length === 0`), 'Reduced motion disables jelly animation');
-  await select(0);
+  await select(names.indexOf('overview'));
   await openSettings();
   await evaluate(`document.querySelector('.console-settings-body').scrollTop=0`);
   await screenshot('settings-appearance-preview');
@@ -826,13 +826,13 @@ async function verifyAppearance() {
   await openSettings();
   await evaluate(`document.querySelector('input[name="console-theme"][value="dark"]').click()`);
   await clickSettingsButton('保存');
-  await select(5);
+  await select(names.indexOf('ccswitch'));
   await waitFor(`!document.querySelector('.ccswitch-load-state') && Boolean(document.querySelector('.ccswitch-frame')?.contentDocument.querySelector('[data-provider-id="molly-preview-provider"]'))`, 'CC Switch appearance ready');
   await evaluate(`document.querySelector('.ccswitch-frame').contentWindow.__appearanceProbe = 42`);
-  await select(7);
+  await select(names.indexOf('skills'));
   await waitFor(`Boolean(document.querySelector('.skills-frame')?.contentDocument.querySelector('.molly-skills-tabs'))`, 'Skill Manager appearance ready');
   await evaluate(`document.querySelector('.skills-frame').contentWindow.__appearanceProbe = 42`);
-  await select(6);
+  await select(names.indexOf('images'));
   await waitFor(`!document.querySelector('.embedded-load-state')`, 'Image appearance ready');
   let imageContext;
   for (const context of contexts.values()) {
@@ -855,7 +855,7 @@ async function verifyAppearance() {
     check(image.parentBlocked && image.ipc === 'undefined', 'Image sandbox remains isolated');
     report.push({page:'embedded-appearance',theme,image,cc,skills});
     await screenshot(`images-${theme}`);
-    await select(5);
+    await select(names.indexOf('ccswitch'));
     await screenshot(`ccswitch-${theme}`);
     const ccChild = expression => evaluate(`(()=>{const document=window.document.querySelector('.ccswitch-frame').contentDocument;const getComputedStyle=document.defaultView.getComputedStyle.bind(document.defaultView);return (${expression});})()`);
     await ccChild(`document.querySelector('[data-provider-id="preview-custom-provider"] button[aria-label="编辑"]').click()`);
@@ -866,9 +866,9 @@ async function verifyAppearance() {
     check(await ccChild(`getComputedStyle(document.querySelector('#provider-form input')).caretColor==='rgb(0, 0, 0)'&&getComputedStyle(document.querySelector('#provider-form .cm-cursor')).borderLeftColor==='rgb(0, 0, 0)'&&getComputedStyle(document.querySelector('#provider-form .cm-content')).caretColor==='rgba(0, 0, 0, 0)'`), `CC inputs and custom code caret stay black in ${theme}`);
     await ccChild(`document.querySelector('#provider-form').closest('.fixed').querySelector('button[aria-label="返回"]').click()`);
     await waitFor(`!document.querySelector('.ccswitch-frame').contentDocument.querySelector('#provider-form')`, 'CC caret editor dismissed');
-    await select(6);
+    await select(names.indexOf('images'));
   }
-  await select(0);
+  await select(names.indexOf('overview'));
   const colors = await evaluate(`({ background:getComputedStyle(document.body).backgroundColor, text:getComputedStyle(document.body).color })`);
   check(colors.background === 'rgb(34, 37, 31)' && colors.text === 'rgb(238, 241, 233)', 'Dark shared tokens applied');
   await screenshot('overview-dark');
@@ -945,7 +945,7 @@ async function verifyIslandClock() {
 
 async function verifyNetSpeed(width, height) {
   await select(names.indexOf('netspeed'));
-  check(await evaluate(`JSON.stringify([...document.querySelectorAll('.nav-item')].map(el=>el.dataset.page)) === JSON.stringify(['overview','ccswitch','assistant','netspeed','images','skills'])`), `Requested navigation order ${width}`);
+  check(await evaluate(`JSON.stringify([...document.querySelectorAll('.nav-item')].map(el=>el.dataset.page)) === JSON.stringify(['overview','ccswitch','prompts','mcp','assistant','netspeed','images','skills'])`), `Requested navigation order ${width}`);
   for (const [index, name] of ['status','display','appearance'].entries()) {
     await evaluate(`document.querySelectorAll('.island-tabs button')[${index}].click()`);
     await settleAnimations();
@@ -1105,12 +1105,29 @@ try {
       if (['keys','ccswitch'].includes(names[index])) {
         await waitFor(`!document.querySelector('.ccswitch-load-state') && Boolean(document.querySelector('.ccswitch-frame')?.contentDocument.querySelector('[data-provider-id="molly-preview-provider"]'))`, `CC Switch ready ${width}`);
         check(await evaluate(`!document.querySelector('.ccswitch-frame').contentDocument.body.innerText.includes('欢迎使用 CC Switch')`), `CC Switch upstream onboarding removed ${width}`);
+        check(await evaluate(`(() => {const d=document.querySelector('.ccswitch-frame').contentDocument;const h=d.querySelector('.molly-toolbar');return !h.textContent.includes('CC Switch')&&!['管理 Skills','提示词管理','MCP 管理'].some(label=>h.querySelector('button[title="'+label+'"]'));})()`), `Provider toolbar removes duplicated manager entries ${width}`);
+        check(await evaluate(`(() => {const d=document.querySelector('.ccswitch-frame').contentDocument;const button=d.querySelector('button[aria-label="添加新供应商"]');return button && d.defaultView.getComputedStyle(button).backgroundColor === 'rgb(181, 255, 54)' && d.defaultView.getComputedStyle(button).color === 'rgb(35, 54, 0)';})()`), `Embedded primary uses shared lime and legible text ${width}`);
         const cardPoint = await evaluate(`(() => { const frame = document.querySelector('.ccswitch-frame'); const outer = frame.getBoundingClientRect(); const card = frame.contentDocument.querySelector('[data-provider-id="molly-preview-provider"]').getBoundingClientRect(); return {x:outer.x+card.x+card.width/2,y:outer.y+card.y+card.height/2}; })()`);
         await page('Input.dispatchMouseEvent', { type:'mouseMoved', ...cardPoint });
         await pause(200);
       }
+      if (['prompts','mcp'].includes(names[index])) {
+        const view = names[index];
+        await waitFor(`Boolean(document.querySelector('.ccswitch-frame')?.contentDocument.querySelector('${view === 'prompts' ? '[data-testid="molly-prompts-view"]' : '[data-testid="molly-mcp-view"]'}'))`, `Independent ${view} view ${width}`);
+        check(await evaluate(`!document.querySelector('.ccswitch-frame').contentDocument.querySelector('.molly-toolbar button[aria-label="返回"]')`), `Independent ${view} has no provider back button ${width}`);
+      }
+      if (names[index] === 'recharge') {
+        check(await evaluate(`(getComputedStyle(document.querySelector('.workspace')).scrollbarWidth === 'none' || getComputedStyle(document.querySelector('.workspace'),'::-webkit-scrollbar').display === 'none') && getComputedStyle(document.querySelector('.workspace')).overflowY === 'auto'`), `Recharge hides rail while preserving scrolling ${width}`);
+      }
       if (names[index] === 'images') {
         await waitFor(`!document.querySelector('.embedded-load-state')`, `Image workbench ready ${width}`);
+      }
+      if (names[index] === 'recharge') {
+        const point = await evaluate(`(() => {const w=document.querySelector('.workspace'),p=document.querySelector('.recharge-panel'),r=w.getBoundingClientRect();p.style.minHeight=(w.clientHeight+600)+'px';w.scrollTop=0;return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
+        await page('Input.dispatchMouseEvent',{type:'mouseWheel',...point,deltaX:0,deltaY:320});
+        await pause(150);
+        check(await evaluate(`document.querySelector('.workspace').scrollTop > 0`), `Recharge wheel scrolling remains usable ${width}`);
+        await evaluate(`document.querySelector('.recharge-panel').style.minHeight='';document.querySelector('.workspace').scrollTop=0;`);
       }
       await settleAnimations();
       const metrics = await evaluate(readShell);
@@ -1122,7 +1139,7 @@ try {
       check(metrics.shell.workspaceStyle.boxShadow !== 'none', `Soft outer workspace shadow: ${names[index]} ${width}`);
       check(metrics.headerTitlesAbsent, `Page title and greeting removed: ${names[index]} ${width}`);
       check(!metrics.horizontalOverflow && !metrics.valueOverflows && !metrics.headerClipped, `Content clipped: ${names[index]} ${width}`);
-      if (['assistant', 'keys', 'ccswitch', 'images'].includes(names[index])) {
+      if (['assistant', 'keys', 'ccswitch', 'prompts', 'mcp', 'images'].includes(names[index])) {
         check(metrics.header === null && metrics.content.every((value, i) => value === metrics.workspace[i]) && metrics.contentPadding === '0px', `Embedded page fills workspace: ${names[index]} ${width}`);
       } else if (['netspeed', 'skills'].includes(names[index])) {
         check(metrics.header === null && metrics.content[1] >= metrics.workspace[1] && metrics.content[1] <= metrics.workspace[1] + 1 && metrics.contentPadding === '20px', `Tool page uses released header space: ${names[index]} ${width}`);
@@ -1194,7 +1211,7 @@ try {
       }
     }
     await verifyKeyGroupsAndRecharge(width, height);
-    await select(2);
+    await select(names.indexOf('keys'));
     await mutate(`state.dashboard.keys.items[0].name = '用于多个开发环境的长名称密钥 ' + 'development-'.repeat(8); state.dashboard.keys.items[0].group.name = '团队共享分组'.repeat(8); state.dashboard.keys.items[0].quota_used = 1234567890.1234;`);
     const keyLayout = await evaluate(`(() => {
       const scope=document.querySelector('.ccswitch-frame').contentDocument.querySelector('[aria-label="MollyCloud 账户密钥"]');
@@ -1205,7 +1222,7 @@ try {
     await screenshot(`keys-long-content-${width}`);
     await mutate(`state.dashboard.keys.items[0].name='Molly Desktop';state.dashboard.keys.items[0].group.name='Molly Pro';state.dashboard.keys.items[0].quota_used=12.6;`);
     // Round trip catches scroll position/layout changes caused by leaving chat.
-    await select(0);
+    await select(names.indexOf('overview'));
     check(JSON.stringify((await evaluate(readShell)).shell) === JSON.stringify(baseline), `Shell round trip ${width}`);
     await mutate(`state.desktopUpdate = { version: '${previewUpdateVersion}', currentVersion: '${appVersion}', downloadUrl: 'https://desktop.veriolink.com/MollyCloud_${previewUpdateVersion}_x64-setup.exe', notes: '设计预览', sha256: 'a'.repeat(64), sizeBytes: 12345 };`);
     await waitFor(`Boolean(document.querySelector('.desktop-update-dialog'))`, `Desktop update dialog ${width}`);
@@ -1222,11 +1239,11 @@ try {
     check(updateNotice.notice && updateNotice.text === '软件可更新' && updateNotice.title?.includes(previewUpdateVersion) && updateNotice.notice.right <= updateNotice.balance.x && !updateNotice.horizontalOverflow, `Desktop update indicator placement ${width}`);
     await screenshot(`desktop-update-${width}`);
     await mutate(`state.desktopUpdate = null;`);
-    await select(5);
+    await select(names.indexOf('ccswitch'));
     check(await evaluate(`document.querySelector('.ccswitch-frame').contentWindow.__mollyKeepAliveProbe === ${width}`), `CC Switch iframe remains mounted ${width}`);
     // The import dialog is exercised without exposing or saving a real key. A preview
     // submission must fail truthfully; the backend result below only tests navigation.
-    await select(2);
+    await select(names.indexOf('keys'));
     await evaluate(`document.querySelector('.ccswitch-frame').contentDocument.querySelector('[data-key-action="configure"]').click()`);
     await waitFor(`Boolean(document.querySelector('.ccswitch-frame').contentDocument.querySelector('#provider-form'))`, `Full CC Switch editor opens ${width}`);
     const editor = await evaluate(`(() => {
@@ -1245,23 +1262,23 @@ try {
     check(await evaluate(`document.querySelector('.ccswitch-frame').contentDocument.querySelector('[role="switch"][aria-label$="的映射模式"]').getAttribute('aria-checked')==='false'`), `Failed mode change retains native mode ${width}`);
     await mutate(`state.errorMessage = ''; state.importedProviders = { 'demo-key': {provider_id:'molly-preview-provider',app:'codex'} };`);
     check(await evaluate(`!document.querySelector('.nav-item[data-page="keys"]')&&Boolean(document.querySelector('.ccswitch-frame').contentDocument.querySelector('[data-key-action="configure"]'))`),`Keys managed only in CC Switch ${width}`);
-    await select(0);
+    await select(names.indexOf('overview'));
     await mutate(`state.dashboard.user.balance = 3.72;`);
     const reminder = await evaluate(`(() => { const el = document.querySelector('.account-reminder'); const s = getComputedStyle(el); return { innerBorder: Boolean(el.querySelector('.n-alert__border')), borders: [s.borderTopColor,s.borderRightColor,s.borderBottomColor,s.borderLeftColor], radius: s.borderRadius, overflow: s.overflow }; })()`);
     check(!reminder.innerBorder && new Set(reminder.borders).size === 1 && reminder.overflow === 'hidden', `Balance reminder edge ${width}`);
     await screenshot(`balance-reminder-${width}`);
-    await select(1);
+    await select(names.indexOf('subscriptions'));
     await mutate(`state.dashboard.subscriptions.subscriptions[0].expires_at = new Date(Date.now() + 86400000).toISOString();`);
     check(await evaluate(`Boolean(document.querySelector('.account-reminder--subscription'))`), `Subscription reminder ${width}`);
     await screenshot(`subscription-reminder-${width}`);
     await mutate(`state.items = [];`, '.subscriptions-panel');
     await ready('.empty-state');
     await screenshot(`subscriptions-empty-${width}`);
-    await select(2);
+    await select(names.indexOf('keys'));
     await mutate(`state.dashboard.keys.items = [];`);
     await waitFor(`Boolean(document.querySelector('.ccswitch-frame').contentDocument.querySelector('.molly-keys-empty'))`,'Unified keys empty state');
     await screenshot(`keys-empty-${width}`);
-    await select(4);
+    await select(names.indexOf('assistant'));
     const chatBefore = await evaluate(`document.querySelector('.assistant-chat').getBoundingClientRect().bottom`);
     await evaluate(`document.querySelector('.assistant-toggle-cell [role="switch"]').click()`);
     await pause(100);

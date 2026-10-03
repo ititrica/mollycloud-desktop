@@ -26,6 +26,11 @@ pub type ProgressCallback = Box<dyn Fn(&str) + Send>;
 fn git_command() -> Command {
     #[allow(unused_mut)]
     let mut cmd = Command::new("git");
+    #[cfg(target_os = "macos")]
+    {
+        // Disable configured macOS credential helpers, including osxkeychain.
+        cmd.args(["-c", "credential.helper="]).env("GIT_TERMINAL_PROMPT", "0");
+    }
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;

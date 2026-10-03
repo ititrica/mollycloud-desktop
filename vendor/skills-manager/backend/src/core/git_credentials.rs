@@ -2,7 +2,7 @@
 //!
 //! Policy (backup redesign §3.7): tokens must never live in URLs on disk
 //! (`.git/config`, SQLite settings). Credentials embedded in a remote URL are
-//! extracted into the OS keychain and injected into git at call time through
+//! extracted into the application credential store and injected into git at call time through
 //! a static askpass script that only echoes environment variables.
 
 use anyhow::{Context, Result};
@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 use super::central_repo;
 
+#[cfg(not(target_os = "macos"))]
 const KEYRING_SERVICE: &str = "mollycloud-skills-git-backup";
 
 /// Environment variable names consumed by the askpass script. The script
@@ -91,19 +92,22 @@ pub fn https_host(url: &str) -> Option<String> {
     Some(host.to_ascii_lowercase())
 }
 
+#[cfg(not(target_os = "macos"))]
 fn keyring_entry(host: &str) -> Result<keyring::Entry> {
     keyring::Entry::new(KEYRING_SERVICE, host).context("Failed to open keychain entry")
 }
 
+#[cfg(not(target_os = "macos"))]
 pub fn store_credential(host: &str, cred: &RemoteCredential) -> Result<()> {
     let payload = serde_json::to_string(cred)?;
     keyring_entry(host)?
         .set_password(&payload)
-        .with_context(|| format!("Failed to store git credential for {host} in OS keychain"))?;
-    log::info!("git credentials: stored credential for {host} in OS keychain");
+        .with_context(|| format!("Failed to store git credential for {host} in application credential store"))?;
+    log::info!("git credentials: stored credential for {host} in application credential store");
     Ok(())
 }
 
+#[cfg(not(target_os = "macos"))]
 pub fn load_credential(host: &str) -> Result<Option<RemoteCredential>> {
     match keyring_entry(host)?.get_password() {
         Ok(payload) => Ok(Some(serde_json::from_str(&payload).with_context(|| {
@@ -114,6 +118,7 @@ pub fn load_credential(host: &str) -> Result<Option<RemoteCredential>> {
     }
 }
 
+#[cfg(not(target_os = "macos"))]
 pub fn delete_credential(host: &str) -> Result<()> {
     match keyring_entry(host)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => {
@@ -124,9 +129,27 @@ pub fn delete_credential(host: &str) -> Result<()> {
     }
 }
 
+#[cfg(target_os = "macos")]
+fn local_store() -> molly_local_secrets::SecretStore {
+    molly_local_secrets::SecretStore::new(central_repo::base_dir().join("credentials-v2"))
+}
+#[cfg(target_os = "macos")]
+pub fn store_credential(host: &str, cred: &RemoteCredential) -> Result<()> {
+    local_store().write(host, &serde_json::to_vec(cred)?).map_err(anyhow::Error::msg)
+}
+#[cfg(target_os = "macos")]
+pub fn load_credential(host: &str) -> Result<Option<RemoteCredential>> {
+    local_store().read(host).map_err(anyhow::Error::msg)?
+        .map(|value| serde_json::from_slice(&value).context("Invalid app credential")).transpose()
+}
+#[cfg(target_os = "macos")]
+pub fn delete_credential(host: &str) -> Result<()> {
+    local_store().delete(host).map_err(anyhow::Error::msg)
+}
+
 /// Attach a credentials callback to libgit2 network operations against `url`.
 ///
-/// Sources, in order: the credential this app stored in the OS keychain for the
+/// Sources, in order: the credential this app stored in the application credential store for the
 /// host, then the user's git credential helper (osxkeychain, Git Credential
 /// Manager, libsecret) — the same place system git would have looked — then an
 /// ssh-agent key for ssh remotes.
@@ -144,7 +167,7 @@ pub fn delete_credential(host: &str) -> Result<()> {
 /// Each source is offered once. libgit2 re-invokes this callback after every
 /// rejection, so a source that answers unconditionally would spin forever.
 pub fn install_git2_credentials(callbacks: &mut git2::RemoteCallbacks<'_>, url: &str) {
-    // Resolve the host now, but read the keychain only from inside the callback:
+    // Resolve the host now, but read the credential store only from inside the callback:
     // libgit2 invokes it solely when the remote actually demands credentials, and
     // almost every skill source is a public repository that never will. Reading
     // eagerly would touch the keychain on every update check for nothing — and on
@@ -152,10 +175,11 @@ pub fn install_git2_credentials(callbacks: &mut git2::RemoteCallbacks<'_>, url: 
     let host = https_host(url);
     let host_label = host.clone().unwrap_or_else(|| "this remote".to_string());
     let mut tried_stored = false;
+    #[cfg(not(target_os = "macos"))]
     let mut tried_helper = false;
     let mut tried_agent = false;
 
-    callbacks.credentials(move |url, username_from_url, allowed| {
+    callbacks.credentials(move |_url, username_from_url, allowed| {
         if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
             if !tried_stored {
                 tried_stored = true;
@@ -166,11 +190,12 @@ pub fn install_git2_credentials(callbacks: &mut git2::RemoteCallbacks<'_>, url: 
                     return git2::Cred::userpass_plaintext(&cred.username, &cred.password);
                 }
             }
+            #[cfg(not(target_os = "macos"))]
             if !tried_helper {
                 tried_helper = true;
                 if let Ok(config) = git2::Config::open_default() {
                     if let Ok(cred) =
-                        git2::Cred::credential_helper(&config, url, username_from_url)
+                        git2::Cred::credential_helper(&config, _url, username_from_url)
                     {
                         return Ok(cred);
                     }
@@ -187,10 +212,12 @@ pub fn install_git2_credentials(callbacks: &mut git2::RemoteCallbacks<'_>, url: 
             return git2::Cred::default();
         }
         // Phrased for the user, not for libgit2: this string reaches the UI.
+        #[cfg(target_os = "macos")]
+        let guidance = "Reconnect GitHub or save this host's Git access token in the app's backup settings, then retry.";
+        #[cfg(not(target_os = "macos"))]
+        let guidance = "Sign in to that host with git (for example `gh auth setup-git` for GitHub), then retry.";
         Err(git2::Error::from_str(&format!(
-            "Authentication failed: no credentials available for {host_label}. \
-             Sign in to that host with git (for example `gh auth setup-git` for \
-             GitHub), then check for updates again."
+            "Authentication failed: no credentials available for {host_label}. {guidance}"
         )))
     });
 }
@@ -244,7 +271,7 @@ pub fn credential_env_for_url(url: &str) -> Vec<(String, String)> {
         Ok(Some(cred)) => cred,
         Ok(None) => return Vec::new(),
         Err(e) => {
-            log::warn!("git credentials: keychain lookup failed for {host}: {e:#}");
+            log::warn!("git credentials: credential lookup failed for {host}: {e:#}");
             return Vec::new();
         }
     };
@@ -267,10 +294,12 @@ pub fn credential_env_for_url(url: &str) -> Vec<(String, String)> {
 }
 
 /// Route all keyring access in this test process to keyring's in-memory mock
-/// store, so tests never touch the developer's real OS keychain.
+/// store, so tests never touch the developer's real application credential store.
 #[cfg(test)]
 pub(crate) fn use_mock_keyring() {
+    #[cfg(not(target_os = "macos"))]
     static INIT: std::sync::Once = std::sync::Once::new();
+    #[cfg(not(target_os = "macos"))]
     INIT.call_once(|| {
         keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
     });

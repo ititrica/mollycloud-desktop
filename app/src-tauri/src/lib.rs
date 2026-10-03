@@ -24,6 +24,7 @@ mod launch;
 mod proxy;
 mod screen;
 mod state;
+mod credential_store;
 mod trash;
 mod update;
 #[cfg(target_os = "macos")]
@@ -873,7 +874,7 @@ fn api_key_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?
-        .join("api_key.bin"))
+        .join(if cfg!(target_os = "macos") { "api_key-v2.bin" } else { "api_key.bin" }))
 }
 
 /// 存储 API Key（DPAPI 加密到应用数据目录，不明文存 localStorage）。
@@ -1809,6 +1810,8 @@ pub fn run() {
             dispatch(invoke)
         })
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            credential_store::initialize(app.path().app_data_dir()?.join("credentials-v2"));
             // Record setup before creating the console: WebView creation pumps
             // window events and may already receive island IPC on Windows.
             LOG_DIR.get_or_init(|| {

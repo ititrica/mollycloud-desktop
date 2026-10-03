@@ -153,7 +153,7 @@
     },
     "github": {
       "title": "Connect with GitHub",
-      "desc": "Sign in with GitHub and the private backup repository is set up for you. Your credentials are stored in the system keychain, never in files.",
+      "desc": "Sign in with GitHub and the private backup repository is set up for you. Your credentials are stored in the app encrypted storage, never in Git URLs or configuration files.",
       "tokenPlaceholder": "GitHub personal access token (ghp_… / github_pat_…)",
       "repoLabel": "Repository name",
       "connect": "Connect",
@@ -163,7 +163,7 @@
       "tokenHint": "Create a token on GitHub (repo scope, pre-filled)",
       "errorToken": "GitHub rejected the token. Check that it hasn't expired and was copied completely.",
       "errorScope": "The token can't create or access the repository. Use a classic token with the \"repo\" scope, or grant a fine-grained token Administration (write) permission.",
-      "errorKeychain": "Couldn't store the token in the system keychain. Guided GitHub setup requires the keychain; you can still use the advanced Git URL below.",
+      "errorKeychain": "Couldn't store the token in the app encrypted storage. Guided GitHub setup requires saved credentials; you can still use the advanced Git URL below.",
       "deviceSignIn": "Sign in with GitHub",
       "deviceWaitDesc": "A browser window opened at {{uri}}. Enter the code above there to authorize — this page will continue automatically.",
       "deviceWaiting": "Waiting for authorization on GitHub…",
@@ -220,7 +220,7 @@
       "skills": "Skills",
       "snapshots": "Snapshots"
     },
-    "credentialsMigrated": "The access token found in your backup URL was moved to the system keychain. It no longer appears in any file.",
+    "credentialsMigrated": "The access token found in your backup URL was moved to the app encrypted storage. It no longer appears in Git URLs or configuration files.",
     "restoreSafetyPoint": "Your previous state was saved as snapshot {{tag}} — you can restore it from the history at any time."
   },
   "firstRun": {
@@ -702,7 +702,7 @@
     "gitDisconnected": "Backup disconnected. Local skills and remote data are kept.",
     "gitDisconnectHint": "Disconnect removes the remote configuration from this machine only. Local skills and the remote repository are kept.",
     "gitEngineGit2": "Built-in Git engine (experimental)",
-    "gitEngineGit2Desc": "Use the app's built-in Git engine for HTTPS backup network operations — no system git needed, credentials injected from the keychain. SSH and custom remotes always use system git. Turn off to revert at any time.",
+    "gitEngineGit2Desc": "Use the app's built-in Git engine for HTTPS backup network operations — no system git needed, credentials read from app encrypted storage and injected in memory. SSH and custom remotes always use system git. Turn off to revert at any time.",
     "gitMergeEngineObject": "Skill-aware sync merge",
     "gitMergeEngineObjectDesc": "Default. Merges synced changes per skill instead of per text line: renames combine with edits, and conflicting skills are kept locally and listed on the Backup page for review instead of blocking the sync. Turn off to fall back to the legacy line-based git merge.",
     "gitStartBackup": "Set Up Backup",

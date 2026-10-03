@@ -7,6 +7,21 @@ import React, {
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
+function syncMollyAccent(root: HTMLElement): void {
+  const style = getComputedStyle(root);
+  const tokens = {lime:"lime", "on-lime":"on-lime", "lime-deep":"lime-deep", "lime-soft":"lime-soft", "lime-text":root.classList.contains("dark") ? "lime" : "lime-deep"};
+  for (const [name, token] of Object.entries(tokens)) {
+    const hex = style.getPropertyValue(`--color-${token}`).trim();
+    if (!/^#[a-f\d]{6}$/i.test(hex)) continue;
+    const [r,g,b] = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255);
+    const max = Math.max(r,g,b), min = Math.min(r,g,b), delta = max-min, l = (max+min)/2;
+    const sat = delta === 0 ? 0 : delta / (1-Math.abs(2*l-1));
+    let h = delta === 0 ? 0 : max === r ? ((g-b)/delta)%6 : max === g ? (b-r)/delta+2 : (r-g)/delta+4;
+    h = (h*60+360)%360;
+    root.style.setProperty(`--molly-${name}-hsl`,`${h} ${sat*100}% ${l*100}%`);
+  }
+}
+
 type Theme = "light" | "dark" | "system";
 const followsHostTheme = typeof window !== "undefined" && window.parent !== window;
 
@@ -83,6 +98,8 @@ export function ThemeProvider({
     }
 
     root.classList.add(theme);
+    root.dataset.theme = theme;
+    syncMollyAccent(root);
   }, [theme]);
 
   useEffect(() => {

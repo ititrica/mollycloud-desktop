@@ -220,6 +220,23 @@ const TEST_SCRIPT: &str = r#"
       await waitFor(()=>frame.contentDocument.querySelector('[role="dialog"]')?.textContent.includes('Second External'), 'Queued external import did not appear');
       [...frame.contentDocument.querySelector('[role="dialog"]').querySelectorAll('button')].find(button=>button.textContent.trim()==='取消').click();
       check(!(Object.values(await cc('get_providers',{app:'codex'})).some(item=>item.name==='Second External')), 'Cancelled queued link does not write');
+      // Host-managed views reuse original native prompt and MCP CRUD.
+      await cc('upsert_prompt',{app:'codex',id:'smoke-prompt',prompt:{id:'smoke-prompt',name:'Isolated Prompt',content:'Synthetic prompt for temporary user only.',enabled:false}});
+      frame.contentWindow.postMessage({source:'mollycloud',type:'navigate',app:'codex'},location.origin);
+      frame.contentWindow.postMessage({source:'mollycloud',type:'view',view:'prompts'},location.origin);
+      await waitFor(()=>frame.contentDocument.querySelector('[data-testid="molly-prompts-view"]')?.textContent.includes('Isolated Prompt'),'Independent prompt view not mounted');
+      check(!frame.contentDocument.querySelector('.molly-toolbar button[aria-label="返回"]'),'Standalone prompt view has no API-key back button');
+      await cc('enable_prompt',{app:'codex',id:'smoke-prompt'});
+      check((await cc('get_current_prompt_file_content',{app:'codex'})).includes('Synthetic prompt'),'Prompt enable writes temporary tool file');
+      await cc('upsert_mcp_server',{server:{id:'smoke-mcp',name:'Isolated MCP',server:{command:'synthetic-mcp',args:[]},apps:{}}});
+      frame.contentWindow.postMessage({source:'mollycloud',type:'view',view:'mcp'},location.origin);
+      await waitFor(()=>frame.contentDocument.querySelector('[data-testid="molly-mcp-view"]')?.textContent.includes('Isolated MCP'),'Independent MCP view not mounted');
+      check(!frame.contentDocument.querySelector('.molly-toolbar button[aria-label="返回"]'),'Standalone MCP view has no API-key back button');
+      await cc('toggle_mcp_app',{serverId:'smoke-mcp',app:'codex',enabled:true});
+      check((await cc('get_mcp_servers'))['smoke-mcp'].apps.codex,'MCP enable persists original native app target');
+      frame.contentWindow.postMessage({source:'mollycloud',type:'view',view:'providers'},location.origin);
+      await waitFor(()=>frame.contentDocument.querySelector('[data-provider-id]'),'Return to API keys failed');
+      check(!frame.contentDocument.querySelector('.molly-toolbar').textContent.includes('CC Switch'),'Provider header removes upstream brand text');
       denied=false;
       try { await cc('restart_app'); } catch { denied=true; }
       check(denied,'Upstream lifecycle cannot restart MollyCloud');

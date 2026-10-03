@@ -37,6 +37,9 @@ export function installReadOnlyPreview(): void {
         case "get_settings": result = { language: "zh", visibleApps, showProfileSwitcher: false, showInTray: false, enableLocalProxy: true, enableFailoverToggle: false, firstRunNoticeDismissed: true, commonConfigConfirmed: true, minimizeToTrayOnClose: false, launchOnStartup: false }; break;
         case "get_providers": result = ['codex','claude','gemini'].includes(String(args?.app)) ? { [`${args?.app}-official`]:official(String(args?.app)), ...(args?.app==='codex'?{[provider.id]:provider,'preview-custom-provider':{...provider,id:'preview-custom-provider',name:'自定义供应商示例',meta:{}}}:{}) } : {}; break;
         case "get_current_provider": result = ['codex','claude','gemini'].includes(String(args?.app)) ? `${args?.app}-official` : ''; break;
+        case "get_prompts": result = {"preview-prompt":{id:"preview-prompt",name:"简洁回复示例",content:"使用简洁的中文回复，并说明必要的验证结果。",enabled:false}};break;
+        case "get_current_prompt_file_content": result = null;break;
+        case "get_mcp_servers": result = {"preview-mcp":{id:"preview-mcp",name:"MCP 配置示例",server:{command:"example-mcp",args:[]},apps:{claude:false,codex:false,gemini:false,opencode:false,openclaw:false,hermes:false,pi:false,mcode:false},description:"仅用于界面预览，未启动服务"}};break;
         case "get_common_config_snippet": case "get_codex_common_config": result = ""; break;
         case "sync_molly_key_providers": result = {agent:args?.agent, current_removed:false,keys:previewKeys.map(key=>({...key,provider_id:args?.agent==='codex'?(key.id==='demo-key'?provider.id:`molly-preview-${key.id}`):null,model:args?.agent==='codex'?'gpt-5.5':'',compatible:args?.agent==='opencode'||key.group?.platform===(args?.agent==='claude'?'anthropic':args?.agent==='gemini'?'gemini':'openai'),error:null}))}; break;
         case "get_opencode_live_provider_ids": result=[];break;

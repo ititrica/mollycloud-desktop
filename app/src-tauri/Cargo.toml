@@ -1,6 +1,6 @@
 [package]
 name = "mollycloud"
-version = "0.2.2"
+version = "0.2.3"
 description = "MollyCloud Live2D desktop companion"
 authors = ["MollyCloud"]
 edition = "2021"
@@ -82,7 +82,6 @@ tauri-plugin-updater = "2"
 tauri-plugin-notification = "2"
 arboard = { version = "3", default-features = false }
 base64 = "0.22"
-keyring = { version = "3", features = ["windows-native", "apple-native"] }
 lettre = { version = "0.11", features = ["smtp-transport", "builder", "native-tls"] }
 raw-window-handle = "0.6"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "socks"] }
@@ -96,6 +95,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "sync", "time"] }
 url = "2"
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
 [target.'cfg(windows)'.dependencies]
 molly-netspeed = { path = "../../vendor/netspeed-dynamic/backend" }
 winreg = "0.52"
@@ -125,7 +127,7 @@ objc2 = "0.6"
 objc2-app-kit = { version = "0.3", features = ["NSScreen", "NSWindow", "NSWorkspace", "NSRunningApplication"] }
 objc2-foundation = "0.3"
 objc2-web-kit = "0.3"
-aes-gcm = "0.10"
+molly-local-secrets = { path = "../../vendor/local-secrets" }
 shell-words = "1"
 # ZIP dependencies enable XZ; link its runtime statically so the app runs without Homebrew.
 xz2 = { version = "0.1", features = ["static"] }

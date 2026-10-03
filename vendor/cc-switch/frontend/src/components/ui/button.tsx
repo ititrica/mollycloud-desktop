@@ -8,9 +8,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // 主按钮：蓝底白字（对应旧版 primary）
+        // Molly 主按钮：共享荧光绿与深色文字
         default:
-          "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700",
+          "bg-primary text-primary-foreground hover:bg-[var(--color-lime-hover)]",
         // 危险按钮：红底白字（对应旧版 danger）
         destructive:
           "bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700",

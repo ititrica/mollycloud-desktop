@@ -925,3 +925,9 @@ code,
 .key-quota-limit > i { display: block; height: 4px; overflow: hidden; border-radius: 99px; background: var(--color-surface-strong); }
 .key-quota-limit b { display: block; height: 100%; background: var(--color-lime-deep); }
 .key-record .ccs-import-actions { gap: 8px; }
+
+/* Recharge keeps wheel, touch and keyboard scrolling without a visible rail. */
+.workspace--hide-scrollbar { scrollbar-width: none; scrollbar-gutter: auto; }
+.workspace--hide-scrollbar::-webkit-scrollbar,
+.workspace--hide-scrollbar .recharge-page ::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.workspace--hide-scrollbar .recharge-page * { scrollbar-width: none; }

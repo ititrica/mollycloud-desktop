@@ -178,7 +178,7 @@ fn same_endpoint(a: &SpeechConfig, b: &SpeechConfig) -> bool {
 fn settings_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     app.path()
         .app_data_dir()
-        .map(|path| path.join("tts-settings.bin"))
+        .map(|path| path.join(if cfg!(target_os = "macos") { "tts-settings-v2.bin" } else { "tts-settings.bin" }))
         .map_err(|_| "无法访问语音设置目录".into())
 }
 fn load(app: &AppHandle) -> Result<StoredSpeech, String> {

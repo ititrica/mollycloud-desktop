@@ -1,7 +1,7 @@
 //! Minimal GitHub REST client for the guided backup setup (backup redesign
 //! Phase 2, PAT mode): validate a token, then find or create the private
 //! backup repository. The token itself never appears in URLs, logs, or error
-//! messages — callers store it in the OS keychain.
+//! messages — callers store it in the application credential store.
 //!
 //! Errors carry stable prefixes (`GITHUB_TOKEN_INVALID`, `GITHUB_SCOPE`,
 //! `GITHUB_NETWORK`) the frontend maps to plain-language copy.

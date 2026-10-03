@@ -153,7 +153,7 @@
     },
     "github": {
       "title": "使用 GitHub 连接",
-      "desc": "使用 GitHub 登录，私有备份仓库会自动创建。凭证保存在系统钥匙串中，不会写进任何文件。",
+      "desc": "使用 GitHub 登录，私有备份仓库会自动创建。凭证保存在应用内加密存储中，不会写入 Git 地址或配置文件。",
       "tokenPlaceholder": "GitHub 个人访问令牌（ghp_… / github_pat_…）",
       "repoLabel": "仓库名",
       "connect": "连接",
@@ -163,7 +163,7 @@
       "tokenHint": "去 GitHub 创建令牌（repo 权限，已预填）",
       "errorToken": "GitHub 拒绝了该令牌。请检查它是否过期、是否复制完整。",
       "errorScope": "该令牌无法创建或访问仓库。请使用带「repo」权限的 classic 令牌，或给 fine-grained 令牌授予 Administration（写）权限。",
-      "errorKeychain": "无法将令牌存入系统钥匙串。GitHub 引导连接依赖钥匙串；你仍可使用下方的高级 Git 地址方式。",
+      "errorKeychain": "无法将令牌存入应用内加密存储。GitHub 引导连接需要保存凭证；你仍可使用下方的高级 Git 地址方式。",
       "deviceSignIn": "使用 GitHub 登录",
       "deviceWaitDesc": "浏览器已打开 {{uri}}。在该页面输入上方代码完成授权——本页会自动继续。",
       "deviceWaiting": "等待在 GitHub 上完成授权…",
@@ -220,7 +220,7 @@
       "skills": "技能",
       "snapshots": "快照"
     },
-    "credentialsMigrated": "检测到备份地址中包含访问令牌，已将其转移至系统钥匙串，不再出现在任何文件中。",
+    "credentialsMigrated": "检测到备份地址中包含访问令牌，已将其转移至应用内加密存储，不再出现在 Git 地址或配置文件中。",
     "restoreSafetyPoint": "恢复前的状态已保存为备份点 {{tag}}，可随时从历史中恢复。"
   },
   "firstRun": {
@@ -702,7 +702,7 @@
     "gitDisconnected": "已断开备份，本地技能与远端数据均保留。",
     "gitDisconnectHint": "断开只清除本机的远程配置；本地技能和远端仓库数据都会保留。",
     "gitEngineGit2": "内置 Git 引擎（实验性）",
-    "gitEngineGit2Desc": "HTTPS 备份的网络操作改用应用内置的 Git 引擎——不依赖系统 git，凭证从钥匙串内存注入。SSH 与自定义远端始终走系统 git。可随时关闭还原。",
+    "gitEngineGit2Desc": "HTTPS 备份的网络操作改用应用内置的 Git 引擎——不依赖系统 git，凭证从应用内加密存储读取后在内存中注入。SSH 与自定义远端始终走系统 git。可随时关闭还原。",
     "gitMergeEngineObject": "按技能合并同步",
     "gitMergeEngineObjectDesc": "默认开启。同步时按技能对象而非文本行合并：重命名与内容修改自动组合；真正冲突的技能会保留本机版本并在备份页列出待处理，而不是阻塞同步。关闭则回退到旧的按行 git 合并。",
     "gitStartBackup": "设置备份",

@@ -60,6 +60,7 @@ pub async fn login(
         return Err("请输入邮箱和密码".to_owned());
     }
     let data = state.api.login(email, &password).await?;
+    state.remember_login_credentials(email, &password).await;
     if data
         .get("requires_2fa")
         .and_then(Value::as_bool)
@@ -113,12 +114,19 @@ pub async fn complete_two_factor(
 
 #[tauri::command]
 pub async fn restore_session(state: State<'_, RuntimeState>) -> Result<Option<Value>, String> {
-    if state.refresh_token().await.is_err() {
-        return Ok(None);
+    if state.refresh_token().await.is_ok() {
+        match state.access_token().await {
+            Ok(token) => return state.api.get_authenticated("/auth/me", &token).await.map(Some),
+            Err(error) if error == "登录已过期，请重新登录" => (),
+            Err(error) => return Err(error),
+        }
     }
-    let token = state.access_token().await?;
-    let user = state.api.get_authenticated("/auth/me", &token).await?;
-    Ok(Some(user))
+    let Some(credentials) = crate::state::load_login_credentials()? else { return Ok(None) };
+    let data = state.api.login(&credentials.email, &credentials.password).await?;
+    // Two-factor accounts still require an explicit fresh verification.
+    if data.get("requires_2fa").and_then(Value::as_bool).unwrap_or(false) { return Ok(None); }
+    state.remember_login_credentials(&credentials.email, &credentials.password).await;
+    state.accept_login(&data, true).await.map(Some)
 }
 
 #[tauri::command]

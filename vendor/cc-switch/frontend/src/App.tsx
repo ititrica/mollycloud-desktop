@@ -12,9 +12,7 @@ import {
   Maximize2,
   Minimize2,
   X,
-  Book,
   Brain,
-  Wrench,
   History,
   BarChart2,
   Download,
@@ -75,7 +73,6 @@ import { EnvWarningBanner } from "@/components/env/EnvWarningBanner";
 import { ProxyToggle } from "@/components/proxy/ProxyToggle";
 import { ClaudeDesktopRouteToggle } from "@/components/proxy/ClaudeDesktopRouteToggle";
 import { FailoverToggle } from "@/components/proxy/FailoverToggle";
-import { RoutingActivationBrand } from "@/components/proxy/RoutingActivationBrand";
 import UsageScriptModal from "@/components/UsageScriptModal";
 import UnifiedMcpPanel from "@/components/mcp/UnifiedMcpPanel";
 import PromptPanel, {
@@ -92,7 +89,6 @@ import UnifiedSkillsPanel, {
 } from "@/components/skills/UnifiedSkillsPanel";
 import { AgentsPanel } from "@/components/agents/AgentsPanel";
 import { UniversalProviderPanel } from "@/components/universal";
-import { McpIcon } from "@/components/BrandIcons";
 import { Button } from "@/components/ui/button";
 import { SessionManagerPage } from "@/components/sessions/SessionManagerPage";
 import {
@@ -147,21 +143,9 @@ const getInitialApp = (): AppId => {
   return "codex";
 };
 
-const VIEW_STORAGE_KEY = "cc-switch-last-view";
-const VALID_VIEWS: View[] = [
-  "providers",
-  "settings",
-  "prompts",
-  "mcp",
-  "universal",
-];
-
 const getInitialView = (): View => {
-  const saved = localStorage.getItem(VIEW_STORAGE_KEY) as View | null;
-  if (saved && VALID_VIEWS.includes(saved)) {
-    return saved;
-  }
-  return "providers";
+  const page = new URLSearchParams(window.location.search).get("page");
+  return page === "prompts" || page === "mcp" ? page : "providers";
 };
 
 function App() {
@@ -189,9 +173,7 @@ function App() {
       hasSkills: false,
     });
 
-  useEffect(() => {
-    localStorage.setItem(VIEW_STORAGE_KEY, currentView);
-  }, [currentView]);
+  const [hostPage, setHostPage] = useState<View>(getInitialView);
 
   const { data: settingsData } = useSettingsQuery();
   const useAppWindowControls = false;
@@ -217,10 +199,6 @@ function App() {
 
   // Fallback from sessions view when switching to an app without session support
   useEffect(() => {
-    if (currentView === "mcp" && sharedFeatureApp === "pi") {
-      setCurrentView("providers");
-      return;
-    }
     if (
       currentView === "sessions" &&
       sharedFeatureApp !== "claude" &&
@@ -278,7 +256,7 @@ function App() {
   const { data: unmanagedSkills } = useScanUnmanagedSkills();
   const hasUnmanagedSkills = (unmanagedSkills?.length ?? 0) > 0;
   const addActionButtonClass =
-    "bg-orange-500 hover:bg-orange-600 dark:bg-orange-500 dark:hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 dark:shadow-orange-500/40 rounded-full w-8 h-8";
+    "bg-primary hover:bg-[var(--color-lime-hover)] text-primary-foreground rounded-full w-8 h-8";
 
   const {
     isRunning: isProxyRunning,
@@ -315,7 +293,6 @@ function App() {
       currentView === "openclawAgents");
   const { data: openclawHealthWarnings = [] } =
     useOpenClawHealth(isOpenClawView);
-  const hasSkillsSupport = sharedFeatureApp !== "openclaw";
   const hasSessionSupport =
     sharedFeatureApp === "claude" ||
     sharedFeatureApp === "codex" ||
@@ -326,7 +303,6 @@ function App() {
     sharedFeatureApp === "hermes" ||
     sharedFeatureApp === "pi" ||
     sharedFeatureApp === "mcode";
-  const hasMcpSupport = sharedFeatureApp !== "pi";
 
   const {
     addProvider,
@@ -539,6 +515,11 @@ function App() {
 
   useEffect(() => {
     return listenToHost((message) => {
+      if (message.type === "view" && message.view) {
+        setHostPage(message.view);
+        setCurrentView(message.view);
+        return;
+      }
       if (message.type === "keys-changed") {
         if (message.notice) toast.success(message.notice);
         void queryClient.invalidateQueries({queryKey:["molly-account-keys"]});
@@ -681,6 +662,11 @@ function App() {
   const currentViewRef = useRef(currentView);
   const managementBusy =
     mcpManagementBusy || skillsNavigationBusy || promptNavigationBusy;
+  useEffect(() => {
+    window.parent.postMessage({source:"molly-ccswitch",type:"interaction-blocked",blocked:managementBusy},window.location.origin);
+    return () => window.parent.postMessage({source:"molly-ccswitch",type:"interaction-blocked",blocked:false},window.location.origin);
+  }, [managementBusy]);
+
   const managementBusyRef = useRef(false);
   managementBusyRef.current = managementBusy;
 
@@ -1049,6 +1035,7 @@ function App() {
           );
         case "prompts":
           return (
+            <div data-testid="molly-prompts-view" className="flex flex-1 min-h-0 flex-col">
             <PromptPanel
               ref={promptPanelRef}
               open={true}
@@ -1058,6 +1045,7 @@ function App() {
               onNavigationBlockedChange={setPromptNavigationBusy}
               onPrimaryActionChange={setPromptPrimaryAction}
             />
+            </div>
           );
         case "hermesMemory":
           return <HermesMemoryPanel />;
@@ -1086,11 +1074,13 @@ function App() {
           );
         case "mcp":
           return (
+            <div data-testid="molly-mcp-view" className="flex flex-1 min-h-0 flex-col">
             <UnifiedMcpPanel
               ref={mcpPanelRef}
               onOpenChange={() => setCurrentView("providers")}
               onInteractionBlockedChange={setMcpManagementBusy}
             />
+            </div>
           );
         case "agents":
           return (
@@ -1227,7 +1217,7 @@ function App() {
         >
           {useAppWindowControls && (
             <div
-              className="flex items-center gap-1"
+              className="flex shrink-0 items-center gap-2"
               style={{ WebkitAppRegion: "no-drag" } as any}
             >
               <Button
@@ -1306,7 +1296,7 @@ function App() {
         }
       >
         <div
-          className="flex h-full items-center justify-between gap-2 px-6"
+          className="molly-toolbar flex h-full items-center justify-between gap-4 px-5"
           {...DRAG_REGION_ATTR}
           style={{ ...DRAG_REGION_STYLE } as any}
         >
@@ -1316,7 +1306,7 @@ function App() {
           >
             {currentView !== "providers" ? (
               <div className="flex items-center gap-2">
-                <Button
+                {currentView !== hostPage && <Button
                   variant="outline"
                   size="icon"
                   disabled={managementBusy}
@@ -1334,7 +1324,7 @@ function App() {
                   )}
                 >
                   <ArrowLeft className="w-4 h-4" />
-                </Button>
+                </Button>}
                 <h1 className="text-lg font-semibold">
                   {currentView === "settings" && t("settings.title")}
                   {currentView === "prompts" &&
@@ -1360,13 +1350,6 @@ function App() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <RoutingActivationBrand
-                  active={isProxyRunning && isCurrentAppTakeoverActive}
-                  contextKey={activeApp}
-                  ready={
-                    proxyStatus !== undefined && takeoverStatus !== undefined
-                  }
-                />
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1405,11 +1388,11 @@ function App() {
             )}
           </div>
 
-          <div className="flex flex-1 min-w-0 items-center justify-end gap-1.5">
+          <div className="flex flex-1 min-w-0 items-center justify-end gap-3">
             {currentView === "providers" &&
               (activeApp === "claude-desktop" || proxyAppId) && (
                 <div
-                  className="flex shrink-0 items-center gap-1.5"
+                  className="flex shrink-0 items-center gap-2"
                   style={{ WebkitAppRegion: "no-drag" } as any}
                 >
                   {activeApp === "claude-desktop" ? (
@@ -1439,7 +1422,7 @@ function App() {
             {/* 弹性中段：空间不足时由 AppSwitcher 自行收纳溢出应用；
                 justify-end + overflow-hidden 只裁剪 resize 瞬间的过渡帧 */}
             <div className="flex flex-1 min-w-0 items-center justify-end overflow-hidden py-4">
-              {currentView === "providers" && (
+              {(currentView === "providers" || currentView === "prompts") && (
                 <AppSwitcher
                   activeApp={activeApp}
                   onSwitch={setActiveApp}
@@ -1450,7 +1433,7 @@ function App() {
             {/* 固定右端：主操作（添加供应商等）shrink-0，任何配置下不被挤出 */}
             <div className="flex shrink-0 items-center py-4">
               <div
-                className="flex shrink-0 items-center gap-1.5"
+                className="flex shrink-0 items-center gap-2"
                 style={{ WebkitAppRegion: "no-drag" } as any}
               >
                 {currentView === "prompts" && promptPrimaryAction && (
@@ -1621,18 +1604,7 @@ function App() {
                         >
                           {activeApp === "hermes" ? (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setCurrentView("skills")}
-                                disabled={!hasSkillsSupport}
-                                tabIndex={hasSkillsSupport ? 0 : -1}
-                                aria-hidden={!hasSkillsSupport}
-                                className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 w-8 px-2"
-                                title={t("skills.manage")}
-                              >
-                                <Wrench className="w-4 h-4" />
-                              </Button>
+
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1651,17 +1623,7 @@ function App() {
                               >
                                 <LayoutDashboard className="w-4 h-4" />
                               </Button>
-                              {hasMcpSupport && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setCurrentView("mcp")}
-                                  className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 w-8 px-2"
-                                  title={t("mcp.title")}
-                                >
-                                  <McpIcon size={16} />
-                                </Button>
-                              )}
+
                             </>
                           ) : activeApp === "openclaw" ? (
                             <>
@@ -1716,33 +1678,8 @@ function App() {
                             </>
                           ) : (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setCurrentView("skills")}
-                                disabled={!hasSkillsSupport}
-                                tabIndex={hasSkillsSupport ? 0 : -1}
-                                aria-hidden={!hasSkillsSupport}
-                                className={cn(
-                                  "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5",
-                                  "transition-all duration-200 ease-in-out overflow-hidden",
-                                  hasSkillsSupport
-                                    ? "opacity-100 w-8 scale-100 px-2"
-                                    : "opacity-0 w-0 scale-75 pointer-events-none px-0 -ml-1",
-                                )}
-                                title={t("skills.manage")}
-                              >
-                                <Wrench className="flex-shrink-0 w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setCurrentView("prompts")}
-                                className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 w-8 px-2"
-                                title={t("prompts.manage")}
-                              >
-                                <Book className="w-4 h-4" />
-                              </Button>
+
+
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1761,17 +1698,7 @@ function App() {
                               >
                                 <History className="flex-shrink-0 w-4 h-4" />
                               </Button>
-                              {hasMcpSupport && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setCurrentView("mcp")}
-                                  className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 w-8 px-2"
-                                  title={t("mcp.title")}
-                                >
-                                  <McpIcon size={16} />
-                                </Button>
-                              )}
+
                             </>
                           )}
                         </motion.div>

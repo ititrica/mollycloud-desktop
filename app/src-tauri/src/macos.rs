@@ -1,67 +1,12 @@
 //! macOS assistant tools. Credentials remain native and queries never use a shell.
-use aes_gcm::{
-    aead::{Aead, AeadCore, KeyInit, OsRng},
-    Aes256Gcm, Nonce,
-};
-use base64::{engine::general_purpose::STANDARD, Engine};
-use std::{
-    process::Command,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Mutex,
-    },
-};
+use std::{process::Command, sync::atomic::{AtomicU64, Ordering}};
 use tauri::{AppHandle, Emitter};
 
-const SEALED_HEADER: &[u8] = b"MOLLY-MAC-1\0";
-static KEY_LOCK: Mutex<()> = Mutex::new(());
-
-fn encryption_key(create: bool) -> Result<Vec<u8>, String> {
-    let _guard = KEY_LOCK.lock().map_err(|_| "无法访问本机加密密钥")?;
-    let entry = keyring::Entry::new("cn.mollycloud.client", "device-encryption-key")
-        .map_err(|_| "macOS 钥匙串不可用")?;
-    match entry.get_password() {
-        Ok(value) => STANDARD
-            .decode(value)
-            .ok()
-            .filter(|bytes| bytes.len() == 32)
-            .ok_or_else(|| "钥匙串中的本机加密密钥无效".into()),
-        Err(keyring::Error::NoEntry) if create => {
-            let key = Aes256Gcm::generate_key(&mut OsRng);
-            entry
-                .set_password(&STANDARD.encode(key))
-                .map_err(|_| "无法将本机加密密钥保存到 macOS 钥匙串")?;
-            Ok(key.to_vec())
-        }
-        Err(_) => Err("无法从 macOS 钥匙串读取本机加密密钥".into()),
-    }
-}
-
-fn seal(key: &[u8], data: &[u8]) -> Result<Vec<u8>, String> {
-    let cipher = Aes256Gcm::new_from_slice(key).map_err(|_| "本机加密密钥无效")?;
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-    let encrypted = cipher
-        .encrypt(&nonce, data)
-        .map_err(|_| "本机数据加密失败")?;
-    Ok([SEALED_HEADER, nonce.as_slice(), &encrypted].concat())
-}
-
-fn unseal(key: &[u8], data: &[u8]) -> Result<Vec<u8>, String> {
-    let body = data
-        .strip_prefix(SEALED_HEADER)
-        .filter(|body| body.len() >= 12 + 16)
-        .ok_or("本机加密数据格式无效")?;
-    let cipher = Aes256Gcm::new_from_slice(key).map_err(|_| "本机加密密钥无效")?;
-    cipher
-        .decrypt(Nonce::from_slice(&body[..12]), &body[12..])
-        .map_err(|_| "无法解密本机数据，请重新填写密钥".into())
-}
-
 pub fn protect(data: &[u8]) -> Result<Vec<u8>, String> {
-    seal(&encryption_key(true)?, data)
+    crate::credential_store::store()?.seal(data)
 }
 pub fn unprotect(data: &[u8]) -> Result<Vec<u8>, String> {
-    unseal(&encryption_key(false)?, data)
+    crate::credential_store::store()?.unseal(data)
 }
 
 pub fn active_application() -> String {
@@ -235,16 +180,17 @@ mod tests {
     use super::*;
     #[test]
     fn encrypted_data_authenticates_and_never_contains_plaintext() {
-        let key = [7; 32];
+        let dir = tempfile::tempdir().unwrap();
+        let store = molly_local_secrets::SecretStore::new(dir.path());
         let input = b"synthetic-private-key";
-        let mut encrypted = seal(&key, input).unwrap();
+        let mut encrypted = store.seal(input).unwrap();
         assert!(!encrypted.windows(input.len()).any(|bytes| bytes == input));
-        assert_eq!(unseal(&key, &encrypted).unwrap(), input);
+        assert_eq!(store.unseal(&encrypted).unwrap(), input);
         let last = encrypted.len() - 1;
         encrypted[last] ^= 1;
-        assert!(unseal(&key, &encrypted).is_err());
-        assert!(unseal(&[8; 32], &encrypted).is_err());
-        assert!(unseal(&key, b"truncated").is_err());
+        assert!(store.unseal(&encrypted).is_err());
+
+        assert!(store.unseal(b"truncated").is_err());
     }
     #[test]
     fn query_tools_cannot_mutate_settings_or_execute_shell_expressions() {

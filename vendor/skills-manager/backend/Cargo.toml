@@ -49,7 +49,6 @@ zip = "2"
 tempfile = "3.26.0"
 semver = "1"
 aes-gcm = "0.10"
-keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
 rand = "0.8"
 image = { version = "0.25", default-features = false, features = ["png"] }
 notify = "6.1.1"
@@ -57,3 +56,9 @@ clap = { version = "4.5", features = ["derive"] }
 
 [target.'cfg(windows)'.dependencies]
 junction = "2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+molly-local-secrets = { path = "../../local-secrets" }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+keyring = { version = "3", features = ["windows-native", "sync-secret-service", "crypto-rust", "vendored"] }

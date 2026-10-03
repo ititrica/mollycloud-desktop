@@ -1,6 +1,7 @@
 export interface HostNavigation {
   source: "mollycloud";
-  type: "navigate" | "provider-imported" | "keys-changed" | "apply-provider";
+  type: "navigate" | "provider-imported" | "keys-changed" | "apply-provider" | "view";
+  view?: "providers" | "prompts" | "mcp";
   providerId?: string;
   app?: string;
   notice?: string;
@@ -14,10 +15,11 @@ export function listenToHost(handler: (message: HostNavigation) => void): () => 
   const listener = (event: MessageEvent<unknown>) => {
     if (event.source !== window.parent || event.origin !== window.location.origin) return;
     const message = event.data as Partial<HostNavigation> | null;
-    if (!message || message.source !== "mollycloud" || !["navigate", "provider-imported", "keys-changed", "apply-provider"].includes(message.type ?? "")) return;
+    if (!message || message.source !== "mollycloud" || !["navigate", "provider-imported", "keys-changed", "apply-provider", "view"].includes(message.type ?? "")) return;
     if (message.providerId !== undefined && (typeof message.providerId !== "string" || message.providerId.length > 256)) return;
     if (message.app !== undefined && typeof message.app !== "string") return;
     if (message.notice !== undefined && (typeof message.notice !== "string" || message.notice.length > 256)) return;
+    if (message.type === "view" && !["providers", "prompts", "mcp"].includes(message.view ?? "")) return;
     handler(message as HostNavigation);
   };
   window.addEventListener("message", listener);

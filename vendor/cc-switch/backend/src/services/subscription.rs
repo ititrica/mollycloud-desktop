@@ -106,51 +106,14 @@ struct ClaudeOAuthEntry {
 
 /// 读取 Claude OAuth 凭据
 ///
-/// 按优先级尝试以下来源：
-/// 1. macOS Keychain (service: "Claude Code-credentials")
-/// 2. 凭据文件 ~/.claude/.credentials.json
+/// 凭据文件 ~/.claude/.credentials.json
 ///
 /// JSON 格式（两种 key 都兼容）：
 /// {"claudeAiOauth": {"accessToken": "...", "expiresAt": ...}}
 /// {"claude.ai_oauth": {"accessToken": "...", "expiresAt": ...}}
 fn read_claude_credentials() -> (Option<String>, CredentialStatus, Option<String>) {
-    // 来源 1: macOS Keychain
-    #[cfg(target_os = "macos")]
-    {
-        if let Some(result) = read_claude_credentials_from_keychain() {
-            return result;
-        }
-    }
-
-    // 来源 2: 凭据文件
+    // MollyCloud reads file credentials only; never invokes macOS Keychain.
     read_claude_credentials_from_file()
-}
-
-/// 从 macOS Keychain 读取 Claude 凭据
-#[cfg(target_os = "macos")]
-fn read_claude_credentials_from_keychain(
-) -> Option<(Option<String>, CredentialStatus, Option<String>)> {
-    let output = std::process::Command::new("security")
-        .args([
-            "find-generic-password",
-            "-s",
-            "Claude Code-credentials",
-            "-w",
-        ])
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None; // Keychain 中无此条目，回退到文件
-    }
-
-    let json_str = String::from_utf8(output.stdout).ok()?;
-    let json_str = json_str.trim();
-    if json_str.is_empty() {
-        return None;
-    }
-
-    Some(parse_claude_credentials_json(json_str))
 }
 
 /// 从文件读取 Claude 凭据
@@ -175,7 +138,7 @@ fn read_claude_credentials_from_file() -> (Option<String>, CredentialStatus, Opt
     parse_claude_credentials_json(&content)
 }
 
-/// 解析 Claude 凭据 JSON（Keychain 和文件共用）
+/// 解析 Claude 凭据文件 JSON
 fn parse_claude_credentials_json(
     content: &str,
 ) -> (Option<String>, CredentialStatus, Option<String>) {
@@ -552,41 +515,12 @@ type CodexCredentials = (
 
 /// 读取 Codex OAuth 凭据
 ///
-/// 按优先级尝试以下来源：
-/// 1. macOS Keychain (service: "Codex Auth")
-/// 2. 凭据文件 ~/.codex/auth.json
+/// 凭据文件 ~/.codex/auth.json
 ///
 /// 仅 auth_mode == "chatgpt" (OAuth) 时有效，API key 模式不支持用量查询。
 fn read_codex_credentials() -> CodexCredentials {
-    #[cfg(target_os = "macos")]
-    {
-        if let Some(result) = read_codex_credentials_from_keychain() {
-            return result;
-        }
-    }
-
+    // MollyCloud reads file credentials only; never invokes macOS Keychain.
     read_codex_credentials_from_file()
-}
-
-/// 从 macOS Keychain 读取 Codex 凭据
-#[cfg(target_os = "macos")]
-fn read_codex_credentials_from_keychain() -> Option<CodexCredentials> {
-    let output = std::process::Command::new("security")
-        .args(["find-generic-password", "-s", "Codex Auth", "-w"])
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
-    }
-
-    let json_str = String::from_utf8(output.stdout).ok()?;
-    let json_str = json_str.trim();
-    if json_str.is_empty() {
-        return None;
-    }
-
-    Some(parse_codex_credentials_json(json_str))
 }
 
 /// 从文件读取 Codex 凭据
@@ -612,7 +546,7 @@ fn read_codex_credentials_from_file() -> CodexCredentials {
     parse_codex_credentials_json(&content)
 }
 
-/// 解析 Codex 凭据 JSON（Keychain 和文件共用）
+/// 解析 Codex 凭据文件 JSON
 fn parse_codex_credentials_json(content: &str) -> CodexCredentials {
     let auth: CodexAuthJson = match serde_json::from_str(content) {
         Ok(a) => a,
@@ -856,110 +790,12 @@ type GeminiCredentials = (
 
 /// 读取 Gemini OAuth 凭据
 ///
-/// 按优先级尝试以下来源：
-/// 1. macOS Keychain (service: "gemini-cli-oauth", account: "main-account")
-/// 2. 凭据文件 ~/.gemini/oauth_creds.json（遗留格式）
+/// 凭据文件 ~/.gemini/oauth_creds.json
 ///
 /// 仅 OAuth 认证模式（`oauth-personal`）有效；API key 模式无法查询官方用量。
 fn read_gemini_credentials() -> GeminiCredentials {
-    #[cfg(target_os = "macos")]
-    {
-        if let Some(result) = read_gemini_credentials_from_keychain() {
-            return result;
-        }
-    }
-
+    // MollyCloud reads file credentials only; never invokes macOS Keychain.
     read_gemini_credentials_from_file()
-}
-
-/// 从 macOS Keychain 读取 Gemini 凭据
-#[cfg(target_os = "macos")]
-fn read_gemini_credentials_from_keychain() -> Option<GeminiCredentials> {
-    let output = std::process::Command::new("security")
-        .args([
-            "find-generic-password",
-            "-s",
-            "gemini-cli-oauth",
-            "-a",
-            "main-account",
-            "-w",
-        ])
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
-    }
-
-    let json_str = String::from_utf8(output.stdout).ok()?;
-    let json_str = json_str.trim();
-    if json_str.is_empty() {
-        return None;
-    }
-
-    Some(parse_gemini_keychain_json(json_str))
-}
-
-/// 解析 Keychain 格式的 Gemini 凭据
-///
-/// Keychain 格式（keytar）：
-/// ```json
-/// { "token": { "accessToken": "...", "refreshToken": "...", "expiresAt": 1234 }, "updatedAt": ... }
-/// ```
-#[cfg(target_os = "macos")]
-fn parse_gemini_keychain_json(content: &str) -> GeminiCredentials {
-    let parsed: serde_json::Value = match serde_json::from_str(content) {
-        Ok(v) => v,
-        Err(e) => {
-            return (
-                None,
-                None,
-                CredentialStatus::ParseError,
-                Some(format!("Failed to parse Gemini keychain JSON: {e}")),
-            )
-        }
-    };
-
-    let token = match parsed.get("token") {
-        Some(t) => t,
-        None => {
-            // Keychain 中可能是扁平格式，尝试文件格式解析
-            return parse_gemini_file_json(content);
-        }
-    };
-
-    let access_token = token
-        .get("accessToken")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-    let refresh_token = token
-        .get("refreshToken")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-    let expires_at = token.get("expiresAt").and_then(|v| v.as_i64());
-
-    match access_token {
-        Some(at) if !at.is_empty() => {
-            // expiresAt 是毫秒时间戳
-            if let Some(exp_ms) = expires_at {
-                if exp_ms < now_millis() {
-                    return (
-                        Some(at),
-                        refresh_token,
-                        CredentialStatus::Expired,
-                        Some("Gemini access token has expired".to_string()),
-                    );
-                }
-            }
-            (Some(at), refresh_token, CredentialStatus::Valid, None)
-        }
-        _ => (
-            None,
-            refresh_token,
-            CredentialStatus::ParseError,
-            Some("accessToken is empty or missing".to_string()),
-        ),
-    }
 }
 
 /// 从文件读取 Gemini 凭据
@@ -1440,6 +1276,21 @@ fn now_millis() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn file_oauth_credentials_keep_all_three_clients_supported() {
+        let claude = parse_claude_credentials_json(r#"{"claudeAiOauth":{"accessToken":"synthetic-claude"}}"#);
+        assert_eq!(claude.0.as_deref(), Some("synthetic-claude"));
+        assert!(matches!(claude.1, CredentialStatus::Valid));
+        let codex = parse_codex_credentials_json(r#"{"auth_mode":"chatgpt","tokens":{"access_token":"synthetic-codex","account_id":"synthetic-account"}}"#);
+        assert_eq!(codex.0.as_deref(), Some("synthetic-codex"));
+        assert_eq!(codex.1.as_deref(), Some("synthetic-account"));
+        assert!(matches!(codex.2, CredentialStatus::Valid));
+        let gemini = parse_gemini_file_json(r#"{"access_token":"synthetic-gemini","refresh_token":"synthetic-refresh"}"#);
+        assert_eq!(gemini.0.as_deref(), Some("synthetic-gemini"));
+        assert_eq!(gemini.1.as_deref(), Some("synthetic-refresh"));
+        assert!(matches!(gemini.2, CredentialStatus::Valid));
+    }
 
     fn scoped_limit(model: &str, percent: f64) -> serde_json::Value {
         serde_json::json!({

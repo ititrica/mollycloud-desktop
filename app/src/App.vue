@@ -36,7 +36,7 @@ import { asArray, asRecord, type AccountBalance, type AssistantConfig, type Dash
 import { formatBalance, formatDate, formatMoney, formatTokens, numberValue, textValue } from "./format";
 import { desktopApi, type CcSwitchImportResult, type DesktopUpdate, type CcSwitchAgent } from "./ipc";
 
-type Page = "overview" | "subscriptions" | "keys" | "usage" | "recharge" | "assistant" | "ccswitch" | "netspeed" | "images" | "skills";
+type Page = "overview" | "subscriptions" | "keys" | "usage" | "recharge" | "assistant" | "ccswitch" | "prompts" | "mcp" | "netspeed" | "images" | "skills";
 type Phase = "starting" | "login" | "two-factor" | "dashboard";
 type AssistantDisplayMessage = { role: "user" | "assistant"; content: string };
 type OverviewIcon = "wallet" | "spend" | "subscription" | "key" | "request" | "token" | "database" | "clock";
@@ -52,6 +52,7 @@ const bootstrap = ref<ServiceBootstrap | null>(null);
 const dashboard = ref<DashboardPayload | null>(null);
 const restoredUser = ref<unknown>(null);
 const activePage = ref<Page>("overview");
+const ccInteractionBlocked = ref(false);
 const email = ref("");
 const password = ref("");
 const totpCode = ref("");
@@ -157,9 +158,11 @@ watch(phase, (next) => {
   }
 });
 
-const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "project-key" | "key" | "usage" | "assistant" | "code" | "image" | "skills" | "island" }> = [
+const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "project-key" | "key" | "usage" | "assistant" | "code" | "image" | "skills" | "island" | "prompts" | "mcp" }> = [
   { id: "overview", label: "概览", icon: "overview" },
-  { id: "ccswitch", label: "CC Switch", icon: "code" },
+  { id: "ccswitch", label: "API 密钥", icon: "project-key" },
+  { id: "prompts", label: "提示词管理", icon: "prompts" },
+  { id: "mcp", label: "MCP 管理", icon: "mcp" },
   { id: "assistant", label: "Molly助手", icon: "assistant" },
   ...(isWindows ? [{ id: "netspeed" as const, label: "灵动岛", icon: "island" as const }] : []),
   { id: "images", label: "生图工作台", icon: "image" },
@@ -190,7 +193,10 @@ const overviewPages = [
   { id: "recharge", label: "充值" },
 ] as const;
 const isOverviewPage = computed(() => overviewPages.some((item) => item.id === activePage.value));
-const isEmbeddedPage = computed(() => ["assistant", "ccswitch", "images"].includes(activePage.value));
+const isEmbeddedPage = computed(() => ["assistant", "ccswitch", "prompts", "mcp", "images"].includes(activePage.value));
+const ccPage = computed(() => ["ccswitch", "prompts", "mcp"].includes(activePage.value));
+const ccView = computed(() => activePage.value === "prompts" ? "prompts" : activePage.value === "mcp" ? "mcp" : activePage.value === "ccswitch" ? "providers" : null);
+const activePlugin = computed(() => ccPage.value ? "ccswitch" : activePage.value);
 const isToolPage = computed(() => ["netspeed", "skills"].includes(activePage.value));
 const showAccountHeader = computed(() => !isEmbeddedPage.value && !isToolPage.value);
 const accountReminder = computed(() => {
@@ -562,11 +568,11 @@ function handleAssistantKeydown(event: KeyboardEvent): void {
 }
 
 function selectPage(page: Page): void {
-  if (assistantSettingsBusy.value) return;
+  if (assistantSettingsBusy.value || ccInteractionBlocked.value) return;
   if (page === "keys") page = "ccswitch";
   activePage.value = page;
   if (page === "recharge") rechargeVisited.value = true;
-  if (page === "ccswitch") ccSwitchVisited.value = true;
+  if (["ccswitch", "prompts", "mcp"].includes(page)) ccSwitchVisited.value = true;
   if (page === "images") imageWorkbenchVisited.value = true;
   if (page === "skills") skillsVisited.value = true;
   if (page === "assistant") {
@@ -898,7 +904,7 @@ onBeforeUnmount(() => {
           </form>
         </template>
 
-        <div class="secure-note"><AppIcon name="shield" /> {{ autoLogin ? `登录令牌由 ${credentialStoreName}加密保存` : "未开启自动登录，关闭应用后需重新登录" }}</div>
+        <div class="secure-note"><AppIcon name="shield" /> {{ autoLogin ? `${credentialStoreName}保存邮箱、密码和登录会话` : "未开启自动登录，关闭应用后需重新登录" }}</div>
       </div>
     </section>
   </main>
@@ -914,7 +920,7 @@ onBeforeUnmount(() => {
       <div class="sidebar-nav-viewport">
         <nav ref="sidebarNav" aria-label="主导航">
           <i class="selection-indicator" aria-hidden="true" />
-          <button v-for="item in navigation" :key="item.id" :disabled="assistantSettingsBusy" type="button" class="nav-item" :class="{ active: item.id === 'overview' ? isOverviewPage : activePage === item.id }" :data-page="item.id" :aria-label="item.label" :title="sidebarCollapsed ? item.label : undefined" :aria-current="item.id === 'overview' ? (isOverviewPage ? (activePage === 'overview' ? 'page' : 'true') : undefined) : (activePage === item.id ? 'page' : undefined)" @click="selectPage(item.id)">
+          <button v-for="item in navigation" :key="item.id" :disabled="assistantSettingsBusy || ccInteractionBlocked" type="button" class="nav-item" :class="{ active: item.id === 'overview' ? isOverviewPage : activePage === item.id }" :data-page="item.id" :aria-label="item.label" :title="sidebarCollapsed ? item.label : undefined" :aria-current="item.id === 'overview' ? (isOverviewPage ? (activePage === 'overview' ? 'page' : 'true') : undefined) : (activePage === item.id ? 'page' : undefined)" @click="selectPage(item.id)">
             <AppIcon :name="item.icon" /><span>{{ item.label }}</span>
           </button>
         </nav>
@@ -926,7 +932,7 @@ onBeforeUnmount(() => {
       </div>
     </aside>
 
-    <section class="workspace" :class="{ 'workspace--assistant': activePage === 'assistant', 'workspace--embedded': isEmbeddedPage, 'workspace--tool': isToolPage }">
+    <section class="workspace" :class="{ 'workspace--assistant': activePage === 'assistant', 'workspace--embedded': isEmbeddedPage, 'workspace--tool': isToolPage, 'workspace--hide-scrollbar': activePage === 'recharge' }">
       <header :inert="skillsModalOpen" v-if="showAccountHeader" class="topbar">
         <nav v-if="isOverviewPage" ref="overviewNav" class="overview-subnav molly-subnav" aria-label="概览二级菜单">
           <i class="selection-indicator" aria-hidden="true" />
@@ -1047,9 +1053,9 @@ onBeforeUnmount(() => {
         <NetSpeedPanel :preview="consolePreview" :active="activePage === 'netspeed'" />
       </div>
 
-      <section v-if="['ccswitch', 'images', 'skills'].includes(activePage) && !pluginUsable(activePage)" class="plugin-empty page-content">
-        <AppIcon :name="activePage === 'ccswitch' ? 'code' : activePage === 'images' ? 'image' : 'skills'" />
-        <p>{{ plugins.find(p => p.id === activePage)?.installed ? '插件需要重启或更新适配版本后启用。' : '安装插件后，即可在控制台内使用。已有数据会在重新安装后恢复。' }}</p>
+      <section v-if="['ccswitch', 'images', 'skills'].includes(activePlugin) && !pluginUsable(activePlugin)" class="plugin-empty page-content">
+        <AppIcon :name="ccPage ? 'key' : activePage === 'images' ? 'image' : 'skills'" />
+        <p>{{ plugins.find(p => p.id === activePlugin)?.installed ? '插件需要重启或更新适配版本后启用。' : '安装插件后，即可在控制台内使用。已有数据会在重新安装后恢复。' }}</p>
         <n-button type="primary" @click="openPluginSettings">管理功能插件</n-button>
       </section>
 
@@ -1057,8 +1063,8 @@ onBeforeUnmount(() => {
         <SkillManagerPanel :preview="consolePreview" @modal="skillsModalOpen = $event" />
       </div>
 
-      <div v-if="ccSwitchVisited && pluginUsable('ccswitch')" :key="pluginKey('ccswitch')" v-show="activePage === 'ccswitch'" class="page-content ccswitch-page">
-        <CcSwitchPanel ref="ccSwitchPanel" :preview="consolePreview" :target="ccSwitchTarget" :preview-keys="keys" @key-action="handleCcKeyAction" />
+      <div v-if="ccSwitchVisited && pluginUsable('ccswitch')" :key="pluginKey('ccswitch')" v-show="ccPage" class="page-content ccswitch-page">
+        <CcSwitchPanel ref="ccSwitchPanel" :view="ccView" :preview="consolePreview" :target="ccSwitchTarget" :preview-keys="keys" @key-action="handleCcKeyAction" @interaction-blocked="ccInteractionBlocked = $event" />
       </div>
 
       <div v-if="imageWorkbenchVisited && pluginUsable('images')" :key="pluginKey('images')" v-show="activePage === 'images'" class="page-content embedded-page">

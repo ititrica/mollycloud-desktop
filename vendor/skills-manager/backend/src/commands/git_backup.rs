@@ -123,8 +123,8 @@ pub async fn git_backup_init(store: State<'_, Arc<SkillStore>>) -> Result<(), Ap
     .await?
 }
 
-/// Move credentials embedded in `url` into the OS keychain and return the
-/// sanitized URL. Falls back to the original URL when the keychain is
+/// Move credentials embedded in `url` into the application credential store and return the
+/// sanitized URL. Falls back to the original URL when the credential store is
 /// unavailable (e.g. Linux without a secret service) so backup keeps working
 /// with the legacy embedded-credential behavior.
 fn sanitize_url_to_keychain(url: &str) -> String {
@@ -161,7 +161,7 @@ pub struct GithubBackupConnectResult {
 
 /// GitHub guided connect (backup redesign Phase 2, PAT mode): validate the
 /// token, find or create the private backup repository, store the token in
-/// the OS keychain, and save the credential-free URL. The keychain is
+/// the application credential store, and save the credential-free URL. The keychain is
 /// mandatory here — guided mode never falls back to token-in-URL.
 #[tauri::command]
 pub async fn github_backup_connect(
@@ -283,7 +283,7 @@ pub async fn github_device_flow_poll(
 }
 
 /// Sanitize a remote URL before it is persisted anywhere: embedded
-/// credentials go to the OS keychain, the returned URL is what the frontend
+/// credentials go to the application credential store, the returned URL is what the frontend
 /// must save and display.
 #[tauri::command]
 pub async fn git_backup_sanitize_remote_url(url: String) -> Result<String, AppError> {
@@ -337,7 +337,7 @@ fn disconnect_local(store: &SkillStore, skills_dir: &Path) -> Result<(), AppErro
 
     for host in hosts {
         if let Err(e) = git_credentials::delete_credential(&host) {
-            log::warn!("git disconnect: failed to delete keychain credential: {e:#}");
+            log::warn!("git disconnect: failed to delete stored credential: {e:#}");
         }
     }
     Ok(())
@@ -710,7 +710,7 @@ pub async fn git_backup_size_report() -> Result<git_backup::BackupSizeReport, Ap
 }
 
 /// Migrate credentials embedded in the remote URL (`user:token@host`) into
-/// the OS keychain (§3.7). Rewrites `.git/config` and the saved setting to
+/// the application credential store (§3.7). Rewrites `.git/config` and the saved setting to
 /// the credential-free URL, verifies authentication still works, and rolls
 /// everything back on any failure — no half-migrated state. Returns the
 /// sanitized URL when a migration happened, `None` when there was nothing to
@@ -764,12 +764,12 @@ fn migrate_embedded_credentials_unlocked(
     let host = git_credentials::https_host(&sanitized)
         .context("Cannot determine host for credential migration")?;
 
-    // Step 1: token into the keychain. Nothing on disk has changed yet, so a
+    // Step 1: token into the credential store. Nothing on disk has changed yet, so a
     // failure here leaves everything as it was.
     git_credentials::store_credential(&host, &cred)?;
 
     // Step 2: rewrite `.git/config` to the credential-free URL, then verify
-    // that authentication through the keychain still works. Any failure rolls
+    // that authentication through the credential store still works. Any failure rolls
     // back to the exact previous state.
     if config_had_creds {
         if let Err(e) = git_backup::set_remote_url_only(skills_dir, &sanitized) {
@@ -796,7 +796,7 @@ fn migrate_embedded_credentials_unlocked(
         }
     }
 
-    log::info!("git credentials: migrated embedded token to OS keychain for {host}");
+    log::info!("git credentials: migrated embedded token to application credential store for {host}");
     Ok(Some(sanitized))
 }
 

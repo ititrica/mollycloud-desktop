@@ -130,7 +130,7 @@ pub fn load_config() -> Result<AssistantConfig, String> {
         Ok(value) => {
             serde_json::from_str(&value).map_err(|_| "AI 助手设置已损坏，请重新保存".to_owned())
         }
-        Err(keyring::Error::NoEntry) => Ok(AssistantConfig::default()),
+        Err(crate::credential_store::Error::NoEntry) => Ok(AssistantConfig::default()),
         Err(_) => Err(format!(
             "无法从{}读取 AI 助手设置",
             crate::state::credential_store_name()
@@ -141,7 +141,7 @@ pub fn load_config() -> Result<AssistantConfig, String> {
 pub fn load_provider_key(provider: &str) -> Result<Option<String>, String> {
     match provider_key_entry(provider)?.get_password() {
         Ok(value) => Ok(Some(value)),
-        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(crate::credential_store::Error::NoEntry) => Ok(None),
         Err(_) => Err(format!(
             "无法从{}读取 AI API Key",
             crate::state::credential_store_name()
@@ -212,18 +212,18 @@ fn save_provider_key(provider: &str, api_key: &str) -> Result<(), String> {
 
 fn delete_provider_key(provider: &str) -> Result<(), String> {
     match provider_key_entry(provider)?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Ok(()) | Err(crate::credential_store::Error::NoEntry) => Ok(()),
         Err(_) => Err("无法删除已保存的 AI API Key".to_owned()),
     }
 }
 
-fn config_entry() -> Result<keyring::Entry, String> {
-    keyring::Entry::new(KEYRING_SERVICE, CONFIG_ACCOUNT)
+fn config_entry() -> Result<crate::credential_store::Entry, String> {
+    crate::credential_store::Entry::new(KEYRING_SERVICE, CONFIG_ACCOUNT)
         .map_err(|_| format!("{}不可用", crate::state::credential_store_name()))
 }
 
-fn provider_key_entry(provider: &str) -> Result<keyring::Entry, String> {
-    keyring::Entry::new(
+fn provider_key_entry(provider: &str) -> Result<crate::credential_store::Entry, String> {
+    crate::credential_store::Entry::new(
         KEYRING_SERVICE,
         &format!("mollycloud-assistant-key-{provider}"),
     )

@@ -65,3 +65,7 @@ Cargo 的 `target/debug/deps` 测试文件不会作为 Tauri 安装资源发布�
 
 
 2026-10-02 更新：工作台资源现支持独立插件包的安装、卸载、更新和回退；此前“只随主应用发布”的描述已由 [功能插件方案](功能插件方案.md) 中的版本兼容边界取代。原生适配、私有目录和生图隔离要求保持有效。
+
+## 2026-10-04 macOS 凭据存储
+
+macOS Git 备份令牌保存在 Molly 私有 Skill 目录下的 `credentials-v2`，使用共享 `molly-local-secrets` AES-256-GCM 存储，主密钥和数据文件均为 0600，目录为 0700；凭据目录位于备份仓库之外。旧系统钥匙串条目保留、不读取、不迁移，需重新连接 GitHub 或输入凭据一次。libgit2 禁用 macOS credential helper；系统 Git 使用空 credential.helper 配置并禁用交互提示，登录令牌只通过内存 callback / askpass 环境注入。非 macOS 的系统凭据适配继续保留。
