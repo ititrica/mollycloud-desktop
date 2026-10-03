@@ -7,8 +7,8 @@ export function installReadOnlyPreview(): void {
   const provider = {
     id: "molly-preview-provider", name: "MollyCloud · 界面示例", category: "third_party",
     websiteUrl: "https://mollycloud.cn", notes: "界面预览数据，未导入真实密钥", createdAt: 1,
-    meta: {mollyAccountId:'preview',mollyKeyId:'demo-key'},
-    settingsConfig: { auth: { OPENAI_API_KEY: "" }, config: 'model_provider = "mollycloud"\nmodel = "gpt-5.5"\n[model_providers.mollycloud]\nname = "MollyCloud"\nbase_url = "https://example.invalid/v1"\nwire_api = "responses"' },
+    meta: {mollyAccountId:'preview',mollyKeyId:'demo-key',mollyCodexMode:'native',mollyContextInitialized:true},
+    settingsConfig: { auth: { OPENAI_API_KEY: "" }, config: 'model_provider = "mollycloud"\nmodel = "gpt-5.5"\nmodel_context_window = 1050000\nmodel_auto_compact_token_limit = 900000\n[model_providers.mollycloud]\nname = "MollyCloud"\nbase_url = "https://example.invalid/v1"\nwire_api = "responses"' },
   };
   const visibleApps = { claude: true, codex: true, gemini: true, "claude-desktop": false, grokbuild: false, opencode: true, openclaw: false, hermes: false, pi: false, mcode: false };
   const official = (app: string) => ({id:`${app}-official`,name:app==='codex'?'OpenAI Official':app==='claude'?'Claude Official':'Google Official',category:'official',settingsConfig:app==='codex'?{auth:{},config:''}:{env:{}},sortIndex:-1});

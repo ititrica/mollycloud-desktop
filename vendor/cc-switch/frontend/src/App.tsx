@@ -746,6 +746,9 @@ function App() {
     originalId?: string;
   }) => {
     await updateProvider(provider, originalId);
+    if (provider.meta?.mollyKeyId) {
+      void queryClient.invalidateQueries({ queryKey: ["molly-account-keys", activeApp] });
+    }
     setEditingProvider(null);
   };
 
@@ -1185,7 +1188,7 @@ function App() {
                             : undefined
                       }
                     />
-                    <MollyKeyDirectory appId={activeApp} currentProviderId={currentProviderId} providers={providers} />
+                    <MollyKeyDirectory appId={activeApp} currentProviderId={currentProviderId} providers={providers} onEdit={setEditingProvider} />
                   </motion.div>
                 </AnimatePresence>
               </div>

@@ -5861,7 +5861,7 @@ impl ProviderService {
                 if !app_type.is_additive_mode() {
                     // Only backfill when switching to a different provider
                     if let Ok(live_config) = read_live_settings(app_type.clone()) {
-                        if let Some(mut current_provider) = providers.get(&current_id).cloned() {
+                        if let Some(mut current_provider) = providers.get(&current_id).cloned().filter(|p| !p.meta.as_ref().is_some_and(|m| m.molly_key_id.is_some() && m.molly_pending_apply)) {
                             // 切走前先把 live 里的可共享改动（含用户直接在应用内
                             // 装插件/加 hook/改偏好）同步进通用配置片段，再做剥离回填。
                             // 详见 sync_common_config_snippet_from_live 的文档。

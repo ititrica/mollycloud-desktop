@@ -194,7 +194,7 @@ export function EditProviderDialog({
 
       // 代理接管模式：Live 配置已被代理改写，读取 live 会导致编辑界面展示代理地址/占位符等内容
       // 因此直接回退到 SSOT（数据库）配置，避免用户困惑与误保存
-      if (isProxyTakeover) {
+      if (isProxyTakeover || provider.meta?.mollyPendingApply) {
         if (!cancelled) {
           setLiveSettings(null);
           setHasLoadedLive(true);

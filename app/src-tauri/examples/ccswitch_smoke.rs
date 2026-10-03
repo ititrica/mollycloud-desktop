@@ -48,6 +48,25 @@ fn prepare_smoke_opencode(app: tauri::AppHandle) -> Result<String,String> {
     })
 }
 
+#[tauri::command]
+fn set_molly_key_mode(app: tauri::AppHandle, agent: String, key_id: String, mode: String) -> Result<(),String> {
+    if agent != "codex" || key_id != "smoke-key" { return Err("Invalid fixture".into()); }
+    let models = vec!["gpt-6.1-sol-fast".into(), "gpt-6-sol".into(), "gpt-6-sol-unavailable-alias".into(), "other-model".into()];
+    molly_ccswitch::update_molly_codex_provider(&app, "smoke-account", "smoke-key", Some(&mode), (mode == "mapped").then_some(models.as_slice()))
+}
+
+#[tauri::command]
+fn smoke_catalog_matches() -> Result<bool,String> {
+    let directory = molly_ccswitch::cli_config_dir("codex")?;
+    let bytes = std::fs::read(directory.join("cc-switch-model-catalog.json")).map_err(|e| e.to_string())?;
+    let catalog: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let rows = catalog["models"].as_array().ok_or("Catalog missing models")?;
+    Ok(rows.len() == 2 && rows.iter().all(|row| {
+        let efforts:Vec<_> = row["supported_reasoning_levels"].as_array().into_iter().flatten().filter_map(|entry| entry["effort"].as_str()).collect();
+        row["context_window"] == 1050000 && row["max_context_window"] == 1050000 && efforts == ["low","medium","high","xhigh","max","ultra"]
+    }))
+}
+
 const TEST_SCRIPT: &str = r#"
 (() => {
   if (window.parent !== window) return;
@@ -105,6 +124,39 @@ const TEST_SCRIPT: &str = r#"
       check(frame.contentDocument.body.textContent.includes('本机工具配置'), 'UI describes actual system targets');
       const live = await cc('read_live_provider_settings',{app:'codex'});
       check(Boolean(live?.config), 'Activation writes the actual tool configuration');
+      check(live.config.includes('model_context_window = 1050000'), 'Molly Codex defaults to one million context');
+      card.querySelector('[data-key-action="configure"]').click();
+      await waitFor(()=>frame.contentDocument.querySelector('#provider-form'), 'Full provider editor did not open');
+      check([...frame.contentDocument.querySelectorAll('#provider-form label')].some(label=>label.textContent.includes('1M') && label.querySelector('input')?.checked), 'Full editor displays enabled 1M context');
+      check([...frame.contentDocument.querySelectorAll('h2')].some(el=>el.textContent.includes('编辑供应商')), 'Edit icon opens the original full provider editor');
+      const modelInput=frame.contentDocument.querySelector('#codexDefaultModel');
+      check(Boolean(modelInput), 'Full provider editor exposes model editing');
+      Object.getOwnPropertyDescriptor(frame.contentWindow.HTMLInputElement.prototype,'value').set.call(modelInput,'gpt-5.5-smoke-edit');
+      modelInput.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true}));
+      frame.contentDocument.querySelector('button[form="provider-form"]').click();
+      await waitFor(()=>!frame.contentDocument.querySelector('#provider-form'), 'Full editor did not close');
+      await waitFor(()=>frame.contentDocument.querySelector('[data-key-id="smoke-key"]').textContent.includes('gpt-5.5-smoke-edit'),'Edited model is immediately reflected in account key row');
+      const editedLive = await cc('read_live_provider_settings',{app:'codex'});
+      check(editedLive.config.includes('gpt-5.5-smoke-edit'),'Full editor saves through original provider update');
+      await waitFor(()=>frame.contentDocument.querySelector('[data-key-id="smoke-key"] [role="switch"]'), 'Per-key mode switch absent');
+      frame.contentDocument.querySelector('[data-key-id="smoke-key"] [role="switch"]').click();
+      await waitFor(async()=>(await cc('get_providers',{app:'codex'}))[provider.id].meta.mollyCodexMode==='mapped','Mode did not persist');
+      const mapped = (await cc('get_providers',{app:'codex'}))[provider.id];
+      check(mapped.settingsConfig.modelCatalog.models.map(row=>row.model).join('|')==='gpt-6-sol|gpt-6.1-sol-fast','Mapping contains only fetched whitelist matches');
+      check((await cc('read_live_provider_settings',{app:'codex'})).config===editedLive.config,'Mode selection does not automatically write tool configuration');
+      await waitFor(()=>[...frame.contentDocument.querySelectorAll('[data-key-id="smoke-key"] button')].some(button=>button.textContent.trim()==='应用配置' && !button.disabled),'Pending mode exposes explicit apply');
+      [...frame.contentDocument.querySelectorAll('[data-key-id="smoke-key"] button')].find(button=>button.textContent.trim()==='应用配置').click();
+      await waitFor(async()=>!(await cc('get_providers',{app:'codex'}))[provider.id].meta.mollyPendingApply,'Mapped apply did not finish');
+      const mappedLive = await cc('read_live_provider_settings',{app:'codex'});
+      check(mappedLive.config.includes('model_catalog_json') && mappedLive.modelCatalog.models.length===2,'Explicit apply projects the real Codex model catalog');
+      check(await invoke('smoke_catalog_matches'),'Disk catalog preserves 1050000 context and all six reasoning levels');
+      await cc('switch_provider',{app:'codex',id:'codex-official'});
+      check((await cc('get_providers',{app:'codex'}))[provider.id].meta.mollyCodexMode==='mapped','Mapping choice survives switching to Official');
+      await cc('switch_provider',{app:'codex',id:provider.id});
+      await invoke('set_molly_key_mode',{agent:'codex',keyId:'smoke-key',mode:'native'});
+      await cc('switch_provider',{app:'codex',id:provider.id});
+      const restored = await cc('read_live_provider_settings',{app:'codex'});
+      check(restored.config.includes('gpt-5.5-smoke-edit') && !restored.config.includes('model_catalog_json'),'Native mode restores the edited native model and removes generated mapping');
       const settings = await cc('get_settings');
       check(await cc('save_settings',{settings:{...settings,codexConfigDir:window.__smokeCustom}}), 'Custom tool directory can be saved');
       const resolved = await cc('get_config_dir',{app:'codex'});
@@ -222,6 +274,8 @@ fn main() {
             bootstrap_public,
             restore_session,
             sync_molly_key_providers,
+            set_molly_key_mode,
+            smoke_catalog_matches,
             prepare_smoke_opencode
         ])
         .setup(move |app| {

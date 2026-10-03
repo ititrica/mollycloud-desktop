@@ -563,6 +563,8 @@ fn molly_provider_config(
         "codex" => {
             let config = toml::to_string(&json!({
                 "model_provider": "mollycloud", "model": input.model,
+                "model_context_window": 1050000,
+                "model_auto_compact_token_limit": 900000,
                 "model_providers": { "mollycloud": { "name": "MollyCloud", "base_url": input.base_url,
                     "wire_api": "responses", "requires_openai_auth": true } }
             }))
@@ -598,7 +600,7 @@ fn molly_provider_config(
         }
         "opencode" => {
             let mut models = serde_json::Map::new();
-            models.insert(input.model.clone(), json!({"name": input.model}));
+            if !input.model.is_empty() { models.insert(input.model.clone(), json!({"name": input.model})); }
             json!({
                 "npm": "@ai-sdk/openai-compatible",
                 "name": input.name,
@@ -610,25 +612,25 @@ fn molly_provider_config(
             "baseUrl": input.base_url,
             "apiKey": input.api_key,
             "api": "openai-responses",
-            "models": [{"id": input.model, "name": input.model, "contextWindow": 128000, "maxTokens": 32768}],
+            "models": if input.model.is_empty() { json!([]) } else { json!([{"id": input.model, "name": input.model, "contextWindow": 128000, "maxTokens": 32768}]) },
         }),
         "hermes" => json!({
             "name": provider_id,
             "base_url": input.base_url,
             "api_key": input.api_key,
             "api_mode": "codex_responses",
-            "models": [{"id": input.model, "name": input.model, "context_length": 128000}],
+            "models": if input.model.is_empty() { json!([]) } else { json!([{"id": input.model, "name": input.model, "context_length": 128000}]) },
         }),
         "pi" => json!({
             "name": input.name,
             "baseUrl": input.base_url,
             "apiKey": input.api_key,
             "api": "openai-responses",
-            "models": [{"id": input.model, "name": input.model, "contextWindow": 128000, "maxTokens": 32768}],
+            "models": if input.model.is_empty() { json!([]) } else { json!([{"id": input.model, "name": input.model, "contextWindow": 128000, "maxTokens": 32768}]) },
         }),
         "mcode" => {
             let mut models = serde_json::Map::new();
-            models.insert(input.model.clone(), json!({"name": input.model}));
+            if !input.model.is_empty() { models.insert(input.model.clone(), json!({"name": input.model})); }
             json!({
                 "name": input.name,
                 "kind": "custom",
@@ -655,6 +657,10 @@ pub(crate) fn molly_provider_id(account: &str, key: &str, agent: &str) -> String
 }
 
 fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<String, String> {
+    save_molly_provider_inner(db, input, false)
+}
+
+fn save_molly_provider_inner(db: &Database, input: MollyProviderImport, draft: bool) -> Result<String, String> {
     if input.account_id.trim().is_empty()
         || input.key_id.trim().is_empty()
         || input.api_key.trim().is_empty()
@@ -668,7 +674,7 @@ fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<Stri
     {
         return Err("MollyCloud API 地址无效。".into());
     }
-    if input.name.trim().is_empty() || input.model.trim().is_empty() {
+    if input.name.trim().is_empty() || (!draft && input.model.trim().is_empty()) {
         return Err("供应商名称和默认模型不能为空。".into());
     }
     let id = molly_provider_id(&input.account_id, &input.key_id, &input.app);
@@ -698,6 +704,14 @@ fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<Stri
     let mut meta = provider.meta.take().unwrap_or_default();
     meta.molly_account_id = Some(input.account_id);
     meta.molly_key_id = Some(input.key_id);
+    if input.app == "codex" {
+        meta.molly_codex_mode = Some("native".into());
+        meta.molly_context_initialized = true;
+        meta.molly_native_catalog = None;
+        meta.molly_native_model = None;
+        meta.molly_native_context_window = None;
+        meta.molly_native_catalog_pointer = None;
+    }
     if let Some(code) = input.usage_script {
         meta.usage_script = Some(
             serde_json::from_value(json!({
@@ -756,13 +770,22 @@ pub fn import_molly_provider(
     Ok(id)
 }
 
+/// An explicit edit action may prepare an empty-model draft in the private library.
+pub fn prepare_molly_provider(app: &tauri::AppHandle, input: MollyProviderImport) -> Result<String, String> {
+    if let Some(provider) = crate::molly_keys::get_molly_key_provider(app, &input.account_id, &input.key_id, &input.app)? {
+        return Ok(provider.id);
+    }
+    let state = app.try_state::<AppState>().ok_or("内置 CC Switch 尚未初始化。")?;
+    save_molly_provider_inner(&state.db, input, true)
+}
+
 /// Account balance remains a Molly host capability, never a vendored JS script.
 pub fn is_molly_imported_provider(app: &tauri::AppHandle, agent: &str, id: &str) -> Result<bool, String> {
     if !id.starts_with("molly-") { return Ok(false); }
     let state = app.try_state::<AppState>().ok_or("内置 CC Switch 尚未初始化。")?;
     let provider = state.db.get_provider_by_id(id, agent).map_err(|e| e.to_string())?;
     Ok(provider.is_some_and(|provider| {
-        provider.notes.as_deref().is_some_and(|note| note.starts_with("由 MollyCloud API 密钥页导入；"))
+        provider.meta.as_ref().is_some_and(|meta| meta.molly_account_id.is_some() && meta.molly_key_id.is_some()) || provider.notes.as_deref().is_some_and(|note| note.starts_with("由 MollyCloud API 密钥页导入；"))
     }))
 }
 
@@ -932,6 +955,22 @@ mod tests {
         assert_eq!(card.website_url.as_deref(), Some("https://mollycloud.cn"));
         assert_eq!(card.resolve_usage_credentials(&crate::AppType::Codex).0, "https://mollycloud.cn/v1");
         assert!(db.get_current_provider("codex").unwrap().is_none());
+    }
+
+    #[test]
+    fn molly_editor_drafts_leave_additive_models_and_selection_empty() {
+        let db = Database::memory().unwrap();
+        for agent in ["opencode", "openclaw", "hermes", "pi", "mcode"] {
+            let input = MollyProviderImport {
+                account_id:"mock-account".into(),key_id:"42".into(),name:"Draft".into(),app:agent.into(),
+                api_key:"mock-secret".into(),base_url:"https://example.invalid/v1".into(),model:String::new(),usage_script:None,
+            };
+            let id = save_molly_provider_inner(&db, input, true).unwrap();
+            let provider = db.get_provider_by_id(&id, agent).unwrap().unwrap();
+            let models = &provider.settings_config["models"];
+            assert!(models.as_object().is_some_and(|m| m.is_empty()) || models.as_array().is_some_and(|m| m.is_empty()));
+            assert!(db.get_current_provider(agent).unwrap().is_none());
+        }
     }
 
     #[test]

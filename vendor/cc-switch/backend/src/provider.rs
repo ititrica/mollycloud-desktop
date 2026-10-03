@@ -447,6 +447,20 @@ pub struct ProviderMeta {
     pub molly_account_id: Option<String>,
     #[serde(rename = "mollyKeyId", skip_serializing_if = "Option::is_none")]
     pub molly_key_id: Option<String>,
+    #[serde(rename = "mollyCodexMode", skip_serializing_if = "Option::is_none")]
+    pub molly_codex_mode: Option<String>,
+    #[serde(rename = "mollyNativeCatalog", skip_serializing_if = "Option::is_none")]
+    pub molly_native_catalog: Option<serde_json::Value>,
+    #[serde(rename = "mollyNativeModel", skip_serializing_if = "Option::is_none")]
+    pub molly_native_model: Option<String>,
+    #[serde(rename = "mollyNativeContextWindow", skip_serializing_if = "Option::is_none")]
+    pub molly_native_context_window: Option<i64>,
+    #[serde(rename = "mollyNativeCatalogPointer", skip_serializing_if = "Option::is_none")]
+    pub molly_native_catalog_pointer: Option<String>,
+    #[serde(rename = "mollyPendingApply", default, skip_serializing_if = "std::ops::Not::not")]
+    pub molly_pending_apply: bool,
+    #[serde(rename = "mollyContextInitialized", default, skip_serializing_if = "std::ops::Not::not")]
+    pub molly_context_initialized: bool,
     /// 自定义端点列表（按 URL 去重存储）
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub custom_endpoints: HashMap<String, crate::settings::CustomEndpoint>,

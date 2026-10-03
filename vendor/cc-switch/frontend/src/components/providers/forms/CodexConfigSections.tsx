@@ -187,7 +187,7 @@ export const CodexConfigSection: React.FC<CodexConfigSectionProps> = ({
       "model_auto_compact_token_limit",
     );
     return {
-      contextWindow1M: contextWindow === 1000000,
+      contextWindow1M: (contextWindow ?? 0) >= 1000000,
       compactLimit: compactLimit ?? 900000,
     };
   }, [localValue]);

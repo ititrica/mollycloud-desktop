@@ -73,11 +73,11 @@ pub use store::AppState;
 
 mod embedded;
 mod molly_keys;
-pub use molly_keys::{ensure_molly_official, find_molly_key_provider, reconcile_molly_key_providers};
+pub use molly_keys::{ensure_molly_official, find_molly_key_provider, get_molly_key_provider, update_molly_codex_provider, reconcile_molly_key_providers};
 mod allowed_commands;
 mod isolation;
 mod proxy_ownership;
-pub use embedded::{init_guarded, init, import_molly_provider, is_molly_imported_provider, cli_system_home, cli_config_dir, cli_launch_environment, prepare_cli_launch, MollyProviderImport};
+pub use embedded::{init_guarded, init, import_molly_provider, prepare_molly_provider, is_molly_imported_provider, cli_system_home, cli_config_dir, cli_launch_environment, prepare_cli_launch, MollyProviderImport};
 #[cfg(feature = "test-hooks")]
 pub use embedded::init_for_test;
 use std::fmt;

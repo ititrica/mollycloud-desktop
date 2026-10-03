@@ -1228,30 +1228,21 @@ try {
     // submission must fail truthfully; the backend result below only tests navigation.
     await select(2);
     await evaluate(`document.querySelector('.ccswitch-frame').contentDocument.querySelector('[data-key-action="configure"]').click()`);
-    await ready('.ccs-import-dialog');
-    const importDialog = await evaluate(`(() => {
-      const dialog = document.querySelector('.ccs-import-dialog');
-      const bounds = dialog.getBoundingClientRect();
-      const fields = [...dialog.querySelectorAll('.ccs-import-field > span, .ccs-import-model legend')].map(el => el.textContent.trim());
-      const actions = [...dialog.querySelectorAll('.console-settings-actions button')].map(el => el.innerText.trim());
-      return {x:bounds.x,y:bounds.y,right:bounds.right,bottom:bounds.bottom,fields,actions,
-        description:dialog.innerText, backgroundInert:document.querySelector('.app-shell').inert,
-        agentCount:Number(dialog.dataset.agentCount),
-        modelValue:dialog.querySelector('.ccs-import-model input')?.value,
-        nameValue:dialog.querySelector('.ccs-import-field input')?.value,
-        focusInside:dialog.contains(document.activeElement)};
+    await waitFor(`Boolean(document.querySelector('.ccswitch-frame').contentDocument.querySelector('#provider-form'))`, `Full CC Switch editor opens ${width}`);
+    const editor = await evaluate(`(() => {
+      const child=document.querySelector('.ccswitch-frame').contentDocument;
+      const form=child.querySelector('#provider-form');
+      const context=[...form.querySelectorAll('label')].find(label=>label.textContent.includes('1M'));
+      return {full:Boolean(form),title:child.querySelector('h2')?.textContent,context:context?.querySelector('input')?.checked,
+        overflow:child.documentElement.scrollWidth>child.documentElement.clientWidth+1, oldHostDialog:Boolean(document.querySelector('.ccs-import-dialog'))};
     })()`);
-    check(importDialog.x >= 0 && importDialog.y >= 0 && importDialog.right <= width && importDialog.bottom <= height && importDialog.backgroundInert && importDialog.focusInside, `CC Switch import dialog bounds/focus ${width}`);
-    check(importDialog.fields.join('|') === '名称|工具|默认模型' && importDialog.actions.join('|') === '取消|保存配置' && importDialog.modelValue === 'gpt-5.5' && importDialog.nameValue.includes('MollyCloud'), `CC Switch import fields/defaults ${width}`);
-    check(importDialog.agentCount === 10 && importDialog.description.includes('Claude Desktop'), `CC Switch import supported agents ${width}`);
-    await evaluate(`document.querySelector('.ccs-import-submit').click()`);
-    await ready('.ccs-import-dialog .console-settings-error');
-    check(await evaluate(`document.querySelector('.ccs-import-dialog .console-settings-error')?.innerText.includes('浏览器预览不会保存真实密钥')`), `CC Switch preview import rejected ${width}`);
-    await screenshot(`ccswitch-import-preview-error-${width}`);
-    await evaluate(`document.querySelector('.ccs-import-dialog .console-settings-actions button').click()`);
-    await waitFor(`!document.querySelector('.ccs-import-dialog')`, `CC Switch import dialog dismissed ${width}`);
-    await pause(260);
-    check(await evaluate(`document.querySelector('.ccswitch-frame').contentDocument.activeElement.dataset.keyAction === 'configure'`), `CC Switch import restores focus ${width}`);
+    check(editor.full && editor.title?.includes('编辑供应商') && editor.context && !editor.overflow && !editor.oldHostDialog, `Full provider editing and default 1M context ${width}`);
+    await screenshot(`ccswitch-key-full-editor-${width}`);
+    await evaluate(`document.querySelector('.ccswitch-frame').contentDocument.querySelector('button[aria-label="返回"]').click()`);
+    await waitFor(`!document.querySelector('.ccswitch-frame').contentDocument.querySelector('#provider-form')`, `Full CC Switch editor closes ${width}`);
+    await evaluate(`document.querySelector('.ccswitch-frame').contentDocument.querySelector('[role="switch"][aria-label$="的映射模式"]').click()`);
+    await waitFor(`document.querySelector('.ccswitch-frame').contentDocument.body.textContent.includes('界面预览不执行此操作')`, `Mode change rejects browser-only writes ${width}`);
+    check(await evaluate(`document.querySelector('.ccswitch-frame').contentDocument.querySelector('[role="switch"][aria-label$="的映射模式"]').getAttribute('aria-checked')==='false'`), `Failed mode change retains native mode ${width}`);
     await mutate(`state.errorMessage = ''; state.importedProviders = { 'demo-key': {provider_id:'molly-preview-provider',app:'codex'} };`);
     check(await evaluate(`!document.querySelector('.nav-item[data-page="keys"]')&&Boolean(document.querySelector('.ccswitch-frame').contentDocument.querySelector('[data-key-action="configure"]'))`),`Keys managed only in CC Switch ${width}`);
     await select(0);

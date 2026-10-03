@@ -6971,6 +6971,21 @@ base_url = "https://production.api/v1"
     }
 
     #[test]
+    fn molly_mapping_projects_one_million_context_and_all_six_efforts() {
+        let settings = json!({"modelCatalog":{"models":[{
+            "model":"gpt-6.1-sol-fast", "contextWindow":1050000,
+            "reasoningLevels":["low","medium","high","xhigh","max","ultra"],
+            "defaultReasoningLevel":"high"
+        }]}});
+        let catalog = codex_model_catalog_from_settings(&settings, "model_context_window = 1050000\n", CodexCatalogToolProfile::NativeResponses).unwrap().unwrap();
+        let row = &catalog["models"][0];
+        assert_eq!(row["slug"], "gpt-6.1-sol-fast");
+        assert_eq!(row["context_window"], 1050000);
+        let efforts: Vec<_> = row["supported_reasoning_levels"].as_array().unwrap().iter().map(|level| level["effort"].as_str().unwrap()).collect();
+        assert_eq!(efforts, vec!["low","medium","high","xhigh","max","ultra"]);
+    }
+
+    #[test]
     fn vendor_catalog_honors_per_model_reasoning_levels() {
         // The DeepSeek official catalog declares low/high/max; a per-model
         // override must win over the official entry.

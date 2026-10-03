@@ -212,7 +212,13 @@ pub async fn sync_molly_key_providers(
         if automatic(&agent)
             && compatible(&agent, item["group"]["platform"].as_str().unwrap_or(""))
             && item["status"] == "active"
-            && molly_ccswitch::find_molly_key_provider(&app, &account, &key_id, &agent)?.is_none()
+            && molly_ccswitch::get_molly_key_provider(&app, &account, &key_id, &agent)?.is_none_or(
+                |p| {
+                    agent == "codex"
+                        && p.meta.as_ref().and_then(|m| m.molly_codex_mode.as_deref())
+                            == Some("mapped")
+                },
+            )
         {
             if let Some(secret) = item["key"].as_str().filter(|s| !s.is_empty()) {
                 missing.push((key_id, secret.to_owned()))
@@ -283,6 +289,40 @@ pub async fn sync_molly_key_providers(
                 Err(_) => error = Some("模型列表暂不可用，可手动选择模型并配置".into()),
             }
         }
+        if agent == "codex" && saved.is_some() {
+            let mapped = molly_ccswitch::get_molly_key_provider(&app, &account, &key_id, &agent)?
+                .is_some_and(|p| {
+                    p.meta.as_ref().and_then(|m| m.molly_codex_mode.as_deref()) == Some("mapped")
+                });
+            let models = if mapped {
+                discoveries.remove(&key_id)
+            } else {
+                None
+            };
+            if mapped {
+                match models {
+                    Some(Ok(models)) => {
+                        if let Err(e) = molly_ccswitch::update_molly_codex_provider(
+                            &app,
+                            &account,
+                            &key_id,
+                            None,
+                            Some(&models),
+                        ) {
+                            error = Some(e);
+                        }
+                    }
+                    _ => error = Some("分组模型暂不可用，保留已有映射；请刷新后再启用。".into()),
+                }
+            } else {
+                if let Err(e) =
+                    molly_ccswitch::update_molly_codex_provider(&app, &account, &key_id, None, None)
+                {
+                    error = Some(e);
+                }
+            }
+            saved = molly_ccswitch::find_molly_key_provider(&app, &account, &key_id, &agent)?;
+        }
         let mut value = public_key(item);
         value["provider_id"] = saved
             .as_ref()
@@ -300,6 +340,138 @@ pub async fn sync_molly_key_providers(
         molly_ccswitch::reconcile_molly_key_providers(&app, &account, &agent, &key_ids)?;
     drop(session);
     Ok(json!({"agent":agent,"keys":keys,"current_removed":current_removed}))
+}
+
+/// Preparing an editor is a user action. Additive tools stay empty until this action.
+#[tauri::command]
+pub async fn prepare_molly_key_provider(
+    webview: Webview,
+    app: AppHandle,
+    state: State<'_, RuntimeState>,
+    agent: String,
+    key_id: String,
+) -> Result<String, String> {
+    if webview.label() != "console" || !supported_agent(&agent) {
+        return Err("请在控制台编辑密钥配置".into());
+    }
+    crate::console_plugins::require(&app, "ccswitch")?;
+    let _serial = state.key_provider_sync.lock().await;
+    let token = state.access_token().await?;
+    let (user, keys) = tokio::try_join!(
+        state.api.get_authenticated("/auth/me", &token),
+        fetch_all_keys(&state.api, &token)
+    )?;
+    let account = user["id"]
+        .as_str()
+        .map(str::to_owned)
+        .or_else(|| user["id"].as_u64().map(|n| n.to_string()))
+        .ok_or("账户缺少 ID")?;
+    let item = keys["items"]
+        .as_array()
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|item| id(item).as_deref() == Some(&key_id))
+        })
+        .ok_or("未找到此账户密钥")?;
+    if !compatible(&agent, item["group"]["platform"].as_str().unwrap_or("")) {
+        return Err("当前分组不适用于此工具，请先修改分组".into());
+    }
+    let secret = item["key"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .ok_or("密钥内容为空")?;
+    let session = state.session.lock().await;
+    if session.access_token.as_deref() != Some(&token) {
+        return Err("登录状态已改变，请重新刷新密钥".into());
+    }
+    molly_ccswitch::prepare_molly_provider(
+        &app,
+        molly_ccswitch::MollyProviderImport {
+            account_id: account,
+            key_id,
+            name: item["name"]
+                .as_str()
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or("未命名密钥")
+                .chars()
+                .take(80)
+                .collect(),
+            app: agent,
+            api_key: secret.into(),
+            base_url: MOLLY_CCSWITCH_IMPORT_ROOT.into(),
+            model: String::new(),
+            usage_script: None,
+        },
+    )
+}
+
+#[tauri::command]
+pub async fn set_molly_key_mode(
+    webview: Webview,
+    app: AppHandle,
+    state: State<'_, RuntimeState>,
+    agent: String,
+    key_id: String,
+    mode: String,
+) -> Result<(), String> {
+    if webview.label() != "console"
+        || agent != "codex"
+        || !matches!(mode.as_str(), "native" | "mapped")
+    {
+        return Err("Codex 配置模式无效".into());
+    }
+    crate::console_plugins::require(&app, "ccswitch")?;
+    let _serial = state.key_provider_sync.lock().await;
+    let token = state.access_token().await?;
+    let (user, keys) = tokio::try_join!(
+        state.api.get_authenticated("/auth/me", &token),
+        fetch_all_keys(&state.api, &token)
+    )?;
+    let account = user["id"]
+        .as_str()
+        .map(str::to_owned)
+        .or_else(|| user["id"].as_u64().map(|n| n.to_string()))
+        .ok_or("账户缺少 ID")?;
+    let item = keys["items"]
+        .as_array()
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|item| id(item).as_deref() == Some(&key_id))
+        })
+        .ok_or("未找到此账户密钥")?;
+    if item["status"] != "active"
+        || !compatible(&agent, item["group"]["platform"].as_str().unwrap_or(""))
+    {
+        return Err("请使用正常且适用于 Codex 的密钥".into());
+    }
+    let models = if mode == "mapped" {
+        let secret = item["key"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .ok_or("密钥内容为空")?;
+        Some(
+            state
+                .api
+                .list_models_at(MOLLY_OPENAI_ROOT, Some(secret))
+                .await
+                .map_err(|_| "分组模型拉取失败，未修改配置。")?,
+        )
+    } else {
+        None
+    };
+    let session = state.session.lock().await;
+    if session.access_token.as_deref() != Some(&token) {
+        return Err("登录状态已改变，请重新刷新密钥".into());
+    }
+    molly_ccswitch::update_molly_codex_provider(
+        &app,
+        &account,
+        &key_id,
+        Some(&mode),
+        models.as_deref(),
+    )
 }
 
 #[cfg(test)]

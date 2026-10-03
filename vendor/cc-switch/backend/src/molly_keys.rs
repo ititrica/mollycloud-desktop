@@ -4,6 +4,228 @@ use crate::{AppState, Database, Provider};
 use std::str::FromStr;
 use tauri::Manager;
 
+const MOLLY_CODEX_MODELS: &[&str] = &[
+    "gpt-5.6-luna",
+    "gpt-5.6-terra",
+    "gpt-5.6-sol",
+    "gpt-6-luna",
+    "gpt-6-sol",
+    "gpt-6-astra",
+    "gpt-6-astra-fast",
+    "gpt-6.1-sol",
+    "gpt-6.1-sol-fast",
+];
+
+/// Exact intersection only: aliases, prefixes and models absent from this key's group are excluded.
+fn mapped_models(available: &[String]) -> Vec<&'static str> {
+    MOLLY_CODEX_MODELS
+        .iter()
+        .copied()
+        .filter(|id| available.iter().any(|m| m == id))
+        .collect()
+}
+
+fn update_codex(
+    provider: &mut Provider,
+    requested: Option<&str>,
+    available: Option<&[String]>,
+) -> Result<bool, String> {
+    let mut next = provider.clone();
+    let meta = next.meta.get_or_insert_with(Default::default);
+    let previous = meta.molly_codex_mode.as_deref().unwrap_or("native");
+    let mode = requested.unwrap_or(previous);
+    if !matches!(mode, "native" | "mapped") {
+        return Err("配置模式无效".into());
+    }
+    let matches = if mode == "mapped" {
+        let models = mapped_models(available.ok_or("映射模式需要先拉取分组模型")?);
+        if models.is_empty() {
+            return Err("当前分组没有白名单中的模型，未修改映射配置。".into());
+        }
+        models
+    } else {
+        Vec::new()
+    };
+    let text = next.settings_config["config"]
+        .as_str()
+        .ok_or("Codex 配置格式无效")?;
+    let mut config = text
+        .parse::<toml_edit::DocumentMut>()
+        .map_err(|_| "Codex TOML 配置无效，请先编辑修复")?;
+    let before = next.settings_config.clone();
+    let native_context = config
+        .get("model_context_window")
+        .and_then(|v| v.as_integer());
+    let initialized = meta.molly_context_initialized;
+    if (!meta.molly_context_initialized && config.get("model_context_window").is_none())
+        || mode == "mapped"
+    {
+        config["model_context_window"] = toml_edit::value(1_050_000i64);
+        if !meta.molly_context_initialized && config.get("model_auto_compact_token_limit").is_none()
+        {
+            config["model_auto_compact_token_limit"] = toml_edit::value(900_000i64);
+        }
+    }
+    meta.molly_context_initialized = true;
+    if mode == "mapped" {
+        if previous != "mapped" {
+            meta.molly_native_context_window = if initialized {
+                native_context
+            } else {
+                native_context.or(Some(1_050_000))
+            };
+            meta.molly_native_catalog = Some(
+                next.settings_config
+                    .get("modelCatalog")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null),
+            );
+            meta.molly_native_model = config
+                .get("model")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned);
+            meta.molly_native_catalog_pointer = config
+                .get("model_catalog_json")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned);
+        }
+        // The generated catalog owns this pointer when explicitly enabled.
+        config.as_table_mut().remove("model_catalog_json");
+        if !config
+            .get("model")
+            .and_then(|v| v.as_str())
+            .is_some_and(|id| matches.contains(&id))
+        {
+            config["model"] = toml_edit::value(matches[0]);
+        }
+        let rows: Vec<_> = matches
+            .iter()
+            .map(|id| {
+                serde_json::json!({
+                    "model":id,"displayName":id,"contextWindow":1050000,
+                    "reasoningLevels":["low","medium","high","xhigh","max","ultra"],
+                    "defaultReasoningLevel":"high"
+                })
+            })
+            .collect();
+        next.settings_config["modelCatalog"] = serde_json::json!({"models":rows});
+    } else if previous == "mapped" {
+        match meta.molly_native_catalog.take() {
+            Some(value) if !value.is_null() => {
+                next.settings_config["modelCatalog"] = value;
+            }
+            _ => {
+                next.settings_config
+                    .as_object_mut()
+                    .ok_or("Codex 配置格式无效")?
+                    .remove("modelCatalog");
+            }
+        }
+        if let Some(model) = meta.molly_native_model.take() {
+            config["model"] = toml_edit::value(model);
+        } else {
+            config.as_table_mut().remove("model");
+        }
+        if let Some(context) = meta.molly_native_context_window.take() {
+            config["model_context_window"] = toml_edit::value(context);
+        } else {
+            config.as_table_mut().remove("model_context_window");
+        }
+        config.as_table_mut().remove("model_catalog_json");
+        if let Some(pointer) = meta.molly_native_catalog_pointer.take() {
+            config["model_catalog_json"] = toml_edit::value(pointer);
+        }
+    }
+    meta.molly_codex_mode = Some(mode.into());
+    next.settings_config["config"] = serde_json::json!(config.to_string());
+    if before != next.settings_config {
+        meta.molly_pending_apply = true;
+    }
+    let changed = serde_json::to_value(&next).map_err(|e| e.to_string())?
+        != serde_json::to_value(&*provider).map_err(|e| e.to_string())?;
+    *provider = next;
+    Ok(changed)
+}
+
+pub fn get_molly_key_provider(
+    app: &tauri::AppHandle,
+    account: &str,
+    key: &str,
+    agent: &str,
+) -> Result<Option<Provider>, String> {
+    let state = app
+        .try_state::<AppState>()
+        .ok_or("内置 CC Switch 尚未初始化")?;
+    if let Some(provider) = state
+        .db
+        .get_provider_by_id(
+            &crate::embedded::molly_provider_id(account, key, agent),
+            agent,
+        )
+        .map_err(|e| e.to_string())?
+    {
+        return Ok(Some(provider));
+    }
+    // The original editor permits renaming additive provider IDs.
+    Ok(state
+        .db
+        .get_all_providers(agent)
+        .map_err(|e| e.to_string())?
+        .values()
+        .find(|p| {
+            p.meta.as_ref().is_some_and(|m| {
+                m.molly_account_id.as_deref() == Some(account)
+                    && m.molly_key_id.as_deref() == Some(key)
+            })
+        })
+        .cloned())
+}
+
+/// Preserve auth, endpoints, TOML comments and advanced options. Never write live configuration.
+pub fn update_molly_codex_provider(
+    app: &tauri::AppHandle,
+    account: &str,
+    key: &str,
+    mode: Option<&str>,
+    models: Option<&[String]>,
+) -> Result<(), String> {
+    let state = app
+        .try_state::<AppState>()
+        .ok_or("内置 CC Switch 尚未初始化")?;
+    let mut provider =
+        get_molly_key_provider(app, account, key, "codex")?.ok_or("请先编辑此密钥的供应商配置")?;
+    if update_codex(&mut provider, mode, models)? {
+        state
+            .db
+            .save_provider("codex", &provider)
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+pub(crate) fn mark_applied(
+    db: &Database,
+    agent: &str,
+    id: &str,
+    applied_config: &serde_json::Value,
+) -> Result<(), crate::error::AppError> {
+    if let Some(mut provider) = db.get_provider_by_id(id, agent)? {
+        // A refresh may have prepared newer models while the live write was running.
+        if &provider.settings_config != applied_config {
+            return Ok(());
+        }
+        if let Some(meta) = provider
+            .meta
+            .as_mut()
+            .filter(|m| m.molly_key_id.is_some() && m.molly_pending_apply)
+        {
+            meta.molly_pending_apply = false;
+            db.save_provider(agent, &provider)?;
+        }
+    }
+    Ok(())
+}
+
 fn ensure_default(db: &Database, agent: &str, existing: Option<String>) -> Result<(), String> {
     let id = match agent {
         "claude" => "claude-official",
@@ -91,15 +313,7 @@ pub fn find_molly_key_provider(
     key: &str,
     agent: &str,
 ) -> Result<Option<(String, String)>, String> {
-    let state = app
-        .try_state::<AppState>()
-        .ok_or("内置 CC Switch 尚未初始化")?;
-    let id = crate::embedded::molly_provider_id(account, key, agent);
-    Ok(state
-        .db
-        .get_provider_by_id(&id, agent)
-        .map_err(|e| e.to_string())?
-        .map(|p| (id, model(&p, agent))))
+    Ok(get_molly_key_provider(app, account, key, agent)?.map(|p| (p.id.clone(), model(&p, agent))))
 }
 
 fn reconcile(
@@ -148,6 +362,166 @@ pub fn reconcile_molly_key_providers(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn codex() -> Provider {
+        let mut provider = Provider::with_id(
+            "molly-fixture".into(),
+            "Fixture".into(),
+            serde_json::json!({
+                "auth":{"OPENAI_API_KEY":"mock-secret"},
+                "config":"# keep comment\nmodel = \"native-model\"\nmodel_provider = \"mollycloud\"\n[model_providers.mollycloud]\nbase_url = \"https://example.invalid/v1\"\nwire_api = \"responses\"\n[features]\ncustom_feature = true\n",
+                "custom":{"preserve":true}
+            }),
+            None,
+        );
+        let mut meta = crate::provider::ProviderMeta::default();
+        meta.molly_key_id = Some("42".into());
+        provider.meta = Some(meta);
+        provider
+    }
+    #[test]
+    fn native_defaults_preserve_advanced_config_and_explicit_context() {
+        let mut provider = codex();
+        assert!(update_codex(&mut provider, None, None).unwrap());
+        let config: toml::Value = provider.settings_config["config"]
+            .as_str()
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert_eq!(config["model_context_window"].as_integer(), Some(1050000));
+        assert!(config["features"]["custom_feature"].as_bool().unwrap());
+        assert!(provider.settings_config["config"]
+            .as_str()
+            .unwrap()
+            .contains("# keep comment"));
+        assert_eq!(
+            provider.settings_config["auth"]["OPENAI_API_KEY"],
+            "mock-secret"
+        );
+        assert!(!update_codex(&mut provider, None, None).unwrap());
+        provider.settings_config["config"] =
+            serde_json::json!("model = \"chosen\"\nmodel_context_window = 128000\n");
+        update_codex(&mut provider, None, None).unwrap();
+        assert!(provider.settings_config["config"]
+            .as_str()
+            .unwrap()
+            .contains("128000"));
+        provider.settings_config["config"] = serde_json::json!("model = \"chosen\"\n");
+        update_codex(&mut provider, None, None).unwrap();
+        assert!(!provider.settings_config["config"]
+            .as_str()
+            .unwrap()
+            .contains("model_context_window"));
+    }
+    #[test]
+    fn mapping_uses_exact_available_whitelist_and_restores_native_catalog() {
+        let mut provider = codex();
+        let native = serde_json::json!({"models":[{"model":"user-native","contextWindow":500000}]});
+        provider.settings_config["modelCatalog"] = native.clone();
+        let models = vec![
+            "gpt-6.1-sol-fast".into(),
+            "gpt-6-sol".into(),
+            "gpt-6-sol".into(),
+            "gpt-6-sol-extra".into(),
+            "GPT-6-astra".into(),
+            "other".into(),
+        ];
+        update_codex(&mut provider, Some("mapped"), Some(&models)).unwrap();
+        let rows = provider.settings_config["modelCatalog"]["models"]
+            .as_array()
+            .unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0]["model"], "gpt-6-sol");
+        assert_eq!(rows[1]["model"], "gpt-6.1-sol-fast");
+        for row in rows {
+            assert_eq!(row["contextWindow"], 1050000);
+            assert_eq!(
+                row["reasoningLevels"],
+                serde_json::json!(["low", "medium", "high", "xhigh", "max", "ultra"])
+            );
+        }
+        assert!(!update_codex(&mut provider, None, Some(&models)).unwrap());
+        update_codex(&mut provider, None, Some(&["gpt-6-astra".into()])).unwrap();
+        assert_eq!(
+            provider.settings_config["modelCatalog"]["models"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        update_codex(&mut provider, Some("native"), None).unwrap();
+        assert_eq!(provider.settings_config["modelCatalog"], native);
+        assert_eq!(model(&provider, "codex"), "native-model");
+        assert!(provider.meta.unwrap().molly_pending_apply);
+    }
+    #[test]
+    fn unavailable_models_invalid_mode_and_bad_toml_leave_provider_untouched() {
+        let mut provider = codex();
+        let before = serde_json::to_value(&provider).unwrap();
+        for available in [vec![], vec!["gpt-5.5".into(), "prefix/gpt-6-sol".into()]] {
+            assert!(update_codex(&mut provider, Some("mapped"), Some(&available)).is_err());
+            assert_eq!(serde_json::to_value(&provider).unwrap(), before);
+        }
+        assert!(update_codex(&mut provider, Some("invalid"), None).is_err());
+        provider.settings_config["config"] = serde_json::json!("invalid [ TOML");
+        let before = serde_json::to_value(&provider).unwrap();
+        assert!(update_codex(&mut provider, Some("mapped"), Some(&["gpt-6-sol".into()])).is_err());
+        assert_eq!(serde_json::to_value(&provider).unwrap(), before);
+    }
+
+    #[test]
+    fn switching_modes_preserves_a_manual_native_context_override() {
+        let mut provider = codex();
+        update_codex(&mut provider, None, None).unwrap();
+        for value in [
+            "model = \"custom\"\nmodel_context_window = 128000\n",
+            "model = \"custom\"\n",
+        ] {
+            provider.settings_config["config"] = serde_json::json!(value);
+            update_codex(&mut provider, Some("mapped"), Some(&["gpt-6-sol".into()])).unwrap();
+            update_codex(&mut provider, Some("native"), None).unwrap();
+            assert_eq!(provider.settings_config["config"], value);
+        }
+    }
+    #[test]
+    fn pending_apply_is_key_specific_and_only_cleared_after_activation() {
+        let db = Database::memory().unwrap();
+        let mut provider = codex();
+        update_codex(&mut provider, Some("mapped"), Some(&["gpt-6-sol".into()])).unwrap();
+        db.save_provider("codex", &provider).unwrap();
+        mark_applied(&db, "codex", "another-provider", &provider.settings_config).unwrap();
+        assert!(
+            db.get_provider_by_id(&provider.id, "codex")
+                .unwrap()
+                .unwrap()
+                .meta
+                .unwrap()
+                .molly_pending_apply
+        );
+        mark_applied(
+            &db,
+            "codex",
+            &provider.id,
+            &serde_json::json!({"stale":"config"}),
+        )
+        .unwrap();
+        assert!(
+            db.get_provider_by_id(&provider.id, "codex")
+                .unwrap()
+                .unwrap()
+                .meta
+                .unwrap()
+                .molly_pending_apply
+        );
+        mark_applied(&db, "codex", &provider.id, &provider.settings_config).unwrap();
+        assert!(
+            !db.get_provider_by_id(&provider.id, "codex")
+                .unwrap()
+                .unwrap()
+                .meta
+                .unwrap()
+                .molly_pending_apply
+        );
+    }
     #[test]
     fn manually_selected_models_survive_reopening_additive_tools() {
         let array = Provider::with_id(

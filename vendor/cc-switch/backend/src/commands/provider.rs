@@ -67,8 +67,13 @@ pub async fn update_provider(
         let state = app_handle
             .try_state::<AppState>()
             .ok_or_else(|| "应用状态不可用".to_string())?;
-        ProviderService::update(state.inner(), app_type, originalId.as_deref(), provider)
-            .map_err(|e| e.to_string())
+        let id = provider.id.clone();
+        let applied_config = provider.settings_config.clone();
+        let current_molly = app_type == AppType::Codex && provider.meta.as_ref().is_some_and(|m| m.molly_key_id.is_some())
+            && ProviderService::current(state.inner(), app_type.clone()).map_err(|e| e.to_string())? == originalId.as_deref().unwrap_or(&id);
+        let result = ProviderService::update(state.inner(), app_type, originalId.as_deref(), provider).map_err(|e| e.to_string())?;
+        if current_molly && result { crate::molly_keys::mark_applied(&state.db, &app, &id, &applied_config).map_err(|e| e.to_string())?; }
+        Ok(result)
     })
     .await
     .map_err(|e| format!("供应商更新任务执行失败: {e}"))?
@@ -103,7 +108,11 @@ fn switch_provider_internal(
     app_type: AppType,
     id: &str,
 ) -> Result<SwitchResult, AppError> {
-    ProviderService::switch(state, app_type, id)
+    let agent = app_type.as_str().to_owned();
+    let applied_config = state.db.get_provider_by_id(id, &agent)?.map(|p| p.settings_config);
+    let result = ProviderService::switch(state, app_type, id)?;
+    if let Some(config) = applied_config { crate::molly_keys::mark_applied(&state.db, &agent, id, &config)?; }
+    Ok(result)
 }
 
 #[cfg_attr(not(feature = "test-hooks"), doc(hidden))]

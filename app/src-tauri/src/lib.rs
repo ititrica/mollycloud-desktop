@@ -1770,6 +1770,8 @@ pub fn run() {
             let dispatch: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             key_groups::fetch_key_groups, key_groups::change_key_group, key_groups::create_api_key, key_groups::delete_api_key,
             molly_keys::sync_molly_key_providers,
+            molly_keys::prepare_molly_key_provider,
+            molly_keys::set_molly_key_mode,
             subscriptions::fetch_subscriptions, subscriptions::reset_subscription, subscriptions::update_subscription_auto_renew,
             payments::payment_checkout, payments::payment_orders, payments::payment_create_order, payments::payment_order, payments::payment_cancel_order, payments::open_payment_order,
             recharge::open_recharge_view, recharge::close_recharge_view,

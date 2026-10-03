@@ -175,6 +175,13 @@ export interface LocalProxyRequestOverrides {
 export interface ProviderMeta {
   mollyAccountId?: string;
   mollyKeyId?: string;
+  mollyCodexMode?: "native" | "mapped";
+  mollyNativeCatalog?: unknown;
+  mollyNativeModel?: string;
+  mollyNativeContextWindow?: number;
+  mollyNativeCatalogPointer?: string;
+  mollyPendingApply?: boolean;
+  mollyContextInitialized?: boolean;
   // 自定义端点：以 URL 为键，值为端点信息
   custom_endpoints?: Record<string, CustomEndpoint>;
   // 是否在切换/同步到 live 时应用通用配置片段
