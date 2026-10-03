@@ -133,28 +133,39 @@ impl RuntimeState {
 }
 
 pub fn load_refresh_token() -> Result<String, String> {
-    credential_entry()?
-        .get_password()
-        .map_err(|_| "没有可恢复的登录会话".to_owned())
+    match credential_entry()?.get_password() {
+        Ok(token) => Ok(token),
+        Err(keyring::Error::NoEntry) => Err("没有可恢复的登录会话".to_owned()),
+        Err(_) => Err(format!("无法从{}读取登录会话", credential_store_name())),
+    }
 }
 
 fn save_refresh_token(token: &str) -> Result<(), String> {
     credential_entry()?
         .set_password(token)
-        .map_err(|_| "无法安全保存登录会话到 Windows 凭据管理器".to_owned())
+        .map_err(|_| format!("无法安全保存登录会话到{}", credential_store_name()))
 }
 
 fn delete_refresh_token() -> Result<(), String> {
     let entry = credential_entry()?;
     match entry.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(_) => Err("无法清除 Windows 凭据管理器中的登录会话".to_owned()),
+        Err(_) => Err(format!("无法清除{}中的登录会话", credential_store_name())),
     }
 }
 
 fn credential_entry() -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)
-        .map_err(|_| "Windows 凭据管理器不可用".to_owned())
+        .map_err(|_| format!("{}不可用", credential_store_name()))
+}
+
+pub(crate) fn credential_store_name() -> &'static str {
+    #[cfg(target_os = "macos")]
+    return "macOS 钥匙串";
+    #[cfg(windows)]
+    return "Windows 凭据管理器";
+    #[cfg(not(any(windows, target_os = "macos")))]
+    return "系统凭据存储";
 }
 
 fn required_string(data: &Value, name: &str) -> Result<String, String> {

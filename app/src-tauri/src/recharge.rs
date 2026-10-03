@@ -7,7 +7,11 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 use tauri::{AppHandle, Emitter, Manager, State, Webview, Window, WindowEvent};
-use wry::{WebView, WebViewBuilder, WebViewBuilderExtWindows, WebViewExtWindows};
+use wry::{WebView, WebViewBuilder};
+#[cfg(target_os = "macos")]
+use wry::{WebViewBuilderExtMacos, WebViewExtMacOS};
+#[cfg(windows)]
+use wry::{WebViewBuilderExtWindows, WebViewExtWindows};
 
 #[cfg(test)]
 const PURCHASE_URL: &str = "https://mollycloud.cn/purchase";
@@ -21,8 +25,12 @@ struct Checkout {
     view: WebView,
     window: Window,
     owner: String,
-    // InPrivate isolates website login from both the console and other apps.
+    // WebView2 InPrivate / WKWebView's non-persistent store isolates website login
+    // from the console, other apps and subsequent checkout sessions.
+    #[cfg(windows)]
     _profile: tempfile::TempDir,
+    #[cfg(feature = "recharge-smoke")]
+    loaded: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 struct Popup {
     label: String,
@@ -68,6 +76,7 @@ pub(crate) fn allowed_navigation(value: &str) -> bool {
     }
     match url.host() {
         Some(url::Host::Domain(host)) => {
+            let host = host.trim_end_matches('.');
             host.contains('.')
                 && host != "localhost"
                 && !host.ends_with(".localhost")
@@ -136,11 +145,30 @@ fn window_theme(dark: bool) -> tauri::Theme {
         tauri::Theme::Light
     }
 }
+#[cfg(windows)]
 fn theme(dark: bool) -> wry::Theme {
     if dark {
         wry::Theme::Dark
     } else {
         wry::Theme::Light
+    }
+}
+
+fn apply_view_theme(view: &WebView, dark: bool) {
+    #[cfg(windows)]
+    let _ = view.set_theme(theme(dark));
+    // WKWebView inherits the NSWindow appearance set through window.set_theme.
+    #[cfg(not(windows))]
+    let _ = (view, dark);
+}
+
+fn themed_builder(builder: WebViewBuilder<'_>, dark: bool) -> WebViewBuilder<'_> {
+    #[cfg(windows)]
+    return builder.with_theme(theme(dark));
+    #[cfg(not(windows))]
+    {
+        let _ = dark;
+        builder
     }
 }
 
@@ -186,10 +214,27 @@ fn make_popup(
         let child_script = script.clone();
         let close_window = window.clone();
         let title_window = window.clone();
-        let view = WebViewBuilder::new()
-            .with_environment(features.opener.environment)
+        let builder = WebViewBuilder::new();
+        #[cfg(windows)]
+        let builder = builder.with_environment(features.opener.environment);
+        #[cfg(target_os = "macos")]
+        let builder = {
+            let configuration = features.opener.target_configuration;
+            let main_thread =
+                objc2_foundation::MainThreadMarker::new().ok_or("支付窗口必须在主线程创建")?;
+            // WKWebView requires the target configuration supplied by its opener.
+            // Keep its non-persistent data store/process pool, but give this view
+            // independent scripts and the close-only handler. Sharing the opener's
+            // controller would route close to the wrong window and remove its IPC
+            // handler when a popup is dropped.
+            unsafe {
+                let controller = objc2_web_kit::WKUserContentController::new(main_thread);
+                configuration.setUserContentController(&controller);
+            }
+            builder.with_webview_configuration(configuration)
+        };
+        let view = themed_builder(builder, dark)
             .with_incognito(true)
-            .with_theme(theme(dark))
             .with_devtools(false)
             .with_initialization_script_for_main_only(script, true)
             // Route website close through Tauri so its native window registry is cleaned up.
@@ -242,7 +287,10 @@ fn make_popup(
                 let _ = window.close();
                 "无法加载支付窗口"
             })?;
+        #[cfg(windows)]
         let platform_view = view.webview();
+        #[cfg(target_os = "macos")]
+        let platform_view = view.webview().into_super();
         POPUPS.with(|p| {
             p.borrow_mut().push(Popup {
                 label,
@@ -270,6 +318,7 @@ fn build_checkout(
     navigation: fn(&str) -> bool,
     visible: bool,
 ) -> Result<Checkout, String> {
+    #[cfg(windows)]
     let profile = tempfile::Builder::new()
         .prefix("molly-checkout-")
         .tempdir()
@@ -292,6 +341,7 @@ fn build_checkout(
         .center()
         .build()
         .map_err(|_| "无法创建支付窗口")?;
+    #[cfg(windows)]
     let mut context = wry::WebContext::new(Some(profile.path().to_path_buf()));
     let nav_app = handle.clone();
     let load_app = handle.clone();
@@ -301,11 +351,18 @@ fn build_checkout(
     let nav_owner = owner.clone();
     let load_owner = owner.clone();
     let close_window = window.clone();
-    let view = WebViewBuilder::new_with_web_context(&mut context)
-        .with_additional_browser_args("")
+    #[cfg(feature = "recharge-smoke")]
+    let loaded = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    #[cfg(feature = "recharge-smoke")]
+    let load_ready = loaded.clone();
+    #[cfg(windows)]
+    let builder =
+        WebViewBuilder::new_with_web_context(&mut context).with_additional_browser_args("");
+    #[cfg(target_os = "macos")]
+    let builder = WebViewBuilder::new();
+    let view = themed_builder(builder, dark)
         .with_incognito(true)
         .with_visible(true)
-        .with_theme(theme(dark))
         .with_devtools(false)
         .with_initialization_script_for_main_only(script, true)
         .with_initialization_script_for_main_only(
@@ -333,6 +390,11 @@ fn build_checkout(
             allowed
         })
         .with_on_page_load_handler(move |event, target| {
+            #[cfg(feature = "recharge-smoke")]
+            load_ready.store(
+                matches!(event, wry::PageLoadEvent::Finished),
+                Ordering::SeqCst,
+            );
             status(
                 &load_app,
                 &load_owner,
@@ -358,13 +420,16 @@ fn build_checkout(
         .build(&window)
         .map_err(|_| {
             let _ = window.close();
-            "支付页面创建失败，请检查 WebView2 后重试"
+            "支付页面创建失败，请重新打开后重试"
         })?;
     Ok(Checkout {
         view,
         window,
         owner,
+        #[cfg(windows)]
         _profile: profile,
+        #[cfg(feature = "recharge-smoke")]
+        loaded,
     })
 }
 
@@ -390,7 +455,7 @@ pub async fn open_recharge_view(
             let window = CHECKOUT.with(|v| {
                 let checkout = v.borrow();
                 let checkout = checkout.as_ref().unwrap();
-                let _ = checkout.view.set_theme(theme(dark));
+                apply_view_theme(&checkout.view, dark);
                 checkout
                     .view
                     .evaluate_script(&update)
@@ -402,7 +467,7 @@ pub async fn open_recharge_view(
                 p.borrow()
                     .iter()
                     .map(|popup| {
-                        let _ = popup.view.set_theme(theme(dark));
+                        apply_view_theme(&popup.view, dark);
                         let _ = popup.view.evaluate_script(&update);
                         popup.window.clone()
                     })
@@ -487,7 +552,10 @@ fn dispose_checkout(checkout: Checkout, close_window: bool) {
         view,
         window,
         owner,
+        #[cfg(windows)]
         _profile,
+        #[cfg(feature = "recharge-smoke")]
+            loaded: _,
     } = checkout;
     let _ = view.clear_all_browsing_data();
     drop(view);
@@ -576,6 +644,10 @@ mod tests {
             "http://mollycloud.cn",
             "https://127.0.0.1/a",
             "https://a.localhost",
+            "https://a.localhost.",
+            "https://localhost.",
+            "https://service.local.",
+            "https://service.internal.",
             "https://user:pass@example.com",
             "tauri://localhost/index.html",
             "data:text/html,a",
@@ -646,7 +718,7 @@ pub fn run_smoke() {
     tauri::Builder::default()
         .setup(move |app| {
             tauri::WebviewWindowBuilder::new(app,"console",tauri::WebviewUrl::App("recharge-smoke.html".into()))
-                .visible(false).skip_taskbar(true).inner_size(960.0,640.0).data_directory(profile)
+                .visible(cfg!(target_os = "macos")).focused(false).incognito(true).skip_taskbar(true).inner_size(960.0,640.0).data_directory(profile)
                 .on_web_resource_request(|_,response| { *response.body_mut()=std::borrow::Cow::Owned(b"<!doctype html><body>Checkout smoke host</body>".to_vec()); response.headers_mut().insert("Content-Type","text/html".parse().unwrap()); })
                 .build()?;
             let handle = app.handle().clone();
@@ -672,6 +744,30 @@ pub fn run_smoke() {
 
 #[cfg(feature = "recharge-smoke")]
 async fn smoke_eval(app: &AppHandle, script: &str) -> Result<Value, String> {
+    // WKWebView queues scripts before its first didFinishNavigation and drops
+    // result callbacks for that queue. Wait on the real load event before probing.
+    let mut loaded = false;
+    for _ in 0..100 {
+        if on_ui(app, || {
+            CHECKOUT.with(|checkout| {
+                let checkout = checkout.borrow();
+                Ok(checkout
+                    .as_ref()
+                    .ok_or("Missing checkout")?
+                    .loaded
+                    .load(Ordering::SeqCst))
+            })
+        })
+        .await?
+        {
+            loaded = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    if !loaded {
+        return Err("Checkout did not finish loading before its script probe".into());
+    }
     let (tx, rx) = tokio::sync::oneshot::channel();
     let sender = RefCell::new(Some(tx));
     let diagnostic = script.chars().take(100).collect::<String>();
@@ -694,7 +790,11 @@ async fn smoke_eval(app: &AppHandle, script: &str) -> Result<Value, String> {
     let value = tokio::time::timeout(std::time::Duration::from_secs(5), rx)
         .await
         .map_err(|_| format!("Script timed out: {diagnostic}"))?
-        .map_err(|_| "Script callback missing")?;
+        .map_err(|_| format!("Script callback missing: {diagnostic}"))?;
+    // WebKit serializes undefined JavaScript results as an empty string.
+    if value.is_empty() {
+        return Ok(Value::Null);
+    }
     serde_json::from_str(&value).map_err(|e| e.to_string())
 }
 
@@ -713,8 +813,12 @@ async fn smoke_lifecycle(app: &AppHandle, origin: &str) -> Result<(), String> {
             false,
             &target,
             |url| url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:"),
-            false,
+            cfg!(target_os = "macos"),
         )?;
+        // WebKit may throttle hidden new browsing contexts. Show only the mock
+        // fixture windows on macOS so the real navigation lifecycle can advance.
+        #[cfg(target_os = "macos")]
+        checkout.window.show().map_err(|e| e.to_string())?;
         if checkout
             .window
             .is_minimizable()
@@ -730,30 +834,35 @@ async fn smoke_lifecycle(app: &AppHandle, origin: &str) -> Result<(), String> {
         if handle.get_webview_window(checkout.window.label()).is_some() {
             return Err("Payment window must not register a Tauri webview".into());
         }
-        use windows::Win32::UI::Input::KeyboardAndMouse::IsWindowEnabled;
-        use windows::Win32::UI::WindowsAndMessaging::{GetWindow, GW_OWNER};
-        let hwnd = windows::Win32::Foundation::HWND(
-            checkout.window.hwnd().map_err(|e| e.to_string())?.0 as _,
-        );
         let console = handle
             .get_webview_window("console")
             .ok_or("Missing console")?;
-        let console_hwnd =
-            windows::Win32::Foundation::HWND(console.hwnd().map_err(|e| e.to_string())?.0 as _);
-        if unsafe { GetWindow(hwnd, GW_OWNER).is_ok() || !IsWindowEnabled(console_hwnd).as_bool() }
+        #[cfg(windows)]
         {
-            return Err("Payment window owns or disables the console".into());
+            use windows::Win32::UI::Input::KeyboardAndMouse::IsWindowEnabled;
+            use windows::Win32::UI::WindowsAndMessaging::{GetWindow, GW_OWNER};
+            let hwnd = windows::Win32::Foundation::HWND(
+                checkout.window.hwnd().map_err(|e| e.to_string())?.0 as _,
+            );
+            let console_hwnd =
+                windows::Win32::Foundation::HWND(console.hwnd().map_err(|e| e.to_string())?.0 as _);
+            if unsafe {
+                GetWindow(hwnd, GW_OWNER).is_ok() || !IsWindowEnabled(console_hwnd).as_bool()
+            } {
+                return Err("Payment window owns or disables the console".into());
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            // A sheet or child NSWindow would change payment into a modal flow.
+            let native = checkout.view.ns_window();
+            if native.parentWindow().is_some() || native.sheetParent().is_some() {
+                return Err("Payment window must be an independent NSWindow".into());
+            }
         }
         console
             .set_position(tauri::LogicalPosition::new(80.0, 90.0))
             .map_err(|e| e.to_string())?;
-        let position = console
-            .outer_position()
-            .map_err(|e| e.to_string())?
-            .to_logical::<f64>(console.scale_factor().map_err(|e| e.to_string())?);
-        if (position.x - 80.0).abs() > 2.0 || (position.y - 90.0).abs() > 2.0 {
-            return Err("Console cannot move during payment".into());
-        }
         if handle.get_webview_window("console").is_none() {
             return Err("Console identity lost after adding checkout".into());
         }
@@ -761,6 +870,31 @@ async fn smoke_lifecycle(app: &AppHandle, origin: &str) -> Result<(), String> {
         Ok(())
     })
     .await?;
+    // Tao dispatches NSWindow position updates asynchronously on macOS. Yield
+    // to the native event loop before asserting that the console remains movable.
+    let mut moved = false;
+    for _ in 0..50 {
+        let handle = app.clone();
+        if on_ui(app, move || {
+            let console = handle
+                .get_webview_window("console")
+                .ok_or("Missing console")?;
+            let position = console
+                .outer_position()
+                .map_err(|e| e.to_string())?
+                .to_logical::<f64>(console.scale_factor().map_err(|e| e.to_string())?);
+            Ok((position.x - 80.0).abs() <= 2.0 && (position.y - 90.0).abs() <= 2.0)
+        })
+        .await?
+        {
+            moved = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    if !moved {
+        return Err("Console cannot move during payment".into());
+    }
     let mut ready = false;
     for _ in 0..60 {
         if smoke_eval(
@@ -802,9 +936,12 @@ async fn smoke_lifecycle(app: &AppHandle, origin: &str) -> Result<(), String> {
     // A reload destroys the evaluating document, so it cannot promise a JS result callback.
     on_ui(app, move || {
         CHECKOUT.with(|v| {
-            v.borrow()
-                .as_ref()
-                .ok_or("Missing checkout")?
+            let checkout = v.borrow();
+            let checkout = checkout.as_ref().ok_or("Missing checkout")?;
+            // The reload request is asynchronous in WKWebView. Do not accept the
+            // previous document's readyState/frame probe as proof of restoration.
+            checkout.loaded.store(false, Ordering::SeqCst);
+            checkout
                 .view
                 .evaluate_script(&refreshed)
                 .map_err(|e| e.to_string())
@@ -845,12 +982,63 @@ async fn smoke_lifecycle(app: &AppHandle, origin: &str) -> Result<(), String> {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
     if !popup_ready {
-        return Err("Payment popup fixture did not load".into());
+        let browser = smoke_eval(
+            app,
+            "(() => {try{return {url:window.smokePopup.location.href,ready:window.smokePopup.document.readyState}}catch(error){return {error:String(error),popup:!!window.smokePopup}}})()",
+        )
+        .await?;
+        let native = on_ui(app, || {
+            Ok(POPUPS.with(|popups| {
+                popups
+                    .borrow()
+                    .iter()
+                    .map(|popup| popup.view.url().unwrap_or_default())
+                    .collect::<Vec<_>>()
+            }))
+        })
+        .await?;
+        return Err(format!(
+            "Payment popup fixture did not load: browser={browser}, native={native:?}"
+        ));
     }
     let isolated = smoke_eval(app, "!window.smokePopup.__TAURI_INTERNALS__").await?;
     if isolated != true {
         return Err("Popup exposes Tauri IPC".into());
     }
+    #[cfg(target_os = "macos")]
+    on_ui(app, || {
+        CHECKOUT.with(|checkout| {
+            let checkout = checkout.borrow();
+            let checkout = checkout.as_ref().ok_or("Missing checkout")?;
+            let opener_controller = checkout.view.manager();
+            // Payment popup windows must share the ephemeral payment session,
+            // while each close signal remains bound to its own native window.
+            unsafe {
+                let opener_store = checkout.view.webview().configuration().websiteDataStore();
+                if opener_store.isPersistent() {
+                    return Err("Checkout store must be non-persistent".into());
+                }
+                POPUPS.with(|popups| {
+                    for popup in popups.borrow().iter() {
+                        if objc2::rc::Retained::as_ptr(&opener_controller)
+                            == objc2::rc::Retained::as_ptr(&popup.view.manager())
+                        {
+                            return Err("Popup shares the checkout's close handler".into());
+                        }
+                        let popup_store = popup.view.webview().configuration().websiteDataStore();
+                        if popup_store.isPersistent()
+                            || objc2::rc::Retained::as_ptr(&opener_store)
+                                != objc2::rc::Retained::as_ptr(&popup_store)
+                        {
+                            return Err("Popup must share only the ephemeral payment store".into());
+                        }
+                    }
+                    Ok(())
+                })
+            }
+        })
+    })
+    .await?;
     println!("Checkout native popup isolation passed");
     smoke_eval(app, "window.smokePopup.close()").await?;
     let mut popup_closed = false;

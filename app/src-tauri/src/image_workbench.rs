@@ -5,8 +5,20 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tauri::{ipc::Channel, State, Manager};
+use tauri::{ipc::Channel, Manager, State};
 use tokio::sync::Notify;
+
+#[cfg(target_os = "macos")]
+const IMAGE_ASSET_ORIGIN: &str = "molly-image://localhost";
+#[cfg(not(target_os = "macos"))]
+const IMAGE_ASSET_ORIGIN: &str = "http://molly-image.localhost";
+
+fn asset_content_security_policy() -> String {
+    // WKWebView serves custom protocols with their actual scheme; WebView2 uses
+    // the localhost alias. Keep both versions restricted to the sandbox's own
+    // static assets and its existing MessageChannel network boundary.
+    format!("default-src 'none'; script-src {IMAGE_ASSET_ORIGIN}; style-src {IMAGE_ASSET_ORIGIN} 'unsafe-inline'; img-src https: data: blob: {IMAGE_ASSET_ORIGIN}; font-src {IMAGE_ASSET_ORIGIN} data:; connect-src blob: data:; worker-src blob:; base-uri 'none'")
+}
 
 #[derive(Default)]
 pub struct ImageRequests(Mutex<HashMap<String, Arc<Notify>>>);
@@ -36,7 +48,7 @@ pub enum ImageEvent {
 
 fn validate_url(raw: &str) -> Result<url::Url, String> {
     let url = url::Url::parse(raw).map_err(|_| "请求地址无效。")?;
-    let host = url.host_str().unwrap_or_default();
+    let host = url.host_str().unwrap_or_default().trim_end_matches('.');
     let loopback = matches!(host, "localhost" | "127.0.0.1" | "[::1]");
     if (url.scheme() != "https" && !(url.scheme() == "http" && loopback))
         || !url.username().is_empty()
@@ -188,7 +200,9 @@ async fn transfer(request: ImageRequest, channel: Channel<ImageEvent>) -> Result
     }
     // Keep EOF in the same ordered channel; the invoke reply can overtake
     // large cached channel messages on their way to the WebView.
-    channel.send(ImageEvent::End { bytes: total }).map_err(|_| "工作台已关闭。")?;
+    channel
+        .send(ImageEvent::End { bytes: total })
+        .map_err(|_| "工作台已关闭。")?;
     Ok(())
 }
 
@@ -197,20 +211,42 @@ pub fn plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .register_uri_scheme_protocol("molly-image", |context, request| {
             let path = request.uri().path().trim_start_matches('/');
             // 此来源只分发内置静态文件，不提供文件系统、账户或通用 IPC 入口。
-            if request.method() != "GET" || path.split('/').any(|part| part == ".." || part.contains('%') || part.contains('\\')) {
-                return tauri::http::Response::builder().status(404).body(Vec::new()).unwrap();
+            if request.method() != "GET"
+                || path
+                    .split('/')
+                    .any(|part| part == ".." || part.contains('%') || part.contains('\\'))
+            {
+                return tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap();
             }
             let path = if path.is_empty() { "index.html" } else { path };
             #[cfg(all(debug_assertions, not(feature = "image-workbench-smoke")))]
             let asset = {
-                let file = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../public/image-workbench").join(path);
+                let file = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../public/image-workbench")
+                    .join(path);
                 std::fs::read(file).ok().map(|bytes| {
-                    let mime = match path.rsplit('.').next().unwrap_or("") { "html" => "text/html", "js" => "text/javascript", "css" => "text/css", "svg" => "image/svg+xml", "woff2" => "font/woff2", "woff" => "font/woff", "ttf" => "font/ttf", _ => "application/octet-stream" };
+                    let mime = match path.rsplit('.').next().unwrap_or("") {
+                        "html" => "text/html",
+                        "js" => "text/javascript",
+                        "css" => "text/css",
+                        "svg" => "image/svg+xml",
+                        "woff2" => "font/woff2",
+                        "woff" => "font/woff",
+                        "ttf" => "font/ttf",
+                        _ => "application/octet-stream",
+                    };
                     (bytes, mime.to_owned())
                 })
             };
             #[cfg(any(not(debug_assertions), feature = "image-workbench-smoke"))]
-            let asset = context.app_handle().asset_resolver().get(format!("image-workbench/{path}")).map(|asset| (asset.bytes, asset.mime_type));
+            let asset = context
+                .app_handle()
+                .asset_resolver()
+                .get(format!("image-workbench/{path}"))
+                .map(|asset| (asset.bytes, asset.mime_type));
             let asset = match crate::console_plugins::asset(context.app_handle(), "images", path) {
                 Some(Ok(bytes)) => Some((bytes, crate::console_plugins::mime(path).to_owned())),
                 Some(Err(_)) => None,
@@ -218,13 +254,19 @@ pub fn plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             };
             match asset {
                 Some((bytes, mime)) => tauri::http::Response::builder()
-                    .header("Content-Type", mime).header("Access-Control-Allow-Origin", "*")
+                    .header("Content-Type", mime)
+                    .header("Access-Control-Allow-Origin", "*")
                     .header("Cache-Control", "no-cache")
-                    .header("Content-Security-Policy", "default-src 'none'; script-src http://molly-image.localhost; style-src http://molly-image.localhost 'unsafe-inline'; img-src https: data: blob: http://molly-image.localhost; font-src http://molly-image.localhost data:; connect-src blob: data:; worker-src blob:; base-uri 'none'")
-                    .body(bytes).unwrap(),
-                None => tauri::http::Response::builder().status(404).body(Vec::new()).unwrap(),
+                    .header("Content-Security-Policy", asset_content_security_policy())
+                    .body(bytes)
+                    .unwrap(),
+                None => tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap(),
             }
-        }).build()
+        })
+        .build()
 }
 
 #[cfg(test)]
@@ -243,6 +285,7 @@ mod tests {
             "file:///C:/secret",
             "http://ipc.localhost",
             "https://tauri.localhost",
+            "https://tauri.localhost.",
             "http://example.com",
             "https://key@example.com",
             "data:text/plain,a",
@@ -252,15 +295,87 @@ mod tests {
     }
     #[tokio::test]
     async fn streamed_body_ends_on_the_same_channel_after_every_byte() {
-        use std::io::{Read,Write};
-        let listener=std::net::TcpListener::bind("127.0.0.1:0").unwrap();let address=listener.local_addr().unwrap();
-        let expected=format!("data: {{\"b64_json\":\"{}\"}}\n\ndata: [DONE]\n\n","A".repeat(3*1024*1024));let payload=expected.clone();
-        let server=std::thread::spawn(move||{let(mut socket,_)=listener.accept().unwrap();let mut request=[0u8;4096];let _=socket.read(&mut request).unwrap();write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\n\r\n",payload.len()).unwrap();socket.write_all(payload.as_bytes()).unwrap();});
-        let events=Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));let capture=events.clone();
-        let channel=Channel::new(move|message|{if let tauri::ipc::InvokeResponseBody::Json(text)=message{capture.lock().unwrap().push(serde_json::from_str(&text).unwrap());}Ok(())});
-        transfer(ImageRequest{url:format!("http://{address}/v1/images/generations"),method:"POST".into(),headers:HashMap::new(),body:Some(STANDARD.encode(b"{}"))},channel).await.unwrap();server.join().unwrap();
-        let events=events.lock().unwrap();assert_eq!(events.first().unwrap()["type"],"headers");assert_eq!(events.last().unwrap()["type"],"end");
-        let actual=events.iter().filter(|event|event["type"]=="chunk").flat_map(|event|STANDARD.decode(event["data"].as_str().unwrap()).unwrap()).collect::<Vec<_>>();assert_eq!(actual,expected.as_bytes());assert_eq!(events.last().unwrap()["bytes"].as_u64().unwrap(),actual.len()as u64);
+        use std::io::{BufRead, BufReader, Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let expected = format!(
+            "data: {{\"b64_json\":\"{}\"}}\n\ndata: [DONE]\n\n",
+            "A".repeat(3 * 1024 * 1024)
+        );
+        let payload = expected.clone();
+        let server = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(10)))
+                .unwrap();
+            socket
+                .set_write_timeout(Some(Duration::from_secs(10)))
+                .unwrap();
+            // TCP reads do not align to HTTP messages. Consume the complete POST
+            // before closing the socket, otherwise Darwin can reset the connection
+            // with unread request bytes and truncate the streamed response tail.
+            let mut incoming = BufReader::new(&mut socket);
+            let mut content_length = None;
+            loop {
+                let mut line = String::new();
+                assert!(incoming.read_line(&mut line).unwrap() > 0);
+                if line == "\r\n" {
+                    break;
+                }
+                if let Some((name, value)) = line.split_once(':') {
+                    if name.eq_ignore_ascii_case("content-length") {
+                        content_length = Some(value.trim().parse::<usize>().unwrap());
+                    }
+                }
+            }
+            assert_eq!(content_length, Some(2));
+            let mut body = [0u8; 2];
+            incoming.read_exact(&mut body).unwrap();
+            assert_eq!(&body, b"{}");
+            drop(incoming);
+            write!(
+                socket,
+                "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                payload.len()
+            )
+            .unwrap();
+            socket.write_all(payload.as_bytes()).unwrap();
+        });
+        let events = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let capture = events.clone();
+        let channel = Channel::new(move |message| {
+            if let tauri::ipc::InvokeResponseBody::Json(text) = message {
+                capture
+                    .lock()
+                    .unwrap()
+                    .push(serde_json::from_str(&text).unwrap());
+            }
+            Ok(())
+        });
+        transfer(
+            ImageRequest {
+                url: format!("http://{address}/v1/images/generations"),
+                method: "POST".into(),
+                headers: HashMap::new(),
+                body: Some(STANDARD.encode(b"{}")),
+            },
+            channel,
+        )
+        .await
+        .unwrap();
+        server.join().unwrap();
+        let events = events.lock().unwrap();
+        assert_eq!(events.first().unwrap()["type"], "headers");
+        assert_eq!(events.last().unwrap()["type"], "end");
+        let actual = events
+            .iter()
+            .filter(|event| event["type"] == "chunk")
+            .flat_map(|event| STANDARD.decode(event["data"].as_str().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(actual, expected.as_bytes());
+        assert_eq!(
+            events.last().unwrap()["bytes"].as_u64().unwrap(),
+            actual.len() as u64
+        );
     }
-
 }

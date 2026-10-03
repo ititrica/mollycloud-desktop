@@ -5,6 +5,10 @@ pub fn roots(extra: &[PathBuf]) -> Vec<PathBuf> {
     if let Some(home) = std::env::var_os("USERPROFILE") {
         homes.push(PathBuf::from(home).join(".codex"));
     }
+    #[cfg(not(windows))]
+    if let Some(home) = std::env::var_os("HOME") {
+        homes.push(PathBuf::from(home).join(".codex"));
+    }
     if let Some(home) = std::env::var_os("CODEX_HOME").filter(|h| !h.is_empty()) {
         homes.push(PathBuf::from(home));
     }

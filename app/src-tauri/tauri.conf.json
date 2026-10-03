@@ -37,23 +37,6 @@
         "resizable": false,
         "dragDropEnabled": true,
         "center": true
-      },
-      {
-        "label": "netspeed-widget",
-        "title": "MollyCloud 灵动岛",
-        "url": "island.html",
-        "width": 210,
-        "height": 36,
-        "resizable": false,
-        "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": true,
-        "visible": false,
-        "maximized": false,
-        "maximizable": false,
-        "skipTaskbar": true,
-        "shadow": false,
-        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -78,9 +61,7 @@
     "targets": "all",
     "resources": [
       "../THIRD_PARTY_NOTICES.md",
-      "../public/models/",
-      "../../vendor/netspeed-dynamic/helpers/NSD_Fps_Plugin.exe",
-      "../../vendor/netspeed-dynamic/helpers/NSD_Taskbar_Plugin.exe"
+      "../public/models/"
     ],
     "icon": [
       "icons/32x32.png",
@@ -88,12 +69,6 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ],
-    "windows": {
-      "nsis": {
-        "installerIcon": "icons/icon.ico",
-        "uninstallerIcon": "icons/icon.ico"
-      }
-    }
+    ]
   }
 }

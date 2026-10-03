@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import type { AssistantConfig, AssistantMessage, AssistantStatus } from "../contracts";
 import { desktopApi } from "../ipc";
+import { privateKeyStorageName } from "../platform";
 
 const emit = defineEmits<{ close: [] }>();
 
@@ -228,7 +229,7 @@ onMounted(() => {
       <p v-if="status?.message" class="petra-error">{{ status.message }}</p>
       <p v-if="errorMessage" class="petra-error">{{ errorMessage }}</p>
       <button class="petra-primary" type="submit" :disabled="saving">{{ saving ? "正在保存" : "保存设置" }}</button>
-      <p class="petra-security">API Key 由 Windows 凭据管理器加密保存，不会显示在控制台或发送给账户工具。</p>
+      <p class="petra-security">API Key 由{{ privateKeyStorageName }}保存，不会显示在控制台或发送给账户工具。</p>
     </form>
 
     <template v-else>

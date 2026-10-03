@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { NButton } from 'naive-ui';
 import { forwardImageRequest, imageDatabase } from '../imageWorkbench';
+import { imageWorkbenchNativeUrl } from '../platform';
 
 const props = defineProps<{ account: string; preview: boolean }>();
 const emit = defineEmits<{ settled: [] }>();
@@ -10,7 +11,7 @@ const ready = ref(false);
 const error = ref('');
 const version = ref(0);
 const native = '__TAURI_INTERNALS__' in window;
-const frameUrl = native ? 'http://molly-image.localhost/index.html' : '/image-workbench/index.html';
+const frameUrl = native ? imageWorkbenchNativeUrl : '/image-workbench/index.html';
 let port: MessagePort | undefined;
 let timer: ReturnType<typeof setTimeout>;
 let disposed = false;

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "console",
+        "create": false,
+        "title": "MollyCloud",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 960,
+        "minHeight": 640,
+        "decorations": false,
+        "dragDropEnabled": false,
+        "center": true
+      },
+      {
+        "label": "main",
+        "title": "MollyCloud 助手",
+        "url": "overlay.html",
+        "width": 700,
+        "height": 700,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "dragDropEnabled": true,
+        "center": true
+      },
+      {
+        "label": "netspeed-widget",
+        "title": "MollyCloud 灵动岛",
+        "url": "island.html",
+        "width": 210,
+        "height": 36,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "maximized": false,
+        "maximizable": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "dragDropEnabled": false
+      }
+    ],
+    "macOSPrivateApi": true
+  },
+  "bundle": {
+    "targets": [
+      "nsis",
+      "msi"
+    ],
+    "resources": [
+      "../THIRD_PARTY_NOTICES.md",
+      "../public/models/",
+      "../../vendor/netspeed-dynamic/helpers/NSD_Fps_Plugin.exe",
+      "../../vendor/netspeed-dynamic/helpers/NSD_Taskbar_Plugin.exe"
+    ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}

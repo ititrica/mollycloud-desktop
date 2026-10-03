@@ -6,6 +6,7 @@ import { importPetModel, modelAutoOptions, modelParameters, petDraftSchema, requ
 import { defaultSpeechConfig, sameSpeechEndpoint, SpeechPlayer, type SpeechStatus } from "../speech";
 import { emitTo } from "@tauri-apps/api/event";
 import { PROVIDERS } from "../petra/assistant/AssistantClient";
+import { privateKeyStorageName } from "../platform";
 
 const props = defineProps<{ show: boolean; embedded?: boolean }>();
 const emit = defineEmits<{ "update:show": [show: boolean]; closed: []; busy: [boolean] }>();
@@ -203,7 +204,7 @@ watch(() => props.show, show => {
                   <div class="pet-setting-field"><label for="speech-base">语音 API 端点</label><n-input v-model:value="draft.speech.baseUrl" :disabled="busy" :input-props="{ id: 'speech-base' }" placeholder="https://api.example.com/v1" /></div>
                   <div class="native-columns"><div class="pet-setting-field"><label for="speech-model">语音模型</label><n-input v-model:value="draft.speech.model" :disabled="busy" :input-props="{ id: 'speech-model' }" placeholder="tts-1" /></div><div class="pet-setting-field"><label for="speech-voice">音色 ID</label><n-input v-model:value="draft.speech.voice" :disabled="busy" :input-props="{ id: 'speech-voice' }" placeholder="alloy" /></div></div>
                 </template>
-                <div class="pet-setting-field"><label for="speech-key">语音 API 密钥</label><n-input v-model:value="speechApiKey" type="password" show-password-on="click" :disabled="busy || clearSpeechApiKey" :input-props="{ id: 'speech-key', autocomplete: 'new-password' }" :placeholder="savedSpeechKey ? '已保存，留空保持原密钥' : '手动填写语音服务密钥'" /><small>独立于对话密钥，使用 Windows 加密保存在本机。更换服务或端点后需重新填写。</small><n-checkbox v-if="snapshot.speechKeyConfigured" v-model:checked="clearSpeechApiKey" :disabled="busy">清除已保存的语音密钥</n-checkbox></div>
+                <div class="pet-setting-field"><label for="speech-key">语音 API 密钥</label><n-input v-model:value="speechApiKey" type="password" show-password-on="click" :disabled="busy || clearSpeechApiKey" :input-props="{ id: 'speech-key', autocomplete: 'new-password' }" :placeholder="savedSpeechKey ? '已保存，留空保持原密钥' : '手动填写语音服务密钥'" /><small>独立于对话密钥，使用{{ privateKeyStorageName }}保存在本机。更换服务或端点后需重新填写。</small><n-checkbox v-if="snapshot.speechKeyConfigured" v-model:checked="clearSpeechApiKey" :disabled="busy">清除已保存的语音密钥</n-checkbox></div>
                 <label class="pet-setting-range"><span>朗读音量<output>{{ Math.round(draft.speech.volume * 100) }}%</output></span><input v-model.number="draft.speech.volume" type="range" min="0" max="1" step="0.05" :disabled="busy" aria-label="朗读音量" /></label>
                 <div class="speech-test-actions"><n-button :disabled="busy || clearSpeechApiKey || (!speechApiKey.trim() && !savedSpeechKey)"  @click="speechPlaying ? speechPlayer.stop() : testSpeech()">{{ speechPlaying ? '停止试听' : '试听声音' }}</n-button><span role="status">{{ speechStatus.phase === 'preparing' ? '正在合成…' : speechStatus.phase === 'playing' ? '正在播放…' : '' }}</span></div>
                 <p class="console-settings-hint">试听使用当前草稿，会产生语音服务用量；试听后点击保存以应用设置。</p>

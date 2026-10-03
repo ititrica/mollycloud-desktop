@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { systemLoginName, trayName } from "../platform";
 import { version as bundledAppVersion } from "../../package.json";
 import { NAlert, NButton, NModal, NSwitch } from "naive-ui";
 import PluginManager from "./PluginManager.vue";
@@ -146,22 +147,22 @@ watch(draftAutostart, (enabled) => {
               </label>
               <label class="console-close-option" :class="{ 'is-selected': draftCloseAction === 'tray' }">
                 <span class="console-close-option__icon"><AppIcon name="tray" /></span>
-                <span class="console-close-option__copy"><strong>最小化到托盘</strong></span>
-                <input v-model="draftCloseAction" type="radio" name="console-close-action" value="tray" aria-label="最小化到托盘" />
+                <span class="console-close-option__copy"><strong>最小化到{{ trayName }}</strong></span>
+                <input v-model="draftCloseAction" type="radio" name="console-close-action" value="tray" :aria-label="`最小化到${trayName}`" />
               </label>
             </div>
           </fieldset>
           <fieldset class="console-settings-section" :disabled="loading || saving || !loaded">
             <legend>系统启动</legend>
-            <p class="console-settings-hint">登录 Windows 后自动启动 MollyCloud</p>
+            <p class="console-settings-hint">登录 {{ systemLoginName }} 后自动启动 MollyCloud</p>
             <div class="console-settings-startup">
             <label class="console-settings-toggle" :class="{ 'is-selected': draftAutostart }">
               <span><strong>开机自启动</strong></span>
               <n-switch v-model:value="draftAutostart" size="small" aria-label="开机自启动" />
             </label>
             <label class="console-settings-toggle console-settings-toggle--dependent" :class="{ 'is-selected': draftAutostartMinimized, 'is-disabled': !draftAutostart }">
-              <span><strong>启动后最小化到托盘</strong></span>
-              <n-switch v-model:value="draftAutostartMinimized" size="small" aria-label="启动后最小化到托盘" :disabled="!draftAutostart" />
+              <span><strong>启动后最小化到{{ trayName }}</strong></span>
+              <n-switch v-model:value="draftAutostartMinimized" size="small" :aria-label="`启动后最小化到${trayName}`" :disabled="!draftAutostart" />
             </label>
             </div>
           </fieldset>

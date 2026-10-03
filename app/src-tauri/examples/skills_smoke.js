@@ -94,7 +94,13 @@
     await wait(()=>!document.querySelector('.sidebar').inert,'Closing restores navigation');
     document.documentElement.dataset.theme='dark';
     await wait(()=>doc.documentElement.dataset.theme==='dark','Theme propagation');
-    check(getComputedStyle(doc.body).backgroundColor==='rgb(20, 26, 33)','Skill Manager uses shared dark background');
+    const colorProbe=document.createElement('span');
+    colorProbe.style.backgroundColor='var(--color-bg)';
+    document.body.appendChild(colorProbe);
+    const sharedBackground=getComputedStyle(colorProbe).backgroundColor;
+    colorProbe.remove();
+    await wait(()=>getComputedStyle(doc.body).backgroundColor===sharedBackground,'Skill shared background propagation');
+    check(true,'Skill Manager uses shared dark background');
     stage='uninstall-and-isolation';
     await call('unsync_skill_from_tool',{skillId:skill.id,tool:'codex'});
     check(!(await call('get_managed_skills')).find(s=>s.id===skill.id).targets.some(t=>t.tool==='codex'),'Undeploy removes selected Agent only');

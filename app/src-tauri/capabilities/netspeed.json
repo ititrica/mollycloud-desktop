@@ -2,18 +2,44 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "netspeed",
   "description": "Built-in island window; no shell, filesystem, autostart or updater access.",
-  "windows": ["netspeed-widget"],
+  "windows": [
+    "netspeed-widget"
+  ],
   "permissions": [
     "molly-netspeed:default",
-    "core:event:default", "core:window:allow-show", "core:window:allow-hide",
-    "core:window:allow-set-always-on-top", "core:window:allow-current-monitor",
-    "core:window:allow-available-monitors", "core:window:allow-outer-position",
-    "core:window:allow-inner-position", "core:window:allow-scale-factor",
-    "core:window:allow-inner-size", "core:window:allow-outer-size",
-    "core:window:allow-cursor-position", "core:window:allow-set-position",
-    "core:window:allow-set-size", "core:window:allow-set-ignore-cursor-events",
-    "core:window:allow-start-dragging", "core:menu:allow-new",
-    "core:menu:allow-append", "core:menu:allow-popup", "core:resources:allow-close",
-    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://*" }, { "url": "http://*" }] }
+    "core:event:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-current-monitor",
+    "core:window:allow-available-monitors",
+    "core:window:allow-outer-position",
+    "core:window:allow-inner-position",
+    "core:window:allow-scale-factor",
+    "core:window:allow-inner-size",
+    "core:window:allow-outer-size",
+    "core:window:allow-cursor-position",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-set-ignore-cursor-events",
+    "core:window:allow-start-dragging",
+    "core:menu:allow-new",
+    "core:menu:allow-append",
+    "core:menu:allow-popup",
+    "core:resources:allow-close",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://*"
+        },
+        {
+          "url": "http://*"
+        }
+      ]
+    }
+  ],
+  "platforms": [
+    "windows"
   ]
 }

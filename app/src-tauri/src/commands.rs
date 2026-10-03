@@ -448,6 +448,8 @@ pub fn set_overlay_interactive(
     overlay
         .set_ignore_cursor_events(!interactive)
         .map_err(|error| format!("无法切换桌宠交互模式：{error}"))?;
+    #[cfg(target_os = "macos")]
+    crate::screen::invalidate_ignore_cursor_cache();
     state
         .overlay_interactive
         .store(interactive, Ordering::Relaxed);

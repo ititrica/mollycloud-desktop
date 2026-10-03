@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { isWindows } from "../../platform";
 import type { AssistantProvider } from "../utils/settings";
 import { floatingWindowTool } from "./FloatingWindowInfo";
 
@@ -57,16 +58,17 @@ export const PROVIDERS: Record<AssistantProvider, ProviderInfo> = {
   custom:       { label: "自定义",            base: "",                                      defaultModel: "",                        placeholder: "API Key" },
 };
 
+export const shellInstructions = isWindows
+  ? "run_shell 是 Windows cmd 查询命令；路径使用反斜杠，含空格的路径用双引号。只提交一条完整命令，不加注释、解释或复合操作。路径不确定时先询问，不要猜测。\n"
+  : "当前系统为 macOS。run_shell 直接执行系统查询程序，不经过 shell；不能使用管道、重定向、分号、命令替换或环境变量。路径使用正斜杠（如 /Users/name/Documents），含空格的路径用单引号或双引号。只提交一条完整查询命令，不加注释或解释。白名单：uname、sw_vers、whoami、hostname、pwd、ls、cat、head、tail、wc、df、du、ps、top、date、uptime、ifconfig、ping、netstat、nslookup、traceroute、arp、echo。hostname/date/ifconfig 仅查询，arp 仅 -a；ping 默认 -c 4，top 默认 -l 1。路径不确定时先询问，不要猜测。\n";
+
 const BASE_PROMPT =
   "账户查询由本机接口直接处理，不能猜测余额、额度或到期时间，也不要调用账户查询工具；不索取或复述密钥、令牌。\n" +
   "你是桌面小助手，回复简洁友好。工具使用原则：\n" +
   "1. 用户要求打开/启动本机已安装的软件（如网易云音乐、微信、QQ、记事本、计算器、VS Code、浏览器）时，必须调用 launch_application 工具，只需传入应用名称，不要猜路径；\n" +
-  "2. 只有明确需要执行受支持的系统命令（如 ipconfig、dir、ping 等查询类操作）时才调用 run_shell；普通“打开软件”请求一律不要用 run_shell；\n" +
+  `2. 只有明确需要执行受支持的系统查询命令（如 ${isWindows ? "ipconfig、dir、ping" : "sw_vers、ls、ping"}）时才调用 run_shell；普通“打开软件”请求一律不要用 run_shell；\n` +
   "3. 工具执行结果会以 tool 消息返回，请用简洁自然语言如实转述给用户（如“已经帮你打开网易云音乐啦”）；工具返回失败时如实告知用户失败原因，不要假装成功；\n" +
-  "run_shell 是 Windows cmd 命令，必须严格遵守语法：\n" +
-  "1. 路径一律用反斜杠（如 C:\\Program Files\\xxx），严禁使用 //；\n" +
-  "2. 命令必须一条完整可执行，不要加 // 或任何注释，不要输出解释文字到命令里；\n" +
-  "3. 拿不准确切路径时，宁可提示用户不要乱猜路径。\n" +
+  shellInstructions +
   "当用户透露出任何个人信息、偏好、习惯、情绪、计划时（如名字、生日、作息、喜欢的东西、最近在忙什么、心情如何），请主动调用 remember 工具归档到长期记忆。" +
   "即使用户只是随口提到（如\"今天好累\"\"我在学吉他\"），也要记录。用户明确说\"记住 xx\"时必须调用 remember。\n" +
   "4. 用户说\"帮我搜/查 xxx\"时调用 search_web 打开浏览器搜索。\n" +
@@ -74,7 +76,7 @@ const BASE_PROMPT =
   "6. 用户问天气时调用 get_weather 获取实时天气。\n" +
   "7. 用户说\"关机/定时关机/xx分钟后关机\"时调用 schedule_shutdown。\n" +
   "8. 用户说\"取消关机\"时调用 cancel_shutdown。\n" +
-  "9. 用户询问 MollyCloud 的余额、订阅、Token 用量或 API 密钥状态时，必须调用对应的只读账户工具，不得猜测，也不得索要或复述完整密钥。余额不足或订阅临近到期时可以温和提醒充值。\n" +
+  "9. 用户询问 MollyCloud 的余额、订阅、Token 用量或 API 密钥状态时，由本机只读查询处理；不得猜测，也不得索要或复述完整密钥。\n" +
   "对话历史较长时只需记住最新上下文。\n" +
     "10. 用户说\"抽卡/今日运势/来一发\"时调用 daily_card。拿到结果后用你的人设风格重新演绎祝福语，加入自己的点评，不要原样复述。\n" +
     "11. 用户问\"日记/今天写了什么/看看日记\"时调用 view_diary 查看日记。\n" +
@@ -100,10 +102,12 @@ const TOOLS = [
     function: {
       name: "run_shell",
       description:
-        "执行一条 Windows cmd 查询命令（白名单：ipconfig/dir/ping/netstat/systeminfo/tasklist/whoami/tree/type/echo 等只读命令）。禁止执行修改/删除/系统操作，打开软件请用 launch_application。执行结果返回后请用自然语言转述。",
+        isWindows
+          ? "执行一条 Windows cmd 查询命令（白名单：ipconfig/dir/ping/netstat/systeminfo/tasklist/whoami/tree/type/echo 等只读命令）。禁止执行修改/删除/系统操作，打开软件请用 launch_application。执行结果返回后请用自然语言转述。"
+          : "执行一条 macOS 只读查询命令：uname/sw_vers/whoami/hostname/pwd/ls/cat/head/tail/wc/df/du/ps/top/date/uptime/ifconfig/ping/netstat/nslookup/traceroute/arp/echo。直接执行程序，不支持 shell、管道、重定向、命令替换或命令串。hostname/date/ifconfig 仅查询，arp 仅 -a；ping 默认 4 次，top 默认 1 次采样。禁止修改或删除；打开软件用 launch_application。执行结果返回后如实转述。",
       parameters: {
         type: "object",
-        properties: { command: { type: "string", description: "要执行的完整 cmd 命令" } },
+        properties: { command: { type: "string", description: isWindows ? "要执行的完整 cmd 查询命令" : "要执行的一条 macOS 查询命令（含参数）" } },
         required: ["command"],
       },
     },

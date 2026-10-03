@@ -1,3 +1,4 @@
+import { regressionBrowserPath } from "./browser-path.mjs";
 // Isolated desktop UI regression check; requires the local Vite dev server.
 // No real login, credentials, clipboard, or desktop pet state are used.
 import { spawn } from 'node:child_process';
@@ -9,7 +10,7 @@ const baseUrl = process.env.MOLLY_UI_URL || 'http://localhost:24320';
 const outputDir = resolve(import.meta.dirname, '../../artifacts/assistant-bubble');
 await mkdir(outputDir, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'molly-design-check-'));
-const browser = spawn(process.env.MOLLY_EDGE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
+const browser = spawn(regressionBrowserPath(), [
   '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
   '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank',
 ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });

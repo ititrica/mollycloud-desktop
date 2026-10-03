@@ -131,7 +131,10 @@ pub fn load_config() -> Result<AssistantConfig, String> {
             serde_json::from_str(&value).map_err(|_| "AI 助手设置已损坏，请重新保存".to_owned())
         }
         Err(keyring::Error::NoEntry) => Ok(AssistantConfig::default()),
-        Err(_) => Err("无法从 Windows 凭据管理器读取 AI 助手设置".to_owned()),
+        Err(_) => Err(format!(
+            "无法从{}读取 AI 助手设置",
+            crate::state::credential_store_name()
+        )),
     }
 }
 
@@ -139,7 +142,10 @@ pub fn load_provider_key(provider: &str) -> Result<Option<String>, String> {
     match provider_key_entry(provider)?.get_password() {
         Ok(value) => Ok(Some(value)),
         Err(keyring::Error::NoEntry) => Ok(None),
-        Err(_) => Err("无法从 Windows 凭据管理器读取 AI API Key".to_owned()),
+        Err(_) => Err(format!(
+            "无法从{}读取 AI API Key",
+            crate::state::credential_store_name()
+        )),
     }
 }
 
@@ -185,15 +191,23 @@ fn to_public(config: &AssistantConfig) -> AssistantConfigPublic {
 
 fn save_config(config: &AssistantConfig) -> Result<(), String> {
     let value = serde_json::to_string(config).map_err(|_| "无法保存 AI 助手设置".to_owned())?;
-    config_entry()?
-        .set_password(&value)
-        .map_err(|_| "无法把 AI 助手设置保存到 Windows 凭据管理器".to_owned())
+    config_entry()?.set_password(&value).map_err(|_| {
+        format!(
+            "无法把 AI 助手设置保存到{}",
+            crate::state::credential_store_name()
+        )
+    })
 }
 
 fn save_provider_key(provider: &str, api_key: &str) -> Result<(), String> {
     provider_key_entry(provider)?
         .set_password(api_key)
-        .map_err(|_| "无法把 AI API Key 保存到 Windows 凭据管理器".to_owned())
+        .map_err(|_| {
+            format!(
+                "无法把 AI API Key 保存到{}",
+                crate::state::credential_store_name()
+            )
+        })
 }
 
 fn delete_provider_key(provider: &str) -> Result<(), String> {
@@ -205,7 +219,7 @@ fn delete_provider_key(provider: &str) -> Result<(), String> {
 
 fn config_entry() -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, CONFIG_ACCOUNT)
-        .map_err(|_| "Windows 凭据管理器不可用".to_owned())
+        .map_err(|_| format!("{}不可用", crate::state::credential_store_name()))
 }
 
 fn provider_key_entry(provider: &str) -> Result<keyring::Entry, String> {
@@ -213,7 +227,7 @@ fn provider_key_entry(provider: &str) -> Result<keyring::Entry, String> {
         KEYRING_SERVICE,
         &format!("mollycloud-assistant-key-{provider}"),
     )
-    .map_err(|_| "Windows 凭据管理器不可用".to_owned())
+    .map_err(|_| format!("{}不可用", crate::state::credential_store_name()))
 }
 
 fn validate_base_url(value: &str) -> Result<(), String> {

@@ -4,15 +4,31 @@ import process from "node:process";
 import { resolve } from "node:path";
 // @ts-expect-error Development middleware is plain Node ESM.
 import { pluginAssetsMiddleware } from "./scripts/plugin-assets.mjs";
+// @ts-expect-error Shared build helpers are plain Node ESM.
+import { targetPlatform, pluginRegistryRoot } from "./scripts/platform.mjs";
 const host = process.env.TAURI_DEV_HOST;
+const platform = targetPlatform();
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [vue(), {
+  define: { __MOLLY_PLATFORM__: JSON.stringify(platform) },
+  plugins: [{
+    name: 'molly-platform-entry',
+    enforce: 'pre',
+    transform(source, id) {
+      if (platform === 'windows' || id !== resolve(import.meta.dirname, 'src/App.vue')) return;
+      // Remove the Windows import before Vue/Rollup discover the module graph.
+      // Tree shaking alone still emits dynamic-import chunks and preload references.
+      const windowsPanel = /const NetSpeedPanel = isWindows \? defineAsyncComponent\(\(\) => import\("\.\/components\/NetSpeedPanel\.vue"\)\) : undefined;/;
+      if (!windowsPanel.test(source)) throw new Error('macOS 灵动岛入口规则已变化，请同步平台构建排除逻辑。');
+      return { code: source.replace(windowsPanel, 'const NetSpeedPanel = undefined;'), map: null };
+    },
+  }, vue(), {
     name: 'molly-image-sandbox-assets',
     configureServer(server) {
-      if (process.env.APPDATA) server.middlewares.use(pluginAssetsMiddleware(
-        resolve(process.env.APPDATA, "cn.mollycloud.client/plugins"), resolve(import.meta.dirname, "public"),
+      const registry = pluginRegistryRoot(platform);
+      if (registry) server.middlewares.use(pluginAssetsMiddleware(
+        registry, resolve(import.meta.dirname, "public"),
       ));
       server.middlewares.use((request, response, next) => {
         if (request.url?.startsWith('/image-workbench/')) response.setHeader('Access-Control-Allow-Origin', '*');
@@ -26,7 +42,7 @@ export default defineConfig(() => ({
       input: {
         console: resolve(import.meta.dirname, "index.html"),
         overlay: resolve(import.meta.dirname, "overlay.html"),
-        island: resolve(import.meta.dirname, "island.html"),
+        ...(platform === 'windows' ? { island: resolve(import.meta.dirname, "island.html") } : {}),
       },
     },
   },

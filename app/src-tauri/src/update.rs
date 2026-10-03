@@ -10,6 +10,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 use url::Url;
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+pub const RELEASE_MANIFEST_URL: &str = "https://desktop.veriolink.com/latest-macos-aarch64.json";
+#[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
+pub const RELEASE_MANIFEST_URL: &str = "https://desktop.veriolink.com/latest-macos-x86_64.json";
+#[cfg(not(target_os = "macos"))]
 pub const RELEASE_MANIFEST_URL: &str = "https://desktop.veriolink.com/latest.json";
 const RELEASE_HOST: &str = "desktop.veriolink.com";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(8);
@@ -65,7 +70,25 @@ fn is_release_download_url(raw: &str) -> bool {
 }
 
 fn release_url_version(path: &str) -> Option<Version> {
-    let version = path.strip_prefix("/MollyCloud_")?.strip_suffix("_x64-setup.exe")?;
+    release_url_version_for_platform(path, std::env::consts::OS, std::env::consts::ARCH)
+}
+
+fn release_url_version_for_platform(
+    path: &str,
+    platform: &str,
+    architecture: &str,
+) -> Option<Version> {
+    let name = path.strip_prefix("/MollyCloud_")?;
+    let version = match (platform, architecture) {
+        ("windows", "x86_64") => name.strip_suffix("_x64-setup.exe")?,
+        ("macos", "aarch64") => name
+            .strip_suffix("_aarch64.dmg")
+            .or_else(|| name.strip_suffix("_universal.dmg"))?,
+        ("macos", "x86_64") => name
+            .strip_suffix("_x64.dmg")
+            .or_else(|| name.strip_suffix("_universal.dmg"))?,
+        _ => return None,
+    };
     parse_version(version).ok()
 }
 
@@ -82,15 +105,17 @@ fn parse_available_update(
         return Ok(None);
     }
     if !is_release_download_url(&manifest.download_url)
-        || Url::parse(&manifest.download_url)
-            .map_or(true, |url| release_url_version(url.path()).as_ref() != Some(&latest))
+        || Url::parse(&manifest.download_url).map_or(true, |url| {
+            release_url_version(url.path()).as_ref() != Some(&latest)
+        })
     {
         return Err("更新清单中的下载地址未获信任".to_owned());
     }
     let sha256 = manifest.sha256.ok_or("更新清单中的安装包校验信息无效")?;
-    let size_bytes = manifest.size_bytes.ok_or("更新清单中的安装包校验信息无效")?;
-    if sha256.len() != 64 || !sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
-        || size_bytes == 0
+    let size_bytes = manifest
+        .size_bytes
+        .ok_or("更新清单中的安装包校验信息无效")?;
+    if sha256.len() != 64 || !sha256.bytes().all(|byte| byte.is_ascii_hexdigit()) || size_bytes == 0
     {
         return Err("更新清单中的安装包校验信息无效".to_owned());
     }
@@ -120,7 +145,7 @@ fn manifest_request_url(current_version: &str) -> String {
         .unwrap_or_default()
         .as_secs()
         / 60;
-    format!("{RELEASE_MANIFEST_URL}?current_version={current_version}&checked_at={checked_at}")
+    format!("{RELEASE_MANIFEST_URL}?current_version={current_version}&platform={}&arch={}&checked_at={checked_at}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
 fn build_client(proxy_url: Option<String>) -> Result<reqwest::Client, String> {
@@ -205,22 +230,36 @@ pub fn open_desktop_update(download_url: String) -> Result<(), String> {
 mod tests {
     use super::*;
 
+    fn download_url(version: &str) -> String {
+        let suffix = match (std::env::consts::OS, std::env::consts::ARCH) {
+            ("macos", "aarch64") => "aarch64.dmg",
+            ("macos", _) => "x64.dmg",
+            _ => "x64-setup.exe",
+        };
+        format!("https://desktop.veriolink.com/MollyCloud_{version}_{suffix}")
+    }
+
+    fn manifest(version: &str, url: String) -> Vec<u8> {
+        serde_json::to_vec(&serde_json::json!({
+            "version": version,
+            "downloadUrl": url,
+            "notes": "Startup check fixed",
+            "sha256": "a".repeat(64),
+            "sizeBytes": 12345,
+        }))
+        .unwrap()
+    }
+
     #[test]
     fn returns_only_a_newer_trusted_release() {
-        let manifest = br#"{
-          "version": "v0.1.2",
-          "downloadUrl": "https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe",
-          "notes": "Startup check fixed",
-          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "sizeBytes": 12345
-        }"#;
+        let url = download_url("0.1.2");
+        let manifest = manifest("v0.1.2", url.clone());
         assert_eq!(
-            parse_available_update("0.1.1", manifest).unwrap(),
+            parse_available_update("0.1.1", &manifest).unwrap(),
             Some(AvailableUpdate {
                 version: "0.1.2".to_owned(),
                 current_version: "0.1.1".to_owned(),
-                download_url: "https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe"
-                    .to_owned(),
+                download_url: url,
                 notes: Some("Startup check fixed".to_owned()),
                 sha256: "a".repeat(64),
                 size_bytes: 12345,
@@ -230,23 +269,56 @@ mod tests {
 
     #[test]
     fn hides_the_current_or_an_older_release() {
-        let manifest = br#"{"version":"0.1.1","downloadUrl":"https://desktop.veriolink.com/MollyCloud_0.1.1_x64-setup.exe"}"#;
-        assert_eq!(parse_available_update("0.1.1", manifest).unwrap(), None);
+        let manifest = manifest("0.1.1", download_url("0.1.1"));
+        assert_eq!(parse_available_update("0.1.1", &manifest).unwrap(), None);
     }
 
     #[test]
     fn rejects_a_download_outside_the_release_domain() {
-        let manifest = br#"{"version":"0.1.2","downloadUrl":"https://example.com/MollyCloud_0.1.2_x64-setup.exe","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sizeBytes":12345}"#;
-        assert!(parse_available_update("0.1.1", manifest).is_err());
+        let manifest = manifest(
+            "0.1.2",
+            download_url("0.1.2").replace(RELEASE_HOST, "example.com"),
+        );
+        assert!(parse_available_update("0.1.1", &manifest).is_err());
     }
 
     #[test]
     fn rejects_missing_checksum_or_mismatched_versioned_file() {
-        let absent = br#"{"version":"0.1.2","downloadUrl":"https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe"}"#;
-        assert!(parse_available_update("0.1.1", absent).is_err());
-        let mismatched = br#"{"version":"0.1.2","downloadUrl":"https://desktop.veriolink.com/MollyCloud_0.1.3_x64-setup.exe","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sizeBytes":12345}"#;
-        assert!(parse_available_update("0.1.1", mismatched).is_err());
-        assert!(!is_release_download_url("https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe?src=other"));
-        assert!(!is_release_download_url("https://desktop.veriolink.com/MollyCloud_fake_x64-setup.exe"));
+        let absent = serde_json::to_vec(
+            &serde_json::json!({"version":"0.1.2","downloadUrl":download_url("0.1.2")}),
+        )
+        .unwrap();
+        assert!(parse_available_update("0.1.1", &absent).is_err());
+        let mismatched = manifest("0.1.2", download_url("0.1.3"));
+        assert!(parse_available_update("0.1.1", &mismatched).is_err());
+        assert!(!is_release_download_url(&format!(
+            "{}?src=other",
+            download_url("0.1.2")
+        )));
+        assert!(!is_release_download_url(&download_url("fake")));
+    }
+
+    #[test]
+    fn release_files_match_the_platform_and_architecture() {
+        for (path, platform, architecture) in [
+            ("/MollyCloud_0.2.1_aarch64.dmg", "macos", "aarch64"),
+            ("/MollyCloud_0.2.1_x64.dmg", "macos", "x86_64"),
+            ("/MollyCloud_0.2.1_universal.dmg", "macos", "aarch64"),
+            ("/MollyCloud_0.2.1_universal.dmg", "macos", "x86_64"),
+            ("/MollyCloud_0.2.1_x64-setup.exe", "windows", "x86_64"),
+        ] {
+            assert_eq!(
+                release_url_version_for_platform(path, platform, architecture),
+                Some(Version::new(0, 2, 1))
+            );
+        }
+        for (path, platform, architecture) in [
+            ("/MollyCloud_0.2.1_x64-setup.exe", "macos", "aarch64"),
+            ("/MollyCloud_0.2.1_x64.dmg", "macos", "aarch64"),
+            ("/MollyCloud_0.2.1_aarch64.dmg", "macos", "x86_64"),
+            ("/MollyCloud_0.2.1_universal.dmg", "windows", "x86_64"),
+        ] {
+            assert!(release_url_version_for_platform(path, platform, architecture).is_none());
+        }
     }
 }

@@ -1,4 +1,7 @@
-//! Isolated WebView2 integration regression for Skill Manager. No real Agent data.
+//! Isolated native WebView integration regression for Skill Manager. No real Agent data.
+#[allow(dead_code)]
+#[path = "../src/console_plugins.rs"]
+mod console_plugins;
 use serde_json::{json, Value};
 use std::sync::{Arc, Mutex};
 
@@ -79,10 +82,14 @@ fn main() {
     let app = tauri::Builder::default().manage(result).manage(FixtureRoot(root.clone()))
         .plugin(tauri_plugin_dialog::init()).plugin(tauri_plugin_opener::init())
         .plugin(molly_skills::embedded::init_for_test(private.clone(), home.clone()))
-        .invoke_handler(tauri::generate_handler![smoke_report, smoke_change_source, smoke_prepare_remote, bootstrap_public,restore_session,fetch_dashboard,get_assistant_config,is_pet_visible,set_console_dashboard_active,check_desktop_update,fetch_account_balance])
+        .invoke_handler(tauri::generate_handler![smoke_report, smoke_change_source, smoke_prepare_remote, bootstrap_public,restore_session,fetch_dashboard,get_assistant_config,is_pet_visible,set_console_dashboard_active,check_desktop_update,fetch_account_balance,console_plugins::list_console_plugins])
         .setup(move |app| {
+            console_plugins::initialize_at(app.handle(), root.join("plugins"));
+            let resources = app.handle().clone();
             tauri::WebviewWindowBuilder::new(app,"console",tauri::WebviewUrl::App("index.html".into()))
-                .visible(false).inner_size(1180.0,760.0).data_directory(root.join("webview"))
+                .visible(cfg!(target_os = "macos")).focused(false).inner_size(1180.0,760.0).data_directory(root.join("webview"))
+                .incognito(cfg!(target_os = "macos"))
+                .on_web_resource_request(move |request, response| console_plugins::intercept(&resources, request, response))
                 .initialization_script(&script).build()?;
             let handle = app.handle().clone();
             std::thread::spawn(move || {std::thread::sleep(std::time::Duration::from_secs(180));handle.exit(1);});

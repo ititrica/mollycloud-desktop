@@ -1,19 +1,19 @@
 # MollyCloud Desktop
 
-MollyCloud 的 Windows 桌面客户端，将账户控制台、Molly AI 助手、透明桌宠、灵动岛和开发工具工作台整合到一个应用中。
+MollyCloud 桌面客户端，将账户控制台、Molly AI 助手、透明桌宠和开发工具工作台整合到一个应用中。仓库包含 Windows 与 macOS 平台实现；macOS 版按平台边界移除了 NetSpeed Dynamic 灵动岛。
 
 [下载安装包](https://github.com/ititrica/mollycloud-desktop/releases/latest) · [更新日志](./CHANGELOG.md) · [开源项目与许可证](./docs/开源项目与许可证.md) · [反馈问题](https://github.com/ititrica/mollycloud-desktop/issues) · [MollyCloud 官网](https://mollycloud.cn)
 
 ## 下载与安装
 
-当前版本：**v0.2.0**，适用于 **Windows 10/11 x64**。
+当前源码版本：**v0.2.0**。以下已发布安装包适用于 **Windows 10/11 x64**；macOS 13 及以上版本可按 [macOS 开发与打包说明](./docs/macOS开发.md) 构建 `.app` / `.dmg`。macOS 未发布的构建不能由本表的 Windows 安装包替代。
 
 | 安装包 | 用途 |
 | --- | --- |
 | [MollyCloud_0.2.0_x64-setup.exe](https://github.com/ititrica/mollycloud-desktop/releases/download/v0.2.0/MollyCloud_0.2.0_x64-setup.exe) | 推荐，NSIS 安装器 |
 | [MollyCloud_0.2.0_x64_en-US.msi](https://github.com/ititrica/mollycloud-desktop/releases/download/v0.2.0/MollyCloud_0.2.0_x64_en-US.msi) | MSI 安装包，适合集中部署 |
 
-下载后运行安装器。应用需要 Microsoft Edge WebView2 Runtime；如果系统缺少该运行时，按安装器提示完成安装。首次使用可通过系统托盘打开控制台并登录 MollyCloud。
+Windows 下载后运行安装器，需要 Microsoft Edge WebView2 Runtime；如果系统缺少该运行时，按安装器提示完成安装。macOS 将 `.dmg` 中的应用拖入 Applications，使用系统 WKWebView。首次使用可通过 Windows 系统托盘或 macOS 菜单栏打开控制台并登录 MollyCloud。
 
 发行页提供 `SHA256SUMS.txt`。可在 PowerShell 中核对下载文件：
 
@@ -32,7 +32,7 @@ Get-FileHash .\MollyCloud_0.2.0_x64-setup.exe -Algorithm SHA256
 | API 密钥 | 创建、复制、删除、分组切换、配置额度与有效期，查看实际累计 / 今日消费，导入内置 CC Switch |
 | Molly 助手 | “对话 / 设置”横向菜单，自定义 OpenAI 兼容对话端点和模型、在线朗读、本地账户查询与主动提醒 |
 | 透明桌宠 | Molly 模型、拖动和互动、对话气泡、显示 / 隐藏、托盘与启动设置 |
-| 灵动岛 | 网速、流量、系统资源、时间、媒体与通知展示，随主应用启停 |
+| 灵动岛（仅 Windows） | 网速、流量、系统资源、时间、媒体与通知展示，随主应用启停；macOS 不编译或打包此模块 |
 | CC Switch | 内置供应商、CLI 配置、代理、MCP、Skills 和会话管理，支持 Claude Code、Codex、Gemini CLI 等工具 |
 | 生图工作台 | 生成和编辑图片、流式预览、作品历史、自定义 API 端点与手动保存密钥 |
 | Skill 管理器 | 浏览、导入、安装、整理、启用与部署本机 Agent Skills |
@@ -58,19 +58,20 @@ Get-FileHash .\MollyCloud_0.2.0_x64-setup.exe -Algorithm SHA256
 
 **CC Switch**：API 密钥“导入到内置 CC Switch”只将供应商写入私有库；在内置管理器中点击“启用”后才会修改对应本机工具配置。可继续管理工具的 MCP、Skills 和会话。
 
-**更新**：GitHub Releases 提供源码与安装包。应用内更新检查使用 `https://desktop.veriolink.com/latest.json`；GitHub Release 发布与该更新源独立，发布到 GitHub 不会自动更新 R2。详见 [桌面端更新发布](./docs/桌面端更新发布.md)。
+**更新**：GitHub Releases 提供源码与安装包。Windows 更新检查使用 `https://desktop.veriolink.com/latest.json`；macOS 使用对应架构的 `latest-macos-aarch64.json` / `latest-macos-x86_64.json`，仅接受匹配架构的 DMG。GitHub Release 发布与这些更新源独立，发布到 GitHub 不会自动更新 R2。详见 [桌面端更新发布](./docs/桌面端更新发布.md) 和 [macOS 本地归档](./docs/macOS开发.md#本地发行归档)。
 
 ## 开发与构建
 
 ### 环境要求
 
+- macOS：macOS 13+、Xcode Command Line Tools、Node.js 22.12+、Rust stable；Apple Silicon 与 Intel 分别使用对应目标。详见 [macOS 开发](./docs/macOS开发.md)。
 - Windows 10/11 x64 与 WebView2 Runtime。
 - Node.js **22.12 或更高版本**，建议使用受支持的 LTS 版本。
-- Rust stable，MSVC 工具链。
-- Visual Studio Build Tools 的“使用 C++ 的桌面开发”工作负载与 Windows SDK。
+- Rust stable；Windows 使用 MSVC 工具链，macOS 使用 Apple 工具链。
+- Windows 需要 Visual Studio Build Tools 的“使用 C++ 的桌面开发”工作负载与 Windows SDK。
 - Git；首次安装 npm / Cargo 依赖及获取安装器工具时需要网络。
 
-### 获取源码并启动
+### Windows 获取源码并启动
 
 ```powershell
 git clone https://github.com/ititrica/mollycloud-desktop.git
@@ -83,7 +84,7 @@ npm.cmd run dev:desktop
 
 首次启动会分别安装并构建 CC Switch、生图工作台和 Skill 管理器的前端。只预览前端可运行 `npm.cmd run dev`；浏览器预览中的模拟数据不代表原生接口已完成验证。
 
-### 验证与打包
+### Windows 验证与打包
 
 在 `app` 目录执行：
 
@@ -100,7 +101,7 @@ app/src-tauri/target/release/bundle/nsis/
 app/src-tauri/target/release/bundle/msi/
 ```
 
-UI 开发服务运行时，执行 `npm.cmd run check:design`。检查覆盖登录、七个控制台入口、960×640 / 1180×760 / 1440×900，截图输出到 `artifacts/design-review/`。设计规范见 [MASTER.md](./design-system/molly-desktop/MASTER.md)。回归测试使用临时用户目录和模拟凭据。
+UI 开发服务运行时，执行 `npm run check:design`。检查覆盖登录、Windows 七个 / macOS 六个控制台入口、960×640 / 1180×760 / 1440×900，截图输出到 `artifacts/design-review/`。设计规范见 [MASTER.md](./design-system/molly-desktop/MASTER.md)。回归测试使用临时用户目录和模拟凭据。macOS 的构建和安装命令见 [macOS 开发](./docs/macOS开发.md)。
 
 模型导入脚本也在 `app` 目录执行：
 
@@ -129,14 +130,14 @@ design-system/           控制台公共设计规范
 docs/                    集成、开发、发布和开源归属文档
 ```
 
-应用由 Vue 3 / TypeScript / Naive UI 控制台、独立透明 Petra 窗口、灵动岛窗口，以及 Tauri 2 / Rust 原生层组成。内嵌 React 工具独立构建，样式与宿主分离；生图工作台通过受限消息桥接通信，保持 sandbox 来源隔离。
+应用由 Vue 3 / TypeScript / Naive UI 控制台、独立透明 Petra 窗口、Windows 专用灵动岛窗口，以及 Tauri 2 / Rust 原生层组成。内嵌 React 工具独立构建，样式与宿主分离；生图工作台通过受限消息桥接通信，保持 sandbox 来源隔离。
 
 ### 数据与权限边界
 
-- 账户令牌留在原生层；Refresh Token 按登录偏好保存到 Windows 凭据管理器。对话与 TTS 使用独立配置，TTS 密钥由 Windows DPAPI 加密保存。
+- 账户令牌留在原生层；Refresh Token 按登录偏好保存到 Windows 凭据管理器或 macOS 钥匙串。对话与 TTS 使用独立配置；密钥在 Windows 使用 DPAPI，在 macOS 使用钥匙串保护的 AES-GCM 本机加密存储。
 - 生图 API Key 由用户手动填写，工作台使用独立存储，不共享账户 Cookie、令牌或通用 Tauri IPC。
 - CC Switch 的供应商库、设备设置、备份及代理归属保持私有；用户明确操作的工具配置、MCP、Skills、会话和环境变量管理作用于本机真实工具。
-- 支付验证使用订单专属隔离 WebView2，会话退出时清理；金额、可购状态与支付结果以服务端确认为准。
+- 支付验证使用订单专属隔离 WebView（Windows WebView2 / macOS WKWebView），会话退出时清理；金额、可购状态与支付结果以服务端确认为准。
 - 在线对话、生图、TTS 会向用户配置的服务发送相应内容；账户查询及提醒使用本地规则访问 MollyCloud 账户接口。
 
 ## 使用的开源项目
@@ -150,7 +151,7 @@ docs/                    集成、开发、发布和开源归属文档
 | [CC Switch](https://github.com/farion1231/cc-switch) | 开发工具供应商、配置与代理管理 | 3.20.4 · `43e1d99` · MIT |
 | [GPT Image Playground](https://github.com/CookSleep/gpt_image_playground) | 生图与图片编辑工作台 | 0.7.12 · `da4fda8` · MIT |
 | [Skills Manager](https://github.com/xingkongliang/skills-manager) | Agent Skills 管理 | 1.40.0 · `6ae02e3` · MIT |
-| [NetSpeed Dynamic](https://github.com/GEORGEWWWU/NetSpeed-Dynamic) | 灵动岛、网速、媒体与通知 | 2.4.6 · `422931f` · MIT |
+| [NetSpeed Dynamic](https://github.com/GEORGEWWWU/NetSpeed-Dynamic) | Windows 专用灵动岛、网速、媒体与通知 | 2.4.6 · `422931f` · MIT |
 | [Sub2API](https://github.com/Wei-Shaw/sub2api) | 供应商品牌图标组件的适配来源 | `458b92a` · LGPL-3.0 |
 | [Tauri](https://github.com/tauri-apps/tauri) / [Wry](https://github.com/tauri-apps/wry) | 原生外壳、窗口、WebView 与 IPC | Tauri 2 / Wry 0.55 · MIT OR Apache-2.0 |
 | [Vue](https://github.com/vuejs/core) / [Pinia](https://github.com/vuejs/pinia) / [Naive UI](https://github.com/tusen-ai/naive-ui) | 控制台组件与状态管理 | MIT |
@@ -169,6 +170,7 @@ Live2D Cubism Core 是 **Live2D 专有运行时**，并非 MIT 开源组件，�
 ## 相关文档与反馈
 
 - [CC Switch 内置方案](./docs/CCSwitch内置方案.md)
+- [macOS 开发与验证](./docs/macOS开发.md)
 - [生图工作台集成方案](./docs/GPTImagePlayground集成方案.md)
 - [Skill 管理器集成方案](./docs/Skill管理器集成方案.md)
 - [灵动岛内置方案](./docs/灵动岛内置方案.md)
@@ -176,4 +178,4 @@ Live2D Cubism Core 是 **Live2D 专有运行时**，并非 MIT 开源组件，�
 - [充值与密钥管理](./docs/客户端充值与密钥分组.md)
 - [项目开发交接](./docs/项目开发交接.md)
 
-请在 [Issues](https://github.com/ititrica/mollycloud-desktop/issues) 中附上应用版本、Windows 版本、复现步骤和相关截图；提交前移除 API Key、登录令牌和私人账户信息。
+请在 [Issues](https://github.com/ititrica/mollycloud-desktop/issues) 中附上应用版本、操作系统版本与架构（Windows / macOS，x64 / Apple Silicon）、复现步骤和相关截图；提交前移除 API Key、登录令牌和私人账户信息。

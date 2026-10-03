@@ -1,28 +1,26 @@
-# MollyCloud
+# MollyCloud 应用
 
-Windows 桌面客户端，包含透明 Live2D 桌宠窗口、MollyCloud 用户控制台和可读取账户状态的 Molly AI 助手。
+Vue 3 / TypeScript 控制台、Petra 透明桌宠和 Tauri 2 / Rust 原生层。macOS 13+ 与 Windows 使用独立的平台窗口、系统接口、凭据与打包配置，内嵌工具继续保持各自来源和存储边界。
 
-## 本地运行
+## 开发
 
-```powershell
-npm install
-npm run import:model -- --source "C:\path\to\model" --core "C:\path\to\live2dcubismcore.min.js" --preview "C:\path\to\preview.png"
-npm run tauri dev
-# 等价的 MollyCloud 开发入口：npm run dev:desktop
+```sh
+npm ci
+npm run dev:desktop
 ```
 
-MollyCloud 账号连接固定 HTTPS 域名 `https://mollycloud.cn`。Access Token 仅保存在 Rust 内存，Refresh Token 保存在 Windows 凭据管理器，控制台展示的 API Key 始终由原生层掩码后再交给界面。
+macOS 构建和发行归档详见 [macOS 开发](../docs/macOS开发.md)，完整功能与 Windows 安装入口详见 [项目 README](../README.md)。Mac 不编译或分发 NetSpeed Dynamic 灵动岛。
 
-AI 助手设置与对话都位于桌宠窗口，控制台只保留总开关。助手支持 MollyCloud、OpenAI、DeepSeek、Kimi、智谱、通义千问、SiliconFlow、OpenRouter、Groq、Ollama 和自定义 OpenAI 兼容接口；第三方 API Key 由 Windows DPAPI 加密保存。MollyCloud 账户工具只读余额、订阅、用量和掩码密钥状态；Petra 原有的本机助手工具继续保留，涉及命令执行时会在桌宠界面要求确认。程序不会自动充值或修改订阅。
+```sh
+npm test
+npm run build
+npm run package:macos
+# Vite 开发服务运行时：
+npm run check:design
+```
 
-控制台使用 MollyCloud 官网的亮色视觉基线（`#F7F7F4` 背景、品牌蓝与荧光绿）。Petra 桌宠窗口保持透明、无边框、置顶、跳过任务栏，并依据模型和菜单区域动态点击穿透；右键角色可打开 Petra 完整菜单，系统托盘可打开控制台或显示/隐藏 Molly。
+控制台复用 [设计规范](../design-system/molly-desktop/MASTER.md) 的浅色、深色与系统主题。Petra 透明窗口保持独立布局。UI 回归使用临时用户目录，账户和工具测试使用模拟凭据；不操作用户已有桌宠或真实账户。
 
-## Petra 集成
+登录刷新令牌保存在系统凭据存储，Access Token 只在 Rust 内存。助手密钥使用本机加密存储；生图密钥由用户手动填写，不能自动读取账户密钥。CC Switch 的供应商导入只入库，点击启用才写入实际工具配置；供应商库、设置和备份位于 MollyCloud 私有目录。
 
-Petra 0.2.3（提交 `9b4af14efc14696e4b249ecde1ad66008af502e0`）的完整上游源码快照保存在 `third_party/Petra/`。当前桌宠窗口直接运行内化后的 Petra 前端与原生能力，包括右键菜单、拖拽/穿透、漫游、模型管理、助手、日记、抽卡、提醒、托盘、自启动和音频响应；MollyCloud 控制台作为同一 Tauri 应用的第二窗口运行。归属和 MIT 许可证全文见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
-
-当前是开发阶段，自动更新模块已保留但不会连接 Petra 的发行源；等 MollyCloud 自有签名更新地址和公钥就绪后再启用。
-
-## Live2D 许可提醒
-
-仓库中的模型资源和 Cubism Core 仅用于当前项目本地开发。正式分发前必须确认模型素材、Live2D Cubism SDK/Core 以及相关运行时依赖的发布许可。
+Petra 原始快照位于 `third_party/Petra/`。模型、Live2D Cubism Core、素材和上游项目归属详见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。正式发行前需要确认各模型与运行时的分发许可。

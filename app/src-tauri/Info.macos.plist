@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>cn.mollycloud.client.import</string>
+      <key>CFBundleURLSchemes</key><array><string>mollycloud</string></array>
+    </dict>
+  </array>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>仅在你开启桌宠音频响应后采集系统播放音量，用于模型动作，不保存或上传音频。</string>
+</dict>
+</plist>

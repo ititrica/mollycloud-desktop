@@ -24,6 +24,8 @@ mod screen;
 mod state;
 mod trash;
 mod update;
+#[cfg(target_os = "macos")]
+mod macos;
 
 use assistant::{
     assistant_chat, assistant_status, petra_assistant_chat, petra_assistant_models,
@@ -38,6 +40,7 @@ use commands::{
 };
 use serde::{Deserialize, Serialize};
 use std::io::Write;
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -49,10 +52,13 @@ use update::{check_for_desktop_update, open_desktop_update};
 
 /// Windows GUI 子系统中启动控制台程序（powershell/cmd/reg/shutdown）时，
 /// 默认会弹出一个新的控制台窗口。加 CREATE_NO_WINDOW 避免窗口闪现。
+#[cfg(windows)]
 const CREATE_NO_WINDOW_FLAG: u32 = 0x0800_0000;
 
+#[cfg(windows)]
 fn hidden_command(program: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new(program);
+    #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW_FLAG);
     cmd
 }
@@ -160,6 +166,7 @@ fn log_line(s: &str) {
     }
 }
 
+#[cfg(windows)]
 fn read_reg_value(subkey: &str, value: &str) -> String {
     hidden_command("reg")
         .args(["query", subkey, "/v", value])
@@ -179,6 +186,9 @@ fn read_reg_value(subkey: &str, value: &str) -> String {
 
 /// 启动时打印环境信息，帮助定位 WebView2 加载问题。
 fn log_environment() {
+    log_line(&format!("Platform: {} / {}", std::env::consts::OS, std::env::consts::ARCH));
+    #[cfg(windows)]
+    {
     log_line(&format!("OS_VAR: {}", std::env::var("OS").unwrap_or_default()));
     log_line(&format!(
         "WebView2(64): {}",
@@ -204,6 +214,7 @@ fn log_environment() {
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '{}'",
         std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").unwrap_or_default()
     ));
+    }
     if let Some(dir) = LOG_DIR.get() {
         log_line(&format!("LOG_DIR: {}", dir.display()));
     }
@@ -364,10 +375,11 @@ fn restart_app(app: AppHandle) {
 
 fn sanitize_psd_name(name: &str) -> String {
     const MAX_NAME_LEN: usize = 64;
-    let base = std::path::Path::new(name)
+    let leaf = name.rsplit(['/', '\\']).next().unwrap_or(name);
+    let base = std::path::Path::new(leaf)
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| name.to_string());
+        .unwrap_or_else(|| leaf.to_string());
     let clean: String = base
         .chars()
         .take(MAX_NAME_LEN)
@@ -521,7 +533,7 @@ fn model_resource_path(app: AppHandle, name: String) -> Result<String, String> {
     let mut tried: Vec<String> = Vec::new();
     let mut paths: Vec<(String, std::path::PathBuf)> = Vec::new();
     if let Ok(base) = app.path().resource_dir() {
-        for rel in [format!("resources/models/{file}"), format!("models/{file}"), format!("{file}")] {
+        for rel in [format!("_up_/public/models/{file}"), format!("resources/models/{file}"), format!("models/{file}"), format!("{file}")] {
             paths.push((rel.clone(), base.join(&rel)));
         }
     }
@@ -666,6 +678,7 @@ fn spawn_drag_follower(app: AppHandle) {
 
 /// 小助手主动问候：取当前前台窗口标题 + 进程名，供 AI 判断用户在做什么。
 #[tauri::command]
+#[cfg(windows)]
 fn active_window_title() -> String {
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Threading::{
@@ -726,9 +739,32 @@ fn get_system_proxy() -> Option<String> {
     proxy::get_system_proxy()
 }
 
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn active_window_title() -> String {
+    macos::active_application()
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn get_idle_seconds() -> u64 {
+    macos::idle_seconds()
+}
+
+#[cfg(target_os = "macos")]
+fn dpapi_protect(data: &[u8]) -> Result<Vec<u8>, String> {
+    macos::protect(data)
+}
+
+#[cfg(target_os = "macos")]
+fn dpapi_unprotect(data: &[u8]) -> Result<Vec<u8>, String> {
+    macos::unprotect(data)
+}
+
 /// 返回用户空闲秒数（鼠标键盘无输入的时间）。
 /// 主动问候场景触发用：空闲太久回来时打招呼、久坐提醒等。
 #[tauri::command]
+#[cfg(windows)]
 fn get_idle_seconds() -> u64 {
     // 使用 raw FFI 调用 GetLastInputInfo，避免 windows crate feature 依赖问题
     #[repr(C)]
@@ -752,6 +788,7 @@ fn get_idle_seconds() -> u64 {
 }
 
 /// 用 Windows DPAPI 加密数据（绑定当前用户，无需额外密钥）。
+#[cfg(windows)]
 fn dpapi_protect(data: &[u8]) -> Result<Vec<u8>, String> {
     use windows::Win32::Foundation::LocalFree;
     use windows::Win32::Security::Cryptography::{
@@ -783,6 +820,7 @@ fn dpapi_protect(data: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 /// 用 Windows DPAPI 解密数据。
+#[cfg(windows)]
 fn dpapi_unprotect(data: &[u8]) -> Result<Vec<u8>, String> {
     use windows::Win32::Foundation::LocalFree;
     use windows::Win32::Security::Cryptography::{
@@ -856,7 +894,8 @@ static LOG_START_OFFSET: OnceLock<u64> = OnceLock::new();
 fn collect_env_info(app: &AppHandle) -> String {
     let mut out = String::new();
     out.push_str(&format!("时间: {}\n", chrono_now()));
-    out.push_str(&format!("OS: {}\n", std::env::var("OS").unwrap_or_default()));
+    out.push_str(&format!("OS: {} / {}\n", std::env::consts::OS, std::env::consts::ARCH));
+    #[cfg(windows)]
     out.push_str(&format!(
         "WebView2: {}\n",
         read_reg_value(
@@ -1004,10 +1043,40 @@ fn export_feedback(app: AppHandle, message: String) -> Result<String, String> {
 
 // ==================== 小助手扩展工具 ====================
 
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn set_volume(level: Option<u8>, mute: Option<bool>) -> Result<String, String> {
+    macos::set_volume(level, mute)
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn send_notification(app: AppHandle, title: String, body: String) {
+    macos::send_notification(&app, &title, &body);
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn schedule_shutdown(app: AppHandle, minutes: u32) -> Result<String, String> {
+    macos::schedule_shutdown(app, minutes)
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn cancel_shutdown() -> Result<String, String> {
+    macos::cancel_shutdown()
+}
+
+#[cfg(target_os = "macos")]
+fn validate_shell_command(command: &str) -> Result<(), String> {
+    macos::query_command(command).map(|_| ())
+}
+
 /// 设置系统音量（0-100），或静音/取消静音。
 /// mute=true 设音量为 0（静音），mute=false 恢复到 level（默认 50）。
 /// level 和 mute 可同时使用（如 level=30, mute=true → 静音，记住 30）。
 #[tauri::command]
+#[cfg(windows)]
 fn set_volume(level: Option<u8>, mute: Option<bool>) -> Result<String, String> {
     let target = match mute {
         Some(true) => 0u8,          // 静音：强制 0
@@ -1037,6 +1106,7 @@ public class Vol {{ [DllImport("winmm.dll")] public static extern int waveOutSet
 /// 获取当前天气信息（调用 wttr.in 纯文本接口，无需 API Key）。
 /// 发送 Windows 托盘通知（用 NotifyIcon 气泡，不依赖 WinRT AUMID）
 #[tauri::command]
+#[cfg(windows)]
 fn send_notification(title: String, body: String) {
     // 自定义美化弹窗（Windows Forms）：浅粉圆角、标题+内容、6 秒自动关闭
     // 不用系统 Toast（请勿打扰模式会屏蔽），不受打扰设置影响
@@ -1076,56 +1146,34 @@ fn send_notification(title: String, body: String) {
 
 #[tauri::command]
 async fn get_weather(city: Option<String>) -> Result<String, String> {
-    let city_arg = city.unwrap_or_default();
-    tauri::async_runtime::spawn_blocking(move || {
-        // 构建查询 URL：优先用用户设置的城市，否则尝试 Windows 位置 API
-        let url = if !city_arg.trim().is_empty() {
-            format!("https://wttr.in/{}?format=j1&lang=zh", city_arg.trim())
-        } else {
-            // 尝试通过 Windows 位置 API 获取真实坐标（不受 VPN 影响）
-            let coord_cmd = r#"Add-Type -AssemblyName System.Device; $w = New-Object System.Device.Location.GeoCoordinateWatcher; $w.Start(); Start-Sleep -Milliseconds 1500; $c = $w.Position.Location; if ($c.IsUnknown) { "" } else { "$($c.Latitude),$($c.Longitude)" }; $w.Stop()"#;
-            let coord_output = hidden_command("powershell")
-                .args(["-NoProfile", "-Command", coord_cmd])
-                .output();
-            let coords = coord_output.ok()
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-                .filter(|s| !s.is_empty() && s.contains(","));
-            if let Some(c) = coords {
-                format!("https://wttr.in/{}?format=j1&lang=zh", c)
-            } else {
-                // Windows 位置不可用，回退到 IP 定位
-                "https://wttr.in/?format=j1&lang=zh".to_string()
-            }
-        };
-        let ps_cmd = format!(r#"try {{
-                $r = Invoke-WebRequest -Uri '{}' -TimeoutSec 6 -UseBasicParsing;
-                $j = $r.Content | ConvertFrom-Json;
-                $c = $j.current_condition[0];
-                $w = $j.weather[0];
-                $loc = $j.nearest_area[0].areaName[0].value;
-                $desc = $c.weatherDesc[0].value;
-                $temp = $c.temp_C;
-                $max = $w.maxtempC;
-                $min = $w.mintempC;
-                $rain = $w.hourly[4].chanceofrain;
-                "$loc|$desc|$temp|$max|$min|$rain"
-                }} catch {{ "获取失败|天气获取失败|—|—|—|—" }}"#,
-            url
-        );
-        let output = hidden_command("powershell")
-            .args(["-NoProfile", "-Command", &ps_cmd])
-            .output()
-            .map_err(|e| format!("启动失败: {e}"))?;
-        if !output.status.success() {
-            return Err(format!("天气命令执行失败: {}", output.status));
-        }
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-    })
-    .await
-    .map_err(|e| format!("天气任务异常: {e}"))?
+    // Build the URL as data; location text never enters a shell command.
+    let city = city.unwrap_or_default();
+    let mut url = url::Url::parse("https://wttr.in/").map_err(|e| e.to_string())?;
+    if !city.trim().is_empty() {
+        url.path_segments_mut().map_err(|_| "天气地址无效")?.push(city.trim());
+    }
+    url.query_pairs_mut().append_pair("format", "j1").append_pair("lang", "zh");
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .build().map_err(|_| "无法创建天气请求")?;
+    let weather: serde_json::Value = client.get(url).send().await
+        .map_err(|_| "无法连接天气服务")?.error_for_status()
+        .map_err(|_| "天气服务暂不可用")?.json().await
+        .map_err(|_| "天气数据无效")?;
+    let field = |pointer: &str| weather.pointer(pointer)
+        .and_then(serde_json::Value::as_str).unwrap_or("—");
+    Ok([
+        field("/nearest_area/0/areaName/0/value"),
+        field("/current_condition/0/weatherDesc/0/value"),
+        field("/current_condition/0/temp_C"),
+        field("/weather/0/maxtempC"),
+        field("/weather/0/mintempC"),
+        field("/weather/0/hourly/4/chanceofrain"),
+    ].join("|"))
 }
 /// 定时关机（分钟后）。
 #[tauri::command]
+#[cfg(windows)]
 fn schedule_shutdown(minutes: u32) -> Result<String, String> {
     if minutes == 0 || minutes > 1440 {
         return Err("时间范围：1~1440 分钟".into());
@@ -1145,6 +1193,7 @@ fn schedule_shutdown(minutes: u32) -> Result<String, String> {
 
 /// 取消定时关机。
 #[tauri::command]
+#[cfg(windows)]
 fn cancel_shutdown() -> Result<String, String> {
     let output = hidden_command("shutdown")
         .args(["/a"])
@@ -1160,6 +1209,7 @@ fn cancel_shutdown() -> Result<String, String> {
 
 /// 命令安全校验：白名单模式，只允许已知安全的查询类命令。
 /// 打开软件请走 `launch_application`，不需要 shell。
+#[cfg(windows)]
 fn validate_shell_command(command: &str) -> Result<(), String> {
     let trimmed = command.trim();
     if trimmed.is_empty() {
@@ -1218,11 +1268,20 @@ fn run_shell(command: String) -> Result<String, String> {
     validate_shell_command(&command)?;
     log_line(&format!("run_shell: {command}"));
     // chcp 65001 切 UTF-8 代码页，避免 cmd 内置命令 GBK 输出乱码
+    #[cfg(windows)]
     let full = format!("chcp 65001>nul & {command}");
+    #[cfg(windows)]
     let mut child = hidden_command("cmd")
         .args(["/C", &full])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("启动失败: {e}"))?;
+    #[cfg(target_os = "macos")]
+    let mut child = macos::query_command(&command)?
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .stdin(std::process::Stdio::null())
         .spawn()
         .map_err(|e| format!("启动失败: {e}"))?;
 
@@ -1351,7 +1410,8 @@ fn set_autostart(app: AppHandle, enabled: bool) -> bool {
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let open_console = MenuItemBuilder::with_id("open_console", "打开 MollyCloud 控制台")
         .build(app)?;
-    let toggle = MenuItemBuilder::with_id("toggle", "显示 / 隐藏 Molly (Alt+P)")
+    let toggle_label = if cfg!(target_os = "macos") { "显示 / 隐藏 Molly (⌥P)" } else { "显示 / 隐藏 Molly (Alt+P)" };
+    let toggle = MenuItemBuilder::with_id("toggle", toggle_label)
         .accelerator("Alt+P")
         .build(app)?;
     let separator = tauri::menu::PredefinedMenuItem::separator(app)?;
@@ -1367,7 +1427,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         .icon(tray_icon)
         .tooltip("MollyCloud")
         .menu(&menu)
-        .show_menu_on_left_click(false)
+        .show_menu_on_left_click(cfg!(target_os = "macos"))
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open_console" => show_console(app),
             "toggle" => toggle_window(app),
@@ -1631,11 +1691,13 @@ pub fn run() {
     // updater 插件在 dev / release 都注册，使 tauri dev 下也能真实测试 check() 网络链路。
     // 开发版禁止实际安装由前端 import.meta.env.DEV 保护（见 UpdateManager.performUpdate）。
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    #[cfg(windows)]
+    let builder = builder.plugin(molly_netspeed::init());
     builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(image_workbench::plugin())
-        .plugin(molly_netspeed::init())
         .manage(ccswitch_deeplink::PendingImports::default())
         .manage(image_workbench::ImageRequests::default())
         .plugin(tauri_plugin_autostart::init(
@@ -1643,7 +1705,7 @@ pub fn run() {
             Some(vec!["--mollycloud-autostart"]),
         ))
         .manage(AudioState {
-            enabled: Arc::new(AtomicBool::new(true)),
+            enabled: Arc::new(AtomicBool::new(cfg!(windows))),
         })
         .manage(TopmostState {
             enabled: Arc::new(AtomicBool::new(true)),
@@ -1751,6 +1813,8 @@ pub fn run() {
                 .on_web_resource_request(move |request, response| console_plugins::intercept(&handle, request, response))
                 .build()?;
             log_line("startup: console window ready");
+            #[cfg(target_os = "macos")]
+            screen::initialize(app.handle());
             log_environment();
             console_settings::initialize(app.handle());
             codex_activity::initialize(app.handle());
@@ -1759,6 +1823,7 @@ pub fn run() {
 
             let handle = app.handle().clone();
             setup_tray(app)?;
+            #[cfg(windows)]
             molly_netspeed::start(app.handle());
             console_settings::apply_startup_visibility(app.handle());
             spawn_clickthrough_watcher(handle.clone());
@@ -1776,8 +1841,19 @@ pub fn run() {
             console_settings::handle_window_event(window, event);
             recharge::handle_window_event(window, event);
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            match event {
+                tauri::RunEvent::Reopen { .. } => show_console(app),
+                tauri::RunEvent::Opened { urls } => {
+                    ccswitch_deeplink::accept_arguments(app, urls.into_iter().map(|url| url.to_string()));
+                    show_console(app);
+                }
+                _ => {}
+            }
+        });
 }
 
 #[cfg(test)]
@@ -1850,6 +1926,7 @@ mod tests {
     /// run_shell 白名单校验：换行/控制字符/% /^/; 及链式重定向必须拦截；
     /// 正常查询命令放行（防止 cmd /C 把内嵌换行当语句分隔符执行）。
     #[test]
+    #[cfg(windows)]
     fn shell_validation_blocks_newline_and_metachars() {
         assert!(validate_shell_command("ipconfig").is_ok());
         assert!(validate_shell_command("dir C:\\Users\\me").is_ok());
@@ -1865,6 +1942,3 @@ mod tests {
         assert!(validate_shell_command("shutdown /s").is_err(), "非白名单命令必须拦截");
     }
 }
-
-
-

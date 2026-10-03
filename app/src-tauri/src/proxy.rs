@@ -22,8 +22,18 @@ pub fn get_system_proxy() -> Option<String> {
             return Some(v);
         }
     }
-    // 2) WinINET 系统代理
-    wininet_proxy()
+    #[cfg(windows)]
+    {
+        wininet_proxy()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        macos_proxy()
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        None
+    }
 }
 
 /// 规范成 updater 可接受 URL：reqwest::Proxy::all 要求带 scheme。
@@ -40,6 +50,7 @@ fn normalize_proxy_url(raw: &str) -> Option<String> {
 }
 
 /// 读 WinINET registry：ProxyEnable + ProxyServer（含 per-protocol 格式）。
+#[cfg(windows)]
 fn wininet_proxy() -> Option<String> {
     use windows::Win32::Foundation::ERROR_SUCCESS;
     use windows::Win32::System::Registry::{
@@ -66,7 +77,9 @@ fn wininet_proxy() -> Option<String> {
     struct CloseOnDrop(HKEY);
     impl Drop for CloseOnDrop {
         fn drop(&mut self) {
-            unsafe { let _ = RegCloseKey(self.0); }
+            unsafe {
+                let _ = RegCloseKey(self.0);
+            }
         }
     }
     let _guard = CloseOnDrop(hkey);
@@ -131,17 +144,97 @@ fn wininet_proxy() -> Option<String> {
     None
 }
 
+/// scutil reads the active SystemConfiguration proxy dictionary, including the
+/// network service currently in use. PAC-only configurations remain direct;
+/// a PAC script is never executed inside the updater.
+#[cfg(target_os = "macos")]
+fn macos_proxy() -> Option<String> {
+    let output = std::process::Command::new("/usr/sbin/scutil")
+        .arg("--proxy")
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    parse_macos_proxy_dictionary(&String::from_utf8(output.stdout).ok()?)
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn parse_macos_proxy_dictionary(dictionary: &str) -> Option<String> {
+    let mut values = std::collections::HashMap::new();
+    let mut depth = 0usize;
+    for line in dictionary.lines() {
+        let line = line.trim();
+        if line.ends_with('{') {
+            depth += 1;
+            continue;
+        }
+        if line == "}" {
+            depth = depth.saturating_sub(1);
+            continue;
+        }
+        // Interface-specific inactive proxies must not replace the active
+        // top-level service. Ignore Scoped/Supplemental dictionaries.
+        if depth > 1 {
+            continue;
+        }
+        if let Some((key, value)) = line.split_once(" : ") {
+            values.insert(key.trim(), value.trim());
+        }
+    }
+    for (prefix, scheme) in [("HTTPS", "http"), ("HTTP", "http"), ("SOCKS", "socks5h")] {
+        if values.get(format!("{prefix}Enable").as_str()).copied() != Some("1") {
+            continue;
+        }
+        let Some(host) = values
+            .get(format!("{prefix}Proxy").as_str())
+            .copied()
+            .filter(|host| !host.is_empty())
+        else {
+            continue;
+        };
+        let Some(port) = values
+            .get(format!("{prefix}Port").as_str())
+            .and_then(|port| port.parse::<u16>().ok())
+            .filter(|port| *port > 0)
+        else {
+            continue;
+        };
+        if host.chars().any(char::is_whitespace) || host.contains(['/', '@', '?', '#']) {
+            continue;
+        }
+        let host = if host.contains(':') && !host.starts_with('[') {
+            format!("[{host}]")
+        } else {
+            host.to_owned()
+        };
+        let candidate = format!("{scheme}://{host}:{port}");
+        if url::Url::parse(&candidate).is_ok() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
 // RegQueryValueExW returns UTF-16LE, including a terminating wide NUL.
 // Decoding those bytes as UTF-8 inserts NULs between every ASCII character.
+#[cfg(any(windows, test))]
 fn decode_registry_string(raw: &[u8]) -> Option<String> {
-    if raw.len() % 2 != 0 { return None; }
-    let units: Vec<u16> = raw.chunks_exact(2)
+    if raw.len() % 2 != 0 {
+        return None;
+    }
+    let units: Vec<u16> = raw
+        .chunks_exact(2)
         .map(|bytes| u16::from_le_bytes([bytes[0], bytes[1]]))
-        .take_while(|unit| *unit != 0).collect();
-    String::from_utf16(&units).ok().map(|value| value.trim().to_owned())
+        .take_while(|unit| *unit != 0)
+        .collect();
+    String::from_utf16(&units)
+        .ok()
+        .map(|value| value.trim().to_owned())
 }
 
 /// 解析 ProxyServer：`host:port` 或 `http=host:port;https=host:port`。
+#[cfg(any(windows, test))]
 fn parse_proxy_server(server: &str) -> Option<String> {
     if server.contains('=') {
         // per-protocol 格式：优先 https=，否则 http=
@@ -171,7 +264,11 @@ mod tests {
     #[test]
     fn windows_proxy_string_is_decoded_as_utf16() {
         for input in ["127.0.0.1:7892", "https=127.0.0.1:7892;http=127.0.0.1:7892"] {
-            let raw: Vec<u8> = input.encode_utf16().chain(Some(0)).flat_map(u16::to_le_bytes).collect();
+            let raw: Vec<u8> = input
+                .encode_utf16()
+                .chain(Some(0))
+                .flat_map(u16::to_le_bytes)
+                .collect();
             let decoded = decode_registry_string(&raw).unwrap();
             assert_eq!(decoded, input);
             assert!(reqwest::Proxy::all(parse_proxy_server(&decoded).unwrap()).is_ok());
@@ -181,14 +278,23 @@ mod tests {
 
     #[test]
     fn normalize_adds_scheme() {
-        assert_eq!(normalize_proxy_url("127.0.0.1:7897").as_deref(), Some("http://127.0.0.1:7897"));
-        assert_eq!(normalize_proxy_url(" http://x:1 ").as_deref(), Some("http://x:1"));
+        assert_eq!(
+            normalize_proxy_url("127.0.0.1:7897").as_deref(),
+            Some("http://127.0.0.1:7897")
+        );
+        assert_eq!(
+            normalize_proxy_url(" http://x:1 ").as_deref(),
+            Some("http://x:1")
+        );
         assert_eq!(normalize_proxy_url("  "), None);
     }
 
     #[test]
     fn parse_proxy_server_simple() {
-        assert_eq!(parse_proxy_server("127.0.0.1:7897").as_deref(), Some("http://127.0.0.1:7897"));
+        assert_eq!(
+            parse_proxy_server("127.0.0.1:7897").as_deref(),
+            Some("http://127.0.0.1:7897")
+        );
     }
 
     #[test]
@@ -200,6 +306,29 @@ mod tests {
         assert_eq!(
             parse_proxy_server("http=127.0.0.1:7890").as_deref(),
             Some("http://127.0.0.1:7890")
+        );
+    }
+
+    #[test]
+    fn macos_proxy_uses_active_enabled_static_proxy() {
+        assert_eq!(parse_macos_proxy_dictionary("<dictionary> {\nHTTPEnable : 1\nHTTPProxy : active.example\nHTTPPort : 7890\nScoped : <dictionary> {\nen1 : <dictionary> {\nHTTPEnable : 1\nHTTPProxy : inactive.example\nHTTPPort : 8888\n}\n}\n}"), Some("http://active.example:7890".into()));
+        assert_eq!(parse_macos_proxy_dictionary("<dictionary> {\n HTTPEnable : 1\n HTTPProxy : 127.0.0.1\n HTTPPort : 7890\n HTTPSEnable : 1\n HTTPSProxy : ::1\n HTTPSPort : 7891\n}"), Some("http://[::1]:7891".into()));
+        assert_eq!(
+            parse_macos_proxy_dictionary(
+                "SOCKSEnable : 1\nSOCKSProxy : 127.0.0.1\nSOCKSPort : 1080"
+            ),
+            Some("socks5h://127.0.0.1:1080".into())
+        );
+        assert_eq!(parse_macos_proxy_dictionary("ProxyAutoConfigEnable : 1\nProxyAutoConfigURLString : https://example.test/proxy.pac"), None);
+        assert_eq!(
+            parse_macos_proxy_dictionary("HTTPEnable : 0\nHTTPProxy : 127.0.0.1\nHTTPPort : 7890"),
+            None
+        );
+        assert_eq!(
+            parse_macos_proxy_dictionary(
+                "HTTPEnable : 1\nHTTPProxy : example.test\nHTTPPort : 999999"
+            ),
+            None
         );
     }
 }

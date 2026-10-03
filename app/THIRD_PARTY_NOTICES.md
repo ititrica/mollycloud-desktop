@@ -213,5 +213,36 @@ See `docs/开源项目与许可证.md` and `docs/opensource-dependencies.json` i
 repository for direct package inventories, resolved versions, SPDX license
 metadata and upstream references. The inventory includes development and
 optional/platform-specific packages; it is not a list of every file shipped
-in the Windows installer. Original upstream license files remain in the
+in a Windows or macOS installer. The original JSON inventory is based on a
+Windows x64 Cargo resolution; the following macOS additions are recorded
+separately. Original upstream license files remain in the
 corresponding source trees and package distributions.
+
+## macOS native dependencies
+
+The macOS adaptation adds the following locked crates. License identifiers
+and repository links were checked against the local Cargo registry package
+metadata and original license files.
+
+| Package | Version | License | Repository |
+| --- | --- | --- | --- |
+| aes-gcm | 0.10.3 | Apache-2.0 OR MIT | https://github.com/RustCrypto/AEADs |
+| objc2 | 0.6.4 | MIT | https://github.com/madsmtm/objc2 |
+| objc2-app-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |
+| objc2-foundation | 0.3.2 | MIT | https://github.com/madsmtm/objc2 |
+| objc2-web-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |
+| shell-words | 1.1.1 | MIT OR Apache-2.0 | https://github.com/tmiasko/shell-words |
+| tauri-plugin-notification | 2.4.0 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace |
+| xz2 | 0.1.7 | MIT OR Apache-2.0 | https://github.com/alexcrichton/xz2-rs |
+| lzma-sys | 0.1.20 | MIT OR Apache-2.0 | https://github.com/alexcrichton/xz2-rs |
+
+The statically linked liblzma portion of the bundled XZ 5.2 source is public
+domain according to that package's COPYING file. This software includes code
+from XZ Utils <https://tukaani.org/xz/>. Other tools, scripts and build files in
+the XZ source package have their own licenses and are not distributed as
+MollyCloud command-line tools.
+
+AppKit, Foundation, WebKit and ScreenCaptureKit are system frameworks supplied
+by macOS. The project builds its own Swift system-audio adapter; it does not
+bundle an Apple SDK. NetSpeed Dynamic and its helper executables remain
+Windows-only and are not compiled or shipped in the macOS application.

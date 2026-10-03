@@ -1,4 +1,4 @@
-//! Real WebView2 smoke test against embedded production assets and a temporary DB.
+//! Native WebView smoke test against embedded production assets and a temporary DB.
 //! cargo run --example ccswitch_smoke --features ccswitch-smoke
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
@@ -219,9 +219,11 @@ fn main() {
                 tauri::WebviewUrl::App("index.html".into()),
             )
             .title("Molly CC Switch isolated verification")
-            .visible(false)
+            .visible(cfg!(target_os = "macos"))
+            .focused(false)
             .inner_size(1180.0, 760.0)
             .data_directory(webview_data)
+            .incognito(cfg!(target_os = "macos"))
             .initialization_script(&script)
             .build()?;
             let handle = app.handle().clone();

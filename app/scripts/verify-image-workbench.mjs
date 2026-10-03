@@ -1,3 +1,4 @@
+import { regressionBrowserPath } from "./browser-path.mjs";
 // Isolated browser/mock verification. No real account, API key or paid requests.
 import { spawn } from 'node:child_process';
 import { mkdtemp, mkdir, writeFile, readdir } from 'node:fs/promises';
@@ -8,6 +9,7 @@ import assert from 'node:assert/strict';
 import { createServer as createTcpServer } from 'node:net';
 
 const native = process.argv.includes('--native');
+if (native && process.platform !== 'win32') throw new Error('--native 依赖 WebView2 的 CDP，仅适用于 Windows；macOS 使用 WKWebView 原生验证，或省略此参数运行隔离浏览器回归。');
 const output = resolve(import.meta.dirname, `../../artifacts/image-workbench${native ? '-native' : ''}`);
 await mkdir(output, { recursive: true });
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5V8AAAAASUVORK5CYII=';
@@ -62,7 +64,7 @@ const debugPort = reservation.address().port;
 await new Promise(resolve => reservation.close(resolve));
 const browser = native
   ? spawn(resolve(import.meta.dirname, '../src-tauri/target/debug/examples/image_workbench_smoke.exe'), [], { windowsHide: true, env: { ...process.env, MOLLY_IMAGE_SMOKE_PROFILE: profile, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${debugPort}` }, stdio: ['ignore', 'pipe', 'pipe'] })
-  : spawn('C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  : spawn(regressionBrowserPath(), ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
 const endpoint = native ? await (async () => {
   for (let i=0;i<200;i++) {
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then(r=>r.json()).catch(()=>null);

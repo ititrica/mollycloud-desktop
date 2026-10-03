@@ -1,3 +1,5 @@
+import { targetPlatform } from "./platform.mjs";
+import { regressionBrowserPath } from "./browser-path.mjs";
 // Isolated desktop UI regression check; requires the local Vite dev server.
 // No real login, credentials, clipboard, or desktop pet state are used.
 import { spawn } from 'node:child_process';
@@ -5,6 +7,9 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+const isWindows = targetPlatform() === 'windows';
+const navCount = isWindows ? 7 : 6;
+const trayName = isWindows ? '托盘' : '菜单栏';
 const baseUrl = process.env.MOLLY_UI_URL || 'http://localhost:24320';
 const appVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 const previewUpdateVersion = appVersion.replace(/\d+$/, patch => String(Number(patch) + 1));
@@ -17,10 +22,11 @@ const paymentsOnly = process.argv.includes('--keys-payments');
 const speechOnly = process.argv.includes('--speech');
 const subscriptionsOnly = process.argv.includes('--subscriptions');
 const clockOnly = process.argv.includes('--island-clock');
+if (!isWindows && (netspeedOnly || clockOnly)) throw new Error('macOS 不包含灵动岛；此专项只适用于 Windows。');
 const outputDir = resolve(import.meta.dirname, '../../artifacts/design-review', clockOnly ? 'island-clock' : motionOnly ? 'motion' : appearanceOnly ? 'appearance' : speechOnly ? `speech/${darkMode ? 'dark' : 'light'}` : subscriptionsOnly ? `subscriptions/${darkMode ? 'dark' : 'light'}` : darkMode ? 'dark' : 'light');
 await mkdir(outputDir, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'molly-design-check-'));
-const browser = spawn(process.env.MOLLY_EDGE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
+const browser = spawn(regressionBrowserPath(), [
   '--headless=new', '--disable-gpu', '--disable-partial-raster', '--no-first-run', '--no-default-browser-check',
   '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank',
 ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
@@ -119,7 +125,7 @@ async function key(key, code, virtualKey) {
   await page('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtualKey });
   await pause(150);
 }
-const names = ['overview', 'subscriptions', 'keys', 'usage', 'assistant', 'ccswitch', 'images', 'skills', 'recharge', 'netspeed'];
+const names = ['overview', 'subscriptions', 'keys', 'usage', 'assistant', 'ccswitch', 'images', 'skills', 'recharge', ...(isWindows ? ['netspeed'] : [])];
 async function select(index) {
   const target = names[index];
   if (['overview', 'subscriptions', 'usage', 'recharge'].includes(target)) {
@@ -407,7 +413,7 @@ async function verifyCompactSidebar(width, height) {
   check(compact.classApplied && compact.sidebar.width === 68 && compact.togglePressed === 'true' && compact.toggleLabel === '展开菜单栏', `Compact sidebar state ${width}`);
   check(expanded.titlebar.height === 32 && expanded.titlebarText === '' && expanded.windowControls === 3 && compact.titlebarText === '' && compact.windowControls === 3 && expanded.toggle.y >= expanded.titlebar.y && expanded.toggle.bottom <= expanded.titlebar.bottom, `Custom titlebar controls and content ${width}`);
   check(expanded.projectBarText === 'MollyCloud' && expanded.brand.display === 'flex' && expanded.brand.text === 'MollyCloud' && expanded.brand.textDisplay !== 'none' && compact.brand.display === 'flex' && compact.brand.textDisplay === 'none' && expanded.toggleBackground === 'rgba(0, 0, 0, 0)' && compact.toggleBackground === 'rgba(0, 0, 0, 0)', `Sidebar project bar content ${width}`);
-  check(compact.nav.length === 7 && compact.nav.every((item, index) => item.rect.height === 42 && item.label && item.textHidden && item.iconVisible && Math.abs(item.rect.y - expanded.nav[index].rect.y) < 0.1) && Math.abs(compact.settings.rect.y - expanded.settings.y) < 0.1 && compact.settings.label === '设置' && compact.settings.textHidden && compact.settings.rect.bottom <= height && !compact.horizontalOverflow, `Compact sidebar icons, fixed vertical positions, and bounds ${width}`);
+  check(compact.nav.length === navCount && compact.nav.every((item, index) => item.rect.height === 42 && item.label && item.textHidden && item.iconVisible && Math.abs(item.rect.y - expanded.nav[index].rect.y) < 0.1) && Math.abs(compact.settings.rect.y - expanded.settings.y) < 0.1 && compact.settings.label === '设置' && compact.settings.textHidden && compact.settings.rect.bottom <= height && !compact.horizontalOverflow, `Compact sidebar icons, fixed vertical positions, and bounds ${width}`);
   const expandedIconCenter = expanded.nav[0].icon.x + expanded.nav[0].icon.width / 2;
   const compactIconCenter = compact.nav[0].icon.x + compact.nav[0].icon.width / 2;
   check(Math.abs(expanded.brand.logo.x + expanded.brand.logo.width / 2 - expandedIconCenter) <= 1, `Expanded sidebar brand aligns with navigation icons ${width}`);
@@ -511,8 +517,8 @@ async function verifyConsoleSettings(width, height) {
       radioLabels:[...dialog.querySelectorAll('input[name="console-close-action"]')].map(el => ({value:el.value,label:el.closest('label')?.innerText,checked:el.checked})),
       compactOptions:[...dialog.querySelectorAll('.console-close-option,.console-settings-toggle')].map(el => ({height:el.getBoundingClientRect().height,y:el.getBoundingClientRect().y})),
       autostart:dialog.querySelector('[aria-label="开机自启动"]')?.getAttribute('aria-checked'),
-      autostartMinimized:dialog.querySelector('[aria-label="启动后最小化到托盘"]')?.getAttribute('aria-checked'),
-      autostartMinimizedDisabled:(() => {const el=dialog.querySelector('[aria-label="启动后最小化到托盘"]'); return Boolean(el && (el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true' || el.classList.contains('n-switch--disabled')));})(),
+      autostartMinimized:dialog.querySelector('[aria-label="启动后最小化到${trayName}"]')?.getAttribute('aria-checked'),
+      autostartMinimizedDisabled:(() => {const el=dialog.querySelector('[aria-label="启动后最小化到${trayName}"]'); return Boolean(el && (el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true' || el.classList.contains('n-switch--disabled')));})(),
       maskFilter:maskStyle?.backdropFilter || maskStyle?.webkitBackdropFilter,
       shellFilter:getComputedStyle(document.querySelector('.app-shell')).filter,
       maskCoversViewport:Boolean(maskRect && maskRect.x <= 0 && maskRect.y <= 0 && maskRect.right >= innerWidth && maskRect.bottom >= innerHeight),
@@ -521,7 +527,7 @@ async function verifyConsoleSettings(width, height) {
   check(layout.x >= 0 && layout.y >= 0 && layout.right <= width && layout.bottom <= height && !layout.outerOverflow, `Settings dialog viewport bounds ${width}`);
   check(layout.maskCoversViewport && [layout.maskFilter,layout.shellFilter].some(value => /blur\((?!0(?:px)?\))/.test(value || '')), `Settings frosted glass backdrop ${width}`);
   check(layout.role && layout.focusInside, `Settings accessible modal focus ${width}`);
-  check(layout.radioLabels.length === 2 && layout.radioLabels.some(radio => radio.value === 'quit' && radio.label?.includes('退出程序')) && layout.radioLabels.some(radio => radio.value === 'tray' && radio.label?.includes('最小化到托盘') && radio.checked), `Settings close action default/options ${width}`);
+  check(layout.radioLabels.length === 2 && layout.radioLabels.some(radio => radio.value === 'quit' && radio.label?.includes('退出程序')) && layout.radioLabels.some(radio => radio.value === 'tray' && radio.label?.includes(`最小化到${trayName}`) && radio.checked), `Settings close action default/options ${width}`);
   check(layout.autostart === 'false', `Settings autostart default ${width}`);
   check(layout.autostartMinimized === 'false' && layout.autostartMinimizedDisabled, `Settings minimized autostart default dependency ${width}`);
   check(layout.compactOptions.length === 4 && layout.compactOptions.every(option => option.height >= 40 && option.height <= 52) && Math.abs(layout.compactOptions[2].y - layout.compactOptions[3].y) < 1, `Close and startup controls use compact rows ${width}`);
@@ -554,8 +560,8 @@ async function verifyConsoleSettings(width, height) {
   await openSettings();
   await evaluate(`document.querySelector('input[name="console-close-action"][value="quit"]').click()`);
   await evaluate(`document.querySelector('[aria-label="开机自启动"]').click()`);
-  check(await evaluate(`{const el=document.querySelector('[aria-label="启动后最小化到托盘"]'); !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true' && !el.classList.contains('n-switch--disabled')}`), `Settings minimized autostart enabled with autostart ${width}`);
-  await evaluate(`document.querySelector('[aria-label="启动后最小化到托盘"]').click()`);
+  check(await evaluate(`{const el=document.querySelector('[aria-label="启动后最小化到${trayName}"]'); !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true' && !el.classList.contains('n-switch--disabled')}`), `Settings minimized autostart enabled with autostart ${width}`);
+  await evaluate(`document.querySelector('[aria-label="启动后最小化到${trayName}"]').click()`);
   await clickSettingsButton('保存');
   const saved = await evaluate(readPreviewSettings);
   check(saved !== initialStorage && Boolean(saved?.includes('quit')) && Boolean(saved?.includes('"autostart":true')) && Boolean(saved?.includes('"autostartMinimized":true')), `Settings preview saves isolated preference ${width}`);
@@ -563,7 +569,7 @@ async function verifyConsoleSettings(width, height) {
   await openSettings();
   check(await evaluate(`document.querySelector('input[name="console-close-action"]:checked').value === 'quit'`), `Settings saved preference reopened ${width}`);
   check(await evaluate(`document.querySelector('[aria-label="开机自启动"]').getAttribute('aria-checked') === 'true'`), `Settings saved autostart reopened ${width}`);
-  check(await evaluate(`{const el=document.querySelector('[aria-label="启动后最小化到托盘"]'); el.getAttribute('aria-checked') === 'true' && !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true' && !el.classList.contains('n-switch--disabled')}`), `Settings saved minimized autostart reopened ${width}`);
+  check(await evaluate(`{const el=document.querySelector('[aria-label="启动后最小化到${trayName}"]'); el.getAttribute('aria-checked') === 'true' && !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true' && !el.classList.contains('n-switch--disabled')}`), `Settings saved minimized autostart reopened ${width}`);
   await clickSettingsButton('取消');
 
   // Reload only this temporary browser profile. Never send a native close/quit.
@@ -715,6 +721,7 @@ async function verifyMotion() {
   check(await evaluate(`Boolean(document.querySelector('.usage-page')) && !document.querySelector('.overview-page')`), 'Overview transition settles on selected content');
   const tabStyle = `(() => { const s=getComputedStyle(document.querySelector('.overview-subnav [aria-current="page"]'));return [s.fontSize,s.fontWeight,s.color,s.backgroundColor,s.paddingTop,s.paddingBottom]; })()`;
   const standard = await evaluate(tabStyle);
+  if (isWindows) {
   await select(names.indexOf('netspeed'));
   await evaluate(`document.querySelectorAll('.island-tabs button')[1].click()`);
   await pause(40);
@@ -727,6 +734,7 @@ async function verifyMotion() {
   check(await evaluate(`[...document.querySelectorAll('.island-mode-grid button')].some(b=>b.textContent==='系统时间')&&getComputedStyle(document.querySelector('.island-section')).transform==='none'`), 'Island rapid switching settles and releases animation transform');
   const islandStyle=await evaluate(tabStyle.replace('.overview-subnav','.island-tabs'));
   check(JSON.stringify(islandStyle)===JSON.stringify(standard),'Island tabs match overview');
+  }
   await select(names.indexOf('assistant'));
   await evaluate(`document.querySelectorAll('.assistant-tabs button')[1].click()`);await pause(40);
   check(await evaluate(`document.querySelector('.assistant-tabs .selection-indicator').getAnimations().some(a=>a.playState==='running')`),'Assistant tabs use shared sliding underline');
@@ -770,9 +778,11 @@ async function verifyMotion() {
   await select(names.indexOf('skills'));
   await skillsEval(`document.querySelector('a[href="#/backup"]').click()`);await pause(40);
   check(await skillsEval(`document.defaultView.location.hash==='#/backup'&&document.getAnimations().every(a=>a.playState!=='running')`),'Skill tabs respect reduced motion');
+  if (isWindows) {
   await select(names.indexOf('netspeed'));
   await evaluate(`document.querySelectorAll('.island-tabs button')[0].click()`);await pause(40);
   check(await evaluate(`!!document.querySelector('.island-metrics')&&document.querySelector('.island-tabs .selection-indicator').getAnimations().every(a=>a.playState!=='running')`),'Island tabs respect reduced motion');
+  }
   await select(2);
   check(await evaluate(`document.querySelector('.sidebar .selection-indicator').getAnimations().filter(a=>a.playState==='running').length === 0`), 'Reduced motion disables jelly animation');
   await select(0);
@@ -1135,7 +1145,7 @@ try {
         check(Math.abs(metrics.accountLayout.balance[1] - metrics.accountLayout.user[1]) < 0.1 && Math.abs(metrics.accountLayout.balance[3] - metrics.accountLayout.user[3]) < 0.1 && Math.abs(metrics.accountLayout.refresh[1] + metrics.accountLayout.refresh[3] / 2 - metrics.accountLayout.user[1] - metrics.accountLayout.user[3] / 2) < 0.1, `Account controls alignment ${names[index]} ${width}`);
       }
       check(metrics.selectedCount === 1, `Navigation state: ${names[index]} ${width}`);
-      check(metrics.navCount === 7 && metrics.settingsVisible, `Seven navigation items and bottom settings visible: ${names[index]} ${width}`);
+      check(metrics.navCount === navCount && metrics.settingsVisible, `Platform navigation items and bottom settings visible: ${names[index]} ${width}`);
       check(metrics.shell.navStyle.boxShadow === 'none' && metrics.shell.navStyle.borderLeftWidth === '0px', `Navigation edge color: ${names[index]} ${width}`);
       check(metrics.cardBorders.every(card => parseFloat(card.borderWidth) === 0 || ['borderTopColor','borderRightColor','borderBottomColor','borderLeftColor'].every(side => card[side] === (darkMode ? 'rgb(56, 61, 50)' : 'rgb(222, 223, 219)'))), `Non-neutral card border: ${names[index]} ${width}`);
       check(await evaluate(`document.documentElement.dataset.theme === '${darkMode ? 'dark' : 'light'}'`), `Resolved theme: ${names[index]} ${width}`);

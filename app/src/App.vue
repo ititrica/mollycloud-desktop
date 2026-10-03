@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, KeepAlive, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, KeepAlive, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { isWindows, credentialStoreName } from "./platform";
 import {
   NAlert,
   NButton,
@@ -24,7 +25,7 @@ import PetSettingsDialog from "./components/PetSettingsDialog.vue";
 import AssistantConversation from "./components/AssistantConversation.vue";
 import { keyUsage, keyQuota, costLabel } from "./keyUsage";
 import SkillManagerPanel from "./components/SkillManagerPanel.vue";
-import NetSpeedPanel from "./components/NetSpeedPanel.vue";
+const NetSpeedPanel = isWindows ? defineAsyncComponent(() => import("./components/NetSpeedPanel.vue")) : undefined;
 import KeyGroupPicker from "./components/KeyGroupPicker.vue";
 import CreateKeyDialog from "./components/CreateKeyDialog.vue";
 import DeleteKeyDialog from "./components/DeleteKeyDialog.vue";
@@ -159,7 +160,7 @@ const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscript
   { id: "keys", label: "API 密钥", icon: "project-key" },
   { id: "ccswitch", label: "CC Switch", icon: "code" },
   { id: "assistant", label: "Molly助手", icon: "assistant" },
-  { id: "netspeed", label: "灵动岛", icon: "island" },
+  ...(isWindows ? [{ id: "netspeed" as const, label: "灵动岛", icon: "island" as const }] : []),
   { id: "images", label: "生图工作台", icon: "image" },
   { id: "skills", label: "Skill 管理器", icon: "skills" },
 ];
@@ -767,9 +768,11 @@ function handleCcSwitchImported(keyId: string, provider: CcSwitchImportResult): 
 onMounted(async () => {
   if ("__TAURI_INTERNALS__" in window) {
     const { listen } = await import("@tauri-apps/api/event");
-    unlistenNavigation = await listen<string>("molly:navigate", event => {
-      if (event.payload === "netspeed" && phase.value === "dashboard") selectPage("netspeed");
-    });
+    if (isWindows) {
+      unlistenNavigation = await listen<string>("molly:navigate", event => {
+        if (event.payload === "netspeed" && phase.value === "dashboard") selectPage("netspeed");
+      });
+    }
     unlistenAssistantConfig = await listen<AssistantConfig>("assistant-config-changed", (event) => {
       assistantConfig.value = event.payload;
     });
@@ -885,7 +888,7 @@ onBeforeUnmount(() => {
           </form>
         </template>
 
-        <div class="secure-note"><AppIcon name="shield" /> {{ autoLogin ? "登录令牌由 Windows 凭据管理器加密保存" : "未开启自动登录，关闭应用后需重新登录" }}</div>
+        <div class="secure-note"><AppIcon name="shield" /> {{ autoLogin ? `登录令牌由 ${credentialStoreName}加密保存` : "未开启自动登录，关闭应用后需重新登录" }}</div>
       </div>
     </section>
   </main>
@@ -1054,7 +1057,7 @@ onBeforeUnmount(() => {
 
       </Transition>
 
-      <div v-if="activePage === 'netspeed'" class="page-content netspeed-page">
+      <div v-if="isWindows && activePage === 'netspeed'" class="page-content netspeed-page">
         <NetSpeedPanel :preview="consolePreview" :active="activePage === 'netspeed'" />
       </div>
 

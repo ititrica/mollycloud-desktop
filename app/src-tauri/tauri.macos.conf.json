@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "macOSPrivateApi": true,
+    "security": {
+      "csp": "default-src 'self' customprotocol: asset:; frame-src 'self' molly-image://localhost; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost https:",
+      "devCsp": "default-src 'self' http://localhost:24320; frame-src 'self' molly-image://localhost; img-src 'self' http://localhost:24320 asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' http://localhost:24320; connect-src 'self' ipc: http://ipc.localhost http://localhost:24320 ws://localhost:24321 https:"
+    }
+  },
+  "bundle": {
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "category": "DeveloperTool",
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "signingIdentity": "-",
+      "infoPlist": "Info.macos.plist",
+      "dmg": {
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        }
+      }
+    }
+  }
+}

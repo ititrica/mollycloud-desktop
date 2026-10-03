@@ -1,4 +1,5 @@
 import { AccountReminderMonitor } from "../assistantAccount";
+import { trayName, petToggleShortcut } from "../platform";
 import { canSendAccountReminder, sendAccountReminder } from "./assistant/AssistantPanel";
 import { getSpeechSettings } from "../speech";
 import { stopAssistantSpeech } from "./assistant/AssistantSpeech";
@@ -1812,7 +1813,7 @@ function buildMenu(engine: BehaviorEngine) {
       state: topmostCache ? "取消置顶" : "置顶",
       onPick: () => {
         void invoke("hide_pet");
-        toast("已隐藏（托盘/Alt+P唤出）");
+        toast(`已隐藏（${trayName}/${petToggleShortcut}唤出）`);
       },
       onStatePick: () => {
         const next = !topmostCache;
@@ -3076,7 +3077,6 @@ function toggleAudio(on: boolean) {
 }
 
 void boot();
-
 
 
 

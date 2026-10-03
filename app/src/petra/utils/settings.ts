@@ -1,3 +1,4 @@
+import { isMacOS } from '../../platform';
 const KEY = "live2d-pet-settings";
 
 export type ActivityLevel = "low" | "mid" | "high";
@@ -66,7 +67,8 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  audioEnabled: true,
+  // ScreenCaptureKit requires user consent. Restore an explicit saved choice only.
+  audioEnabled: !isMacOS,
   activity: "low",
   mouseTrack: false,
   idleMode: false,
