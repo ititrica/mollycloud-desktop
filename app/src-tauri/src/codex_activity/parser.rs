@@ -28,9 +28,18 @@ pub struct Payload {
     pub will_retry: Option<bool>,
     pub role: Option<String>,
     pub item: Option<Item>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_summary")]
     pub summary: Vec<SummaryPart>,
     pub error: Option<serde::de::IgnoredAny>,
+}
+
+fn deserialize_summary<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Vec<SummaryPart>, D::Error> {
+    // Other desktop records use `summary` for a string. Ignore those values
+    // without dropping lifecycle metadata or retaining their private content.
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Summary { Parts(Vec<SummaryPart>), Other(serde::de::IgnoredAny) }
+    Ok(match Summary::deserialize(deserializer)? { Summary::Parts(parts) => parts, Summary::Other(_) => Vec::new() })
 }
 
 #[derive(Default, Deserialize)]
@@ -159,7 +168,8 @@ pub fn timestamp(value: &str) -> Option<i64> {
 
 pub fn unknown_event(record: &Record) -> bool {
     match record.kind.as_str() {
-        "session_meta" | "turn_context" | "response_item" | "compacted" => false,
+        "session_meta" | "turn_context" | "response_item" | "compacted" | "world_state"
+            | "token_usage_record" | "inter_agent_communication_metadata" => false,
         "event_msg" => !matches!(
             record.payload.kind.as_str(),
             "task_started"
@@ -195,7 +205,19 @@ pub fn unknown_event(record: &Record) -> bool {
                 | "stream_error"
                 | "patch_apply_begin"
                 | "patch_apply_end"
+                | "thread_settings_applied"
         ),
         _ => true,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn non_reasoning_summary_does_not_discard_desktop_lifecycle() {
+        let record = decode(br#"{"type":"event_msg","payload":{"type":"task_started","turn_id":"turn","summary":"private content"}}"#).unwrap();
+        assert_eq!(record.payload.kind, "task_started");
+        assert!(record.payload.summary.is_empty());
     }
 }

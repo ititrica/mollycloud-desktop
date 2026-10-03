@@ -188,17 +188,18 @@ pub fn initialize(app: &AppHandle) {
         let mut watcher = match notify::recommended_watcher(move |event| {
             let _ = sender.send(Message::Fs(event));
         }) {
-            Ok(w) => w,
+            Ok(w) => Some(w),
             Err(_) => {
-                publish(&app, &tasks, &Some("Codex 文件监听未能启动".into()));
-                return;
+                warning = Some("Codex 文件通知不可用，已改为定时同步".into());
+                None
             }
         };
         let mut watched = BTreeMap::new();
         let mut discovered = BTreeSet::new();
         let mut initial = true;
         loop {
-            // Timeout is only for discovering changed config directories, never polling session files.
+            // Native notifications provide immediate updates; metadata-only
+            // reconciliation also covers missed FSEvents and changed homes.
             let mut roots = discovery::roots(&saved.extra_homes);
             roots.extend(discovered.iter().cloned());
             roots.sort();
@@ -207,7 +208,7 @@ pub fn initialize(app: &AppHandle) {
                 if anchor.is_dir() {
                     true
                 } else {
-                    let _ = watcher.unwatch(anchor);
+                    if let Some(watcher) = watcher.as_mut() { let _ = watcher.unwatch(anchor); }
                     false
                 }
             });
@@ -227,10 +228,10 @@ pub fn initialize(app: &AppHandle) {
                     } else {
                         RecursiveMode::NonRecursive
                     };
-                    if watcher.watch(&anchor, mode).is_ok() {
+                    if watcher.as_mut().is_some_and(|watcher| watcher.watch(&anchor, mode).is_ok()) {
                         watched.insert(anchor, recursive);
                     } else {
-                        warning = Some("部分 Codex 目录无法监听".into());
+                        warning = Some("部分 Codex 文件通知不可用，已改为定时同步".into());
                     }
                 }
                 if root.is_dir() && discovered.insert(root.clone()) {
@@ -239,6 +240,9 @@ pub fn initialize(app: &AppHandle) {
                             warning = Some("部分 Codex 会话暂不可读".into());
                         }
                     }
+                }
+                if root.is_dir() && reader.reconcile(root, &mut tasks).is_err() {
+                    warning = Some("部分 Codex 会话暂不可读".into());
                 }
             }
             if initial {
@@ -264,7 +268,7 @@ pub fn initialize(app: &AppHandle) {
                 }
             }
             publish(&app, &tasks, &warning);
-            let message = match receiver.recv_timeout(Duration::from_secs(30)) {
+            let message = match receiver.recv_timeout(Duration::from_secs(2)) {
                 Ok(m) => m,
                 Err(mpsc::RecvTimeoutError::Timeout) => continue,
                 Err(_) => break,

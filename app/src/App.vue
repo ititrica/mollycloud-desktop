@@ -47,7 +47,7 @@ type OverviewTarget = "recharge" | "subscriptions" | "keys" | "usage";
 const phase = ref<Phase>("starting");
 watch(() => phase.value === "dashboard", (active) => {
   void desktopApi.setConsoleDashboardActive(active).catch((error) => {
-    console.error("无法同步控制台关闭行为", error);
+    console.error("无法同步控制台与桌宠启动状态", error);
   });
 }, { immediate: true, flush: "sync" });
 const bootstrap = ref<ServiceBootstrap | null>(null);
@@ -89,7 +89,7 @@ const errorMessage = ref("");
 const twoFactorHint = ref("");
 const lastUpdated = ref<Date | null>(null);
 const assistantConfig = ref<AssistantConfig | null>(null);
-const petVisible = ref(true);
+const petVisible = ref(false);
 const petToggleLoading = ref(false);
 const copiedKeyId = ref("");
 const importedProviders = ref<Record<string, CcSwitchImportResult>>({});
@@ -145,6 +145,7 @@ let unlistenAssistantHistory: (() => void) | undefined;
 let unlistenSpeech: (() => void) | undefined;
 let unlistenAssistantState: (() => void) | undefined;
 let unlistenPetVisibility: (() => void) | undefined;
+let unlistenPetReady: (() => void) | undefined;
 let unlistenExternalImport: (() => void) | undefined;
 let unlistenNavigation: (() => void) | undefined;
 const pendingExternalImport = ref(false);
@@ -788,6 +789,11 @@ onMounted(async () => {
     unlistenPetVisibility = await listen<boolean>("pet-visibility-changed", (event) => {
       petVisible.value = event.payload;
     });
+    unlistenPetReady = await listen("pet-ready", () => {
+      if (phase.value === "dashboard" && dashboard.value) {
+        void desktopApi.syncPetAccountBalance(accountBalanceFromDashboard(dashboard.value));
+      }
+    });
     unlistenExternalImport = await listen("ccswitch-external-import", () => {
       if (phase.value === "dashboard") {
         selectPage("ccswitch");
@@ -812,6 +818,7 @@ onBeforeUnmount(() => {
   unlistenAssistantState?.();
   unlistenSpeech?.();
   unlistenPetVisibility?.();
+  unlistenPetReady?.();
   unlistenExternalImport?.();
   unlistenNavigation?.();
 });

@@ -3,6 +3,10 @@
 #[allow(dead_code)]
 #[path = "../src/console_settings.rs"]
 mod console_settings;
+#[path = "../src/pet_window.rs"]
+mod pet_window;
+#[cfg(target_os = "macos")]
+mod screen { pub fn invalidate_ignore_cursor_cache() {} pub fn configure_pet_window(_: &tauri::WebviewWindow) {} pub fn unregister_pet_window(_: &tauri::WebviewWindow) {} }
 
 use console_settings::{CloseAction, ConsoleSettings, ConsoleSettingsState};
 use std::sync::{mpsc, Arc, Mutex};
@@ -11,6 +15,7 @@ use tauri::Manager;
 fn log_line(message: &str) {
     println!("[console-settings-smoke] {message}");
 }
+fn stop_pet_session(_: &tauri::AppHandle) {}
 
 #[cfg(target_os = "macos")]
 fn verify_native_chrome(window: &tauri::WebviewWindow) -> Result<(), String> {

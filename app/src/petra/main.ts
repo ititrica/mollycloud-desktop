@@ -759,7 +759,7 @@ const accountReminderMonitor = new AccountReminderMonitor(canSendAccountReminder
 window.addEventListener("pagehide", () => accountReminderMonitor.stop());
 
 async function boot() {
-  void listen<OverlayAccount>("account-balance-updated", (event) => balancePill.update(event.payload ?? {}));
+  await listen<OverlayAccount>("account-balance-updated", (event) => balancePill.update(event.payload ?? {}));
   let activityRevision = 0;
   void listen<ActivitySnapshot>("codex-activity-updated", (event) => {
     activityRevision++;
@@ -790,6 +790,9 @@ async function boot() {
   void listen("petra-assistant-history-request", publishAssistantHistory);
   void listen("assistant-speech-stop", stopAssistantSpeech);
   void listen("live2d-motion", () => view?.playClick());
+  // The console may finish its balance request before this lazy window loads.
+  // Ask for the cached account once the account listener has been registered.
+  void emitTo("console", "pet-ready").catch(() => undefined);
 
   try {
     await mountView();
@@ -3077,8 +3080,6 @@ function toggleAudio(on: boolean) {
 }
 
 void boot();
-
-
 
 
 

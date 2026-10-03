@@ -66,6 +66,10 @@ impl ConsoleSettingsState {
         self.dashboard_active.store(active, Ordering::Release);
     }
 
+    pub fn dashboard_active(&self) -> bool {
+        self.dashboard_active.load(Ordering::Acquire)
+    }
+
     pub fn get(&self) -> Result<ConsoleSettings, String> {
         self.saved
             .lock()
@@ -214,7 +218,13 @@ pub fn set_console_dashboard_active(
     if window.label() != "console" {
         return Err("只能由控制台更新窗口状态".to_owned());
     }
+    let was_active = state.dashboard_active();
     state.set_dashboard_active(active);
+    if active && !was_active {
+        crate::pet_window::show(window.app_handle(), false)?;
+    } else if !active && was_active {
+        crate::pet_window::end_session(window.app_handle());
+    }
     Ok(())
 }
 

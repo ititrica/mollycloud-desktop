@@ -191,6 +191,7 @@ pub fn move_window_toward(
     max_speed: f64,
     dt: f64,
     clamp: bool,
+    _model_bounds: Option<(i32, i32, i32, i32)>,
 ) -> bool {
     let Some(hwnd) = hwnd_of(win) else {
         return false;

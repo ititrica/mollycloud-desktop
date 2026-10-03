@@ -162,7 +162,7 @@ fn verify(app: &tauri::AppHandle, win: &tauri::WebviewWindow) -> Result<serde_js
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
     check(
-        size_matched,
+        { if !size_matched { eprintln!("resize actual={:?}",win.inner_size()); } size_matched },
         "Programmatic physical resize works with resizable false",
     )?;
     check(
@@ -207,7 +207,7 @@ fn verify(app: &tauri::AppHandle, win: &tauri::WebviewWindow) -> Result<serde_js
     let target = (start.x + 100, start.y + 80);
     let mut reached = false;
     for _ in 0..200 {
-        if screen::move_window_toward(win, target.0 as f64, target.1 as f64, 800.0, 0.016, true) {
+        if screen::move_window_toward(win, target.0 as f64, target.1 as f64, 800.0, 0.016, true, None) {
             reached = true;
             break;
         }
@@ -222,7 +222,43 @@ fn verify(app: &tauri::AppHandle, win: &tauri::WebviewWindow) -> Result<serde_js
         screen::drag_offset(win).is_some() && screen::cursor_client_pos(win).is_some(),
         "Native drag and hit-test cursor coordinates are available",
     )?;
+    // Drive the native drag follower with synthetic offsets, without moving the
+    // user's pointer. Transparent padding must be allowed beyond every edge.
+    let bounds = (100, 80, 320, 300);
+    for (x, y) in [
+        (area.left - bounds.0, area.top - bounds.1),
+        (area.left + area.width - bounds.2, area.top - bounds.1),
+        (area.left - bounds.0, area.top + area.height - bounds.3),
+        (area.left + area.width - bounds.2, area.top + area.height - bounds.3),
+    ] {
+        let cursor = screen::cursor_pos(app);
+        screen::drag_follow(win, cursor.x - x, cursor.y - y, None, Some(bounds), scale);
+        let mut matched = false;
+        for _ in 0..100 {
+            let position = win.outer_position().map_err(|error| error.to_string())?;
+            if (position.x - x).abs() <= 1 && (position.y - y).abs() <= 1 {
+                matched = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        if !matched { eprintln!("corner requested=({x},{y}) actual={:?} scale={scale}", win.outer_position()); }
+        check(matched, "Native drag reaches a work-area corner while transparent padding is offscreen")?;
+    }
     let native_scale = native_state(app, win)?.2;
+    let control_owner = app.clone();
+    let standard_constraint = on_main(app, move || {
+        let control = tauri::WebviewWindowBuilder::new(&control_owner, "isolated-console", tauri::WebviewUrl::External("about:blank".parse().unwrap()))
+            .visible(false).incognito(true).inner_size(200.0, 180.0).build().unwrap();
+        let native = unsafe { &*control.ns_window().unwrap().cast::<objc2_app_kit::NSWindow>() };
+        let mut requested = native.frame();
+        let primary = objc2_app_kit::NSScreen::screens(objc2::MainThreadMarker::new().unwrap()).firstObject().unwrap();
+        requested.origin.y = primary.frame().size.height + 200.0;
+        let constrained = native.constrainFrameRect_toScreen(requested, Some(&primary));
+        control.destroy().unwrap();
+        constrained.origin.y < requested.origin.y
+    })?;
+    check(standard_constraint, "Unregistered console windows retain AppKit's standard screen constraint")?;
     check(
         (native_scale - scale).abs() < 0.001,
         "Tauri physical scale agrees with the NSWindow backing scale",

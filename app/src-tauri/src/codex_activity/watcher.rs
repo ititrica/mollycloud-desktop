@@ -41,6 +41,21 @@ impl Default for Reader {
 }
 
 impl Reader {
+    /// Reconcile metadata after missed/coalesced native notifications. Unchanged
+    /// rollouts are never opened or replayed, including long-running turns.
+    pub fn reconcile(&mut self, root: &Path, tasks: &mut Tasks) -> std::io::Result<()> {
+        for path in session_files(root, true) {
+            let meta = fs::metadata(&path)?;
+            let changed = self.files.get(&path).is_none_or(|cursor| {
+                cursor.offset != meta.len() || cursor.modified != meta.modified().ok()
+                    || cursor.created != meta.created().ok()
+            });
+            if changed { self.read(&path, tasks, false)?; }
+        }
+        self.forget_missing(tasks);
+        Ok(())
+    }
+
     pub fn read(&mut self, path: &Path, tasks: &mut Tasks, baseline: bool) -> std::io::Result<()> {
         let meta = fs::metadata(path)?;
         if !meta.is_file() {
@@ -150,6 +165,26 @@ pub fn session_files(root: &Path, recent_only: bool) -> Vec<PathBuf> {
 mod tests {
     use super::*;
     use std::io::Write;
+    #[test]
+    fn missed_file_notifications_still_update_a_running_turn_and_completion() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("rollout.jsonl");
+        fs::write(&file, "{\"type\":\"session_meta\",\"payload\":{\"id\":\"01a09809-9dd4-7203-ae17-00575d41934a\"}}\n{\"type\":\"event_msg\",\"payload\":{\"type\":\"task_started\",\"turn_id\":\"a\"}}\n").unwrap();
+        let mut reader = Reader::default();
+        let mut tasks = Tasks::new();
+        reader.read(&file, &mut tasks, true).unwrap();
+        let mut output = fs::OpenOptions::new().append(true).open(&file).unwrap();
+        writeln!(output, "{}", serde_json::json!({"type":"event_msg","payload":{"type":"item_completed","turn_id":"a","item":{"type":"CommandExecution","exit_code":0}}})).unwrap();
+        reader.reconcile(dir.path(), &mut tasks).unwrap();
+        assert_eq!(tasks.values().next().unwrap().progress, super::super::progress::Progress::CommandComplete);
+        writeln!(output, "{}", serde_json::json!({"type":"event_msg","payload":{"type":"task_complete","turn_id":"a"}})).unwrap();
+        reader.reconcile(dir.path(), &mut tasks).unwrap();
+        assert_eq!(tasks.values().next().unwrap().status, reducer::Status::Ready);
+        assert!(tasks.values().next().unwrap().unread);
+        tasks.values_mut().next().unwrap().unread = false;
+        reader.reconcile(dir.path(), &mut tasks).unwrap();
+        assert!(!tasks.values().next().unwrap().unread);
+    }
     #[test]
     fn completion_during_bootstrap_is_unread_but_old_completion_is_not() {
         let dir = tempfile::tempdir().unwrap();

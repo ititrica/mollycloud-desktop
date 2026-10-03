@@ -23,6 +23,7 @@ ccswitch-smoke = ["molly-ccswitch/test-hooks", "tauri/custom-protocol"]
 console-settings-smoke = ["tauri/custom-protocol"]
 image-workbench-smoke = ["tauri/custom-protocol"]
 screen-smoke = ["tauri/custom-protocol"]
+pet-window-smoke = ["tauri/custom-protocol"]
 image-native-smoke = ["image-workbench-smoke"]
 
 [[example]]
@@ -56,6 +57,10 @@ required-features = ["plugin-smoke"]
 [[example]]
 name = "screen_smoke"
 required-features = ["screen-smoke"]
+
+[[example]]
+name = "pet_window_smoke"
+required-features = ["pet-window-smoke"]
 
 [[example]]
 name = "image_native_smoke"

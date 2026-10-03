@@ -239,6 +239,13 @@ try {
           return {choices:[{message:{tool_calls:[{id:'test-floating-info',type:'function',function:{name:'get_floating_window_info',arguments:'{}'}}]}}]};
         }
         if(command==='get_assistant_config') return {enabled:true};
+        if(command==='assistant_local_query') return {handled:false,content:null};
+        if(command==='get_speech_settings') return {config:{enabled:false,provider:'mimo',baseUrl:'https://api.xiaomimimo.com/v1',model:'mimo-v2.5-tts',voice:'冰糖',volume:0.8},apiKeyConfigured:false};
+        if(command==='save_pet_credentials') {
+          if(window.__testKeySaveFails)throw new Error('测试：密钥保存失败');
+          if(args.assistantApiKey!=null)window.__testApiKey=args.assistantApiKey;
+          return {config:args.update.config,apiKeyConfigured:false};
+        }
         if(command==='has_api_key') return Boolean(window.__testApiKey);
         if(command==='set_api_key') { if(window.__testKeySaveFails)throw new Error('测试：密钥保存失败'); window.__testApiKey=args.apiKey; return null; }
         if(command==='cursor_pos') {const s=window.__testScale;return {x:0,y:0,rx:-350*s,ry:-350*s,left:100*s,top:100*s};}
@@ -500,49 +507,22 @@ try {
   await evaluate(`document.querySelector('#balance-pill-trigger').blur(); window.__activityTasks[0].progress='thinking'; window.__activityTasks[0].progressTitle='Appending theme token CSS'; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks})`);
   await pause(250);
   check(await evaluate(`document.querySelector('.balance-pill__progress').textContent==='Appending theme token CSS'`), 'Original Codex summary heading is shown verbatim');
-  const readBorderLight = `(() => {
-    const border=document.querySelector('.balance-pill__border-light');
-    const bounds=border.getBoundingClientRect(), style=getComputedStyle(border.querySelector('.balance-pill__border-mask'));
-    const pill=document.querySelector('#balance-pill-trigger').getBoundingClientRect();
-    const motion=getComputedStyle(border);
-    const washes=[...border.querySelectorAll('.balance-pill__border-sweep')].map(el=>{const s=getComputedStyle(el);return {distance:s.offsetDistance,path:s.offsetPath,width:parseFloat(s.width),height:parseFloat(s.height),taper:s.clipPath,duration:motion.animationDuration,direction:motion.animationDirection,gradient:s.backgroundImage,top:parseFloat(s.top)};});
-    return {width:bounds.width,height:bounds.height,pillWidth:pill.width,pillHeight:pill.height,
-      alignmentError:Math.max(Math.abs(bounds.left-pill.left),Math.abs(bounds.top-pill.top),Math.abs(bounds.right-pill.right),Math.abs(bounds.bottom-pill.bottom)),
-      mask:style.maskComposite,maskImage:style.maskImage,rim:parseFloat(style.paddingTop),radius:style.borderRadius,
-      clips:style.overflow==='hidden',pointerEvents:style.pointerEvents,glow:getComputedStyle(border).filter,washes};
-  })()`;
-  check(await evaluate(`!document.querySelector('.balance-pill__orbit,.balance-pill__capsule-orbit,.balance-pill__orbit-dot,.balance-pill__orbit-tail')`), 'Old orbit dot and segmented trail are completely removed');
   for (const [index,title] of ['正在思考', 'Appending theme token CSS', 'A very long public progress title that must be truncated at the capsule width limit'].entries()) {
     await evaluate(`window.__activityTasks[0].progressTitle=${JSON.stringify(title)}; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks})`);
     await pause(250);
-    const geometry=await evaluate(readBorderLight);
-    check(geometry.alignmentError<0.1 && geometry.mask.split(',').every(value=>value.trim()==='exclude') && geometry.rim===2.5 && geometry.radius==='999px' && geometry.clips, 'Visible hollow border follows resized capsule: '+title);
-    check(geometry.pointerEvents==='none' && geometry.washes.length===2 && geometry.washes.every(w=>w.gradient.includes('radial-gradient') && w.width===52 && w.height===2.5 && w.taper.startsWith('ellipse(')), 'Two tapered white highlights leave text and interaction clear');
-    report.push({activity:'border-light-geometry',title,...geometry});
-    await verifyBorderMotion(title);
+    check(await evaluate(`getComputedStyle(document.querySelector('.balance-pill__border-light')).display==='none'`), 'Capsule has no stationary highlights at any width: '+title);
+    check(await evaluate(`getComputedStyle(document.querySelector('#balance-pill-trigger')).backdropFilter==='none' && getComputedStyle(document.querySelector('.balance-pill__usage')).backdropFilter==='none'`), 'Rounded floating surfaces do not create a backdrop rectangle');
     await screenshot('codex-border-width-'+index);
   }
-  await evaluate(`window.__activityTasks[0].progressTitle='Appending theme token CSS'; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks})`);
-  await pause(250);
-  const lightState=await evaluate(readBorderLight);
-  await pause(200);
-  const movingState=await evaluate(readBorderLight);
-  check(lightState.washes.every((w,i)=>w.distance!==movingState.washes[i].distance), 'Both border washes move continuously');
-  check(lightState.washes.every(w=>w.direction==='normal'), 'Both highlights move continuously without reversing');
-  for (const time of [0,600,1200,1800]) {
-    await evaluate(`document.querySelector('.balance-pill__border-light').getAnimations({subtree:true}).forEach(a=>{a.pause();a.currentTime=${time};})`);
-    await screenshot('codex-border-flow-'+time);
-  }
-  await evaluate(`document.querySelector('.balance-pill__border-light').getAnimations({subtree:true}).forEach(a=>a.currentTime=0);document.body.style.backgroundColor='#121014'`);
+  await evaluate(`window.__activityTasks[0].progressTitle='Appending theme token CSS'; window.__testEmit('codex-activity-updated', {status:'running',tasks:window.__activityTasks});document.body.style.backgroundColor='#121014'`);
   await screenshot('codex-border-dark-background');
   await evaluate(`document.body.style.backgroundColor=''`);
-  await captureBorderPreview('capsule');
   await page('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
-  check(await evaluate(`getComputedStyle(document.querySelector('.balance-pill__border-light')).animationName==='none'`), 'Border washes respect reduced motion');
+  check(await evaluate(`getComputedStyle(document.querySelector('.balance-pill__border-light')).display==='none'`), 'Capsule also has no highlights with reduced motion');
   await page('Emulation.setEmulatedMedia',{features:[]});
   // Exercise the real console-to-pet assistant event and tool dispatcher with
   // a local model response stub. No account login or network requests are used.
-  await evaluate(`window.__testMolly=true; window.__testAssistantRequests=[]; const settings=JSON.parse(localStorage.getItem('live2d-pet-settings')); settings.assistant={...settings.assistant,enabled:true,model:'mock-model'}; localStorage.setItem('live2d-pet-settings',JSON.stringify(settings));`);
+  await evaluate(`(async()=>{window.__testMolly=true; window.__testAssistantRequests=[]; const settings=JSON.parse(localStorage.getItem('live2d-pet-settings')); settings.assistant={...settings.assistant,enabled:true,model:'mock-model'}; localStorage.setItem('live2d-pet-settings',JSON.stringify(settings)); (await import('/src/petra/assistant/AssistantPanel.ts')).clearApiKeyCache();})()`);
   const queryMolly = async () => {
     await evaluate(`window.__testAssistantResult=null; window.__testEmit('petra-assistant-send',{text:'悬浮窗现在显示什么，任务完成了吗？'})`);
     for(let i=0;i<60 && !(await evaluate('window.__testAssistantResult'));i++) await pause(100);

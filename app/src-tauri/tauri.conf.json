@@ -25,6 +25,7 @@
       },
       {
         "label": "main",
+        "create": false,
         "title": "MollyCloud 助手",
         "url": "overlay.html",
         "width": 700,

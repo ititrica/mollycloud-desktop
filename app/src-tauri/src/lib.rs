@@ -15,6 +15,7 @@ mod tts;
 mod commands;
 mod console_settings;
 mod codex_activity;
+mod pet_window;
 mod ccswitch;
 mod ccswitch_deeplink;
 mod image_workbench;
@@ -89,7 +90,7 @@ pub struct InteractiveRegion {
     pub enabled: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct InteractionSnapshot {
     regions: Vec<InteractiveRegion>,
     initialized: bool,
@@ -323,6 +324,25 @@ fn publish_pet_visibility(app: &AppHandle, visible: bool) {
     let _ = app.emit_to("console", "pet-visibility-changed", visible);
 }
 
+fn stop_pet_session(app: &AppHandle) {
+    if let Some(audio) = app.try_state::<AudioState>() {
+        audio.enabled.store(false, Ordering::SeqCst);
+    }
+    if let Some(drag) = app.try_state::<DragState>() {
+        drag.active.store(false, Ordering::SeqCst);
+    }
+    if let Some(motion) = app.try_state::<PetMotion>() {
+        *motion.target.lock().unwrap() = None;
+    }
+    if let Some(interaction) = app.try_state::<InteractionState>() {
+        *interaction.snapshot.lock().unwrap() = Default::default();
+        interaction.renderer_locked.store(false, Ordering::SeqCst);
+    }
+    if let Some(menu) = app.try_state::<MenuOpen>() {
+        menu.active.store(false, Ordering::SeqCst);
+    }
+}
+
 #[tauri::command]
 fn is_pet_visible(app: AppHandle) -> bool {
     app.get_webview_window("main")
@@ -349,12 +369,8 @@ fn is_topmost(state: State<'_, TopmostState>) -> bool {
 }
 
 #[tauri::command]
-fn show_pet(app: AppHandle) {
-    if let Some(win) = app.get_webview_window("main") {
-        let _ = win.show();
-        let _ = win.set_focus();
-        publish_pet_visibility(&app, win.is_visible().unwrap_or(true));
-    }
+fn show_pet(app: AppHandle) -> Result<(), String> {
+    pet_window::show(&app, true)
 }
 
 /// 诊断通道入口：前端所有报错/阶段埋点汇集于此（stdout + 日志文件）。
@@ -1362,7 +1378,8 @@ fn spawn_pet_mover(app: AppHandle) {
             continue;
         };
         let clamp = !motion.tracking.load(std::sync::atomic::Ordering::Relaxed);
-        if screen::move_window_toward(&win, tx, ty, speed, 0.016, clamp) {
+        let bounds = app.try_state::<DragState>().map(|state| *state.model_bounds.lock().unwrap());
+        if screen::move_window_toward(&win, tx, ty, speed, 0.016, clamp, bounds) {
             // 到位（或窗口不可见）→ 清除目标，避免空转
             *motion.target.lock().unwrap() = None;
         }
@@ -1469,6 +1486,10 @@ fn open_console(app: AppHandle) {
 }
 
 fn toggle_window(app: &AppHandle) {
+    if !app.try_state::<console_settings::ConsoleSettingsState>().is_some_and(|state| state.dashboard_active()) {
+        show_console(app);
+        return;
+    }
     if let Some(win) = app.get_webview_window("main") {
         if win.is_visible().unwrap_or(false) {
             let _ = win.hide();
@@ -1477,6 +1498,8 @@ fn toggle_window(app: &AppHandle) {
             let _ = win.set_focus();
         }
         publish_pet_visibility(app, win.is_visible().unwrap_or(false));
+    } else if let Err(error) = pet_window::show(app, true) {
+        log_line(&format!("pet window could not be created: {error}"));
     }
 }
 

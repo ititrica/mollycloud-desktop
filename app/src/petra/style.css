@@ -126,8 +126,8 @@ body {
   color: #3f4d1b;
   background: rgba(250, 253, 244, 0.94);
   box-shadow: 0 4px 14px rgba(61, 78, 28, 0.12);
-  backdrop-filter: blur(14px) saturate(1.25);
-  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  /* WKWebView backdrop blur can paint a rectangular surface outside a
+     rounded element in a transparent native window. Use the surface alone. */
   font-family: inherit;
   font-size: 12px;
   line-height: 1;
@@ -198,7 +198,7 @@ body {
 }
 /* Both lights inherit one clock, including when the second becomes visible. */
 .balance-pill__border-sweep--second { display: none; offset-distance: calc(var(--balance-border-progress) - 50%); }
-.balance-pill--capsule .balance-pill__border-sweep--second { display: block; }
+.balance-pill--capsule .balance-pill__border-light { display: none; }
 .balance-pill--open .balance-pill__trigger { opacity: 0; }
 .balance-pill--low .balance-pill__trigger { width: 82px; height: 34px; border-radius: 999px; background: rgba(250, 253, 244, 0.97); }
 .balance-pill--low .balance-pill__compact-value,
@@ -208,7 +208,7 @@ body {
 .balance-pill__dropdown[hidden] { display: none; }
 .balance-pill__dropdown[data-direction="above"] { transform-origin: bottom right; }
 .balance-pill--open .balance-pill__dropdown { opacity: 1; pointer-events: auto; transform: translate(0, 0) scale(1); }
-.balance-pill__usage { box-sizing: border-box; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px 14px; overflow: hidden; border: 1px solid rgba(198, 213, 185, 0.82); border-radius: 50%; color: #66778f; background: rgba(250, 253, 244, 0.97); box-shadow: 0 8px 24px rgba(61, 78, 28, 0.16); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); font-family: inherit; text-align: center; }
+.balance-pill__usage { box-sizing: border-box; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px 14px; overflow: hidden; border: 1px solid rgba(198, 213, 185, 0.82); border-radius: 50%; color: #66778f; background: rgba(250, 253, 244, 0.97); box-shadow: 0 8px 24px rgba(61, 78, 28, 0.16);  font-family: inherit; text-align: center; }
 .balance-pill__metric { min-width: 0; display: grid; justify-items: center; gap: 2px; line-height: 1.2; }
 .balance-pill__metric > span { font-size: 11px; font-weight: 600; letter-spacing: 0; }
 .balance-pill__metric strong { max-width: 124px; color: #26320d; overflow-wrap: anywhere; }
