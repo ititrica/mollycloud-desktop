@@ -2,6 +2,7 @@ import 'core-js/actual/array/at'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { connectMolly, mollyEmbedded } from './lib/mollyBridge'
+import { applyEmbeddedTheme } from '../../../app/src/embeddedTheme'
 import 'streamdown/styles.css'
 import 'katex/dist/katex.min.css'
 import './index.css'
@@ -26,6 +27,11 @@ if (!mollyEmbedded && 'serviceWorker' in navigator) {
 async function start() {
   if (mollyEmbedded) {
     await import('../../../app/src/scrollbars.css')
+    await import('../../../app/src/embedded-theme.css')
+    const appearance = matchMedia('(prefers-color-scheme: dark)')
+    const syncTheme = () => applyEmbeddedTheme(document.documentElement, appearance.matches ? 'dark' : 'light')
+    syncTheme()
+    appearance.addEventListener('change', syncTheme)
     await connectMolly()
   }
   const { default: App } = await import('./App')

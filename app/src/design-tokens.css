@@ -74,6 +74,7 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+  --color-input-caret: #ffffff;
   --color-bg: #22251f;
   --color-chrome: #191b18;
   --color-surface: #22251f;

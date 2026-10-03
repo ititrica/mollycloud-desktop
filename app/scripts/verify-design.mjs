@@ -16,6 +16,7 @@ const previewUpdateVersion = appVersion.replace(/\d+$/, patch => String(Number(p
 const productionSmoke = process.argv.includes('--production');
 const darkMode = process.argv.includes('--dark');
 const appearanceOnly = process.argv.includes('--appearance');
+const toolsOnly = process.argv.includes('--tools');
 const motionOnly = process.argv.includes('--motion');
 const netspeedOnly = process.argv.includes('--netspeed');
 const paymentsOnly = process.argv.includes('--keys-payments');
@@ -23,7 +24,7 @@ const speechOnly = process.argv.includes('--speech');
 const subscriptionsOnly = process.argv.includes('--subscriptions');
 const clockOnly = process.argv.includes('--island-clock');
 if (!isWindows && (netspeedOnly || clockOnly)) throw new Error('macOS 不包含灵动岛；此专项只适用于 Windows。');
-const outputDir = resolve(import.meta.dirname, '../../artifacts/design-review', clockOnly ? 'island-clock' : motionOnly ? 'motion' : appearanceOnly ? 'appearance' : speechOnly ? `speech/${darkMode ? 'dark' : 'light'}` : subscriptionsOnly ? `subscriptions/${darkMode ? 'dark' : 'light'}` : darkMode ? 'dark' : 'light');
+const outputDir = resolve(import.meta.dirname, '../../artifacts/design-review', toolsOnly ? `tools/${darkMode ? 'dark' : 'light'}` : clockOnly ? 'island-clock' : motionOnly ? 'motion' : appearanceOnly ? 'appearance' : speechOnly ? `speech/${darkMode ? 'dark' : 'light'}` : subscriptionsOnly ? `subscriptions/${darkMode ? 'dark' : 'light'}` : darkMode ? 'dark' : 'light');
 await mkdir(outputDir, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'molly-design-check-'));
 const browser = spawn(regressionBrowserPath(), [
@@ -136,6 +137,34 @@ async function select(index) {
     await evaluate(`document.querySelector('.nav-item[data-page="${target}"]').click()`);
   }
   await settleAnimations();
+}
+async function verifyEmbeddedPalette(name, width) {
+  if (name === 'images') {
+    await page('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
+    await pause(200);
+  }
+  const expression = `(() => {
+    const input=document.querySelector('input,textarea') || document.createElement('textarea');
+    const temporary=!input.isConnected;
+    if(temporary){input.style.position='fixed';input.style.left='-10000px';document.body.append(input);}
+    const swatch=document.createElement('span');swatch.style.color='hsl(var(--primary))';document.body.append(swatch);
+    const result={theme:document.documentElement.dataset.theme,background:getComputedStyle(document.body).backgroundColor,font:getComputedStyle(document.body).fontFamily,caret:getComputedStyle(input).caretColor,primary:getComputedStyle(swatch).color,primaryHsl:getComputedStyle(document.documentElement).getPropertyValue('--primary'),bodyClass:document.body.className};
+    swatch.remove();if(temporary)input.remove();return result;
+  })()`;
+  let metrics;
+  if (name === 'images') {
+    for (const context of contexts.values()) {
+      if (context.auxData?.isDefault && await evaluate(`location.href.includes('/image-workbench/')`,context).catch(()=>false)) {
+        metrics=await evaluate(expression,context);break;
+      }
+    }
+  } else {
+    metrics=await evaluate(`(()=>{const document=window.document.querySelector('.ccswitch-frame').contentDocument;const getComputedStyle=document.defaultView.getComputedStyle.bind(document.defaultView);return (${expression});})()`);
+  }
+  if (!metrics) throw new Error(`Missing embedded theme context: ${name}`);
+  report.push({page:`embedded-${name}`,width,...metrics});
+  check(metrics.theme === (darkMode ? 'dark' : 'light') && metrics.background === (darkMode ? 'rgb(34, 37, 31)' : 'rgb(255, 255, 255)'), `Shared embedded surfaces ${name} ${width}`);
+  check(metrics.primary === 'rgb(181, 255, 54)' && metrics.font.includes('Microsoft YaHei') && metrics.caret === (darkMode ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)'), `Shared embedded accent, font and caret ${name} ${width}`);
 }
 async function verifySkills(width, height) {
   await waitFor(`!document.querySelector('.skills-load-state') && Boolean(document.querySelector('.skills-frame')?.contentDocument.querySelector('.molly-skills-tabs'))`, 'Skill Manager ready');
@@ -863,7 +892,7 @@ async function verifyAppearance() {
     await ccChild(`(()=>{const notice=document.querySelector('[role="dialog"]');if(notice)[...notice.querySelectorAll('button')].find(b=>b.textContent==='我知道了')?.click();})()`);
     await ccChild(`document.querySelector('#provider-form .cm-content[contenteditable="true"]').focus()`);
     await pause(100);
-    check(await ccChild(`getComputedStyle(document.querySelector('#provider-form input')).caretColor==='rgb(0, 0, 0)'&&getComputedStyle(document.querySelector('#provider-form .cm-cursor')).borderLeftColor==='rgb(0, 0, 0)'&&getComputedStyle(document.querySelector('#provider-form .cm-content')).caretColor==='rgba(0, 0, 0, 0)'`), `CC inputs and custom code caret stay black in ${theme}`);
+    check(await ccChild(`getComputedStyle(document.querySelector('#provider-form input')).caretColor==='${theme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)'}'&&getComputedStyle(document.querySelector('#provider-form .cm-cursor')).borderLeftColor==='${theme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)'}'&&getComputedStyle(document.querySelector('#provider-form .cm-content')).caretColor==='rgba(0, 0, 0, 0)'`), `CC inputs and custom code caret follow ${theme}`);
     await ccChild(`document.querySelector('#provider-form').closest('.fixed').querySelector('button[aria-label="返回"]').click()`);
     await waitFor(`!document.querySelector('.ccswitch-frame').contentDocument.querySelector('#provider-form')`, 'CC caret editor dismissed');
     await select(names.indexOf('images'));
@@ -945,7 +974,7 @@ async function verifyIslandClock() {
 
 async function verifyNetSpeed(width, height) {
   await select(names.indexOf('netspeed'));
-  check(await evaluate(`JSON.stringify([...document.querySelectorAll('.nav-item')].map(el=>el.dataset.page)) === JSON.stringify(['overview','ccswitch','prompts','mcp','assistant','netspeed','images','skills'])`), `Requested navigation order ${width}`);
+  check(await evaluate(`JSON.stringify([...document.querySelectorAll('.nav-item')].map(el=>el.dataset.page)) === JSON.stringify(['overview','ccswitch','skills','prompts','mcp','assistant','netspeed','images'])`), `Requested navigation order ${width}`);
   for (const [index, name] of ['status','display','appearance'].entries()) {
     await evaluate(`document.querySelectorAll('.island-tabs button')[${index}].click()`);
     await settleAnimations();
@@ -980,8 +1009,21 @@ async function verifyNetSpeed(width, height) {
 try {
   await page('Page.enable');
   await page('Runtime.enable');
+  await page('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
   await page('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: darkMode ? 'dark' : 'light' }] });
-  if (clockOnly) {
+  if (toolsOnly) {
+    for (const [width,height] of [[1440,900],[1180,760],[960,640]]) {
+      await page('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+      await page('Page.navigate',{url:`${baseUrl}/?ui-preview=console`});await ready('.nav-item');
+      for (const name of ['ccswitch','prompts','mcp','images']) {
+        await select(names.indexOf(name));
+        if(name === 'images') await waitFor(`!document.querySelector('.embedded-load-state')`, 'Image workbench ready');
+        else await waitFor(`!document.querySelector('.ccswitch-load-state') && Boolean(document.querySelector('.ccswitch-frame').contentDocument.querySelector('.molly-toolbar'))`, 'CC view ready');
+        await verifyEmbeddedPalette(name,width);
+        await screenshot(`${name}-${width}`);
+      }
+    }
+  } else if (clockOnly) {
     await verifyIslandClock();
   } else if (speechOnly) {
     for (const [width,height] of [[1440,900],[1180,760],[960,640]]) {
@@ -1095,6 +1137,7 @@ try {
     await evaluate(`localStorage.removeItem('mollycloud:preview:console-settings')`);
     await page('Page.navigate', { url: `${baseUrl}/?ui-preview=console&preview-page=overview` });
     await ready('.overview-page');
+    check(await evaluate(`JSON.stringify([...document.querySelectorAll('.nav-item')].map(el=>el.dataset.page)) === JSON.stringify(${JSON.stringify(['overview','ccswitch','skills','prompts','mcp','assistant',...(isWindows?['netspeed']:[]),'images'])})`), `Skill manager follows API keys ${width}`);
     await verifyCompactSidebar(width, height);
     await verifySidebarScrollCues(width, height);
     await verifyConsoleSettings(width, height);
@@ -1115,6 +1158,7 @@ try {
         const view = names[index];
         await waitFor(`Boolean(document.querySelector('.ccswitch-frame')?.contentDocument.querySelector('${view === 'prompts' ? '[data-testid="molly-prompts-view"]' : '[data-testid="molly-mcp-view"]'}'))`, `Independent ${view} view ${width}`);
         check(await evaluate(`!document.querySelector('.ccswitch-frame').contentDocument.querySelector('.molly-toolbar button[aria-label="返回"]')`), `Independent ${view} has no provider back button ${width}`);
+        check(await evaluate(`!document.querySelector('.ccswitch-frame').contentDocument.querySelector('.molly-private-target')`), `Independent ${view} removes tool-config introduction ${width}`);
       }
       if (names[index] === 'recharge') {
         check(await evaluate(`(getComputedStyle(document.querySelector('.workspace')).scrollbarWidth === 'none' || getComputedStyle(document.querySelector('.workspace'),'::-webkit-scrollbar').display === 'none') && getComputedStyle(document.querySelector('.workspace')).overflowY === 'auto'`), `Recharge hides rail while preserving scrolling ${width}`);
@@ -1122,6 +1166,7 @@ try {
       if (names[index] === 'images') {
         await waitFor(`!document.querySelector('.embedded-load-state')`, `Image workbench ready ${width}`);
       }
+      if (['ccswitch','prompts','mcp','images'].includes(names[index])) await verifyEmbeddedPalette(names[index],width);
       if (names[index] === 'recharge') {
         const point = await evaluate(`(() => {const w=document.querySelector('.workspace'),p=document.querySelector('.recharge-panel'),r=w.getBoundingClientRect();p.style.minHeight=(w.clientHeight+600)+'px';w.scrollTop=0;return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
         await page('Input.dispatchMouseEvent',{type:'mouseWheel',...point,deltaX:0,deltaY:320});
@@ -1319,4 +1364,6 @@ try {
   socket.close();
   browser.kill();
 }
-if (failures.length) process.exitCode = 1;
+// CDP's auto-attached iframe connections can keep Node alive after Browser.close.
+// Reports are already flushed and the owned browser is closed at this point.
+process.exit(failures.length ? 1 : 0);

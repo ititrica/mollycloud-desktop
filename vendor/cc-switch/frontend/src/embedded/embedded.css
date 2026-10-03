@@ -1,4 +1,4 @@
-@import "../../../../../app/src/design-tokens.css";
+@import "../../../../../app/src/embedded-theme.css";
 /* This stylesheet is loaded only by the isolated CC Switch iframe. */
 html, body, #root { width: 100%; height: 100%; min-width: 0; margin: 0; }
 .molly-private-target { padding: 9px 24px 10px; border-bottom: 1px solid hsl(var(--border)); font-size: 12px; color: hsl(var(--muted-foreground)); background: hsl(var(--muted) / .35); }
@@ -6,23 +6,4 @@ html, body, #root { width: 100%; height: 100%; min-width: 0; margin: 0; }
 [data-molly-selected="true"] { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; border-radius: 12px; }
 @media (max-width: 800px) { .molly-private-target { padding-inline: 16px; } }
 
-:root, :root.dark {
-  --primary: var(--molly-lime-hsl);
-  --primary-foreground: var(--molly-on-lime-hsl);
-  --ring: var(--molly-lime-deep-hsl);
-  --accent: var(--molly-lime-soft-hsl);
-  --accent-foreground: var(--molly-lime-text-hsl);
-}
-/* Existing upstream blue utilities share Molly's accent palette. */
-:root { --molly-accent-text: var(--color-lime-deep); }
-:root.dark { --molly-accent-text: var(--color-lime); }
-[class~="text-blue-400"], [class~="text-blue-500"], [class~="text-blue-600"], [class~="text-blue-700"], [class~="text-blue-800"], [class~="text-blue-900"] { color: var(--molly-accent-text); }
-:root.dark [class~="dark:text-blue-300"], :root.dark [class~="dark:text-blue-400"], :root.dark [class~="dark:text-blue-500"], :root.dark [class~="dark:text-blue-600"] { color: var(--molly-accent-text); }
-[class*="bg-blue-500"][class*="text-white"],
-[class*="bg-blue-600"][class*="text-white"] { color: var(--color-on-lime); }
 .molly-toolbar { column-gap: 16px; }
-
-.glass-card-active, .dark .glass-card-active {
-  background: hsl(var(--primary) / .10);
-  border-color: hsl(var(--primary) / .45);
-}

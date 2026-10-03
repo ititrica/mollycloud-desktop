@@ -98,7 +98,6 @@ fn verify(app: &tauri::AppHandle, win: &tauri::WebviewWindow) -> Result<serde_js
         let screens = NSScreen::screens(MainThreadMarker::new().unwrap());
         let primary = screens.firstObject().unwrap();
         let primary_height = primary.frame().size.height;
-        let visible = primary.visibleFrame();
         let frame = primary.frame();
         let center = (
             frame.origin.x + frame.size.width / 2.0,
@@ -109,10 +108,10 @@ fn verify(app: &tauri::AppHandle, win: &tauri::WebviewWindow) -> Result<serde_js
             (center.1 * scale).round() as i32,
         );
         let expected = [
-            (visible.origin.x * scale).round() as i32,
-            ((primary_height - visible.origin.y - visible.size.height) * scale).round() as i32,
-            (visible.size.width * scale).round() as i32,
-            (visible.size.height * scale).round() as i32,
+            (frame.origin.x * scale).round() as i32,
+            ((primary_height - frame.origin.y - frame.size.height) * scale).round() as i32,
+            (frame.size.width * scale).round() as i32,
+            (frame.size.height * scale).round() as i32,
         ];
         let cursor = screen::cursor_pos(&snapshot_app);
         let pointer = NSEvent::mouseLocation();
@@ -127,7 +126,7 @@ fn verify(app: &tauri::AppHandle, win: &tauri::WebviewWindow) -> Result<serde_js
     })?;
     check(
         [area.left, area.top, area.width, area.height] == expected,
-        "Work area matches NSScreen visibleFrame including Dock and menu bar",
+        "Drag area matches full NSScreen frame, including Dock and menu bar regions",
     )?;
     check(
         area.width > 0 && area.height > 0,
@@ -193,9 +192,14 @@ fn verify(app: &tauri::AppHandle, win: &tauri::WebviewWindow) -> Result<serde_js
             "Always-on-top asynchronous update completes",
         )?;
         let level = native_state(app, win)?.1;
+        #[link(name = "CoreGraphics", kind = "framework")]
+        extern "C" { fn CGWindowLevelForKey(key: u32) -> i32; }
+        let floating = unsafe { CGWindowLevelForKey(5) as isize };
+        let dock = unsafe { CGWindowLevelForKey(7) as isize };
+        let menu = unsafe { CGWindowLevelForKey(8) as isize };
         check(
-            if topmost { level > 0 } else { level == 0 },
-            "Always-on-top changes the real NSWindow level",
+            if topmost { level == floating && level > 0 && level < dock && level < menu } else { level == 0 },
+            "Pet floats above regular windows and below Dock and system menu bar",
         )?;
         check(
             screen::is_topmost(win) == topmost,

@@ -234,9 +234,23 @@ fn close_action_for_window(
     dashboard_active: bool,
 ) -> Option<CloseAction> {
     (label == "console").then(|| {
-        if dashboard_active { settings.unwrap_or_default().close_action }
+        if cfg!(target_os = "macos") || dashboard_active { settings.unwrap_or_default().close_action }
         else { CloseAction::Quit }
     })
+}
+
+/// Only automatic last-window teardown has no exit code. Explicit quit/restart
+/// must always reach the normal proxy and service cleanup lifecycle.
+pub fn handle_run_event(app: &AppHandle, event: &tauri::RunEvent) {
+    #[cfg(target_os = "macos")]
+    if let tauri::RunEvent::ExitRequested { code: None, api, .. } = event {
+        if app.try_state::<ConsoleSettingsState>()
+            .is_some_and(|state| state.get().is_ok_and(|settings| settings.close_action == CloseAction::Tray)) {
+            api.prevent_exit();
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, event);
 }
 
 pub fn handle_window_event(window: &Window, event: &WindowEvent) {
@@ -253,6 +267,7 @@ pub fn handle_window_event(window: &Window, event: &WindowEvent) {
         return;
     };
     api.prevent_close();
+    crate::log_line(&format!("console close action: {action:?}; dashboard: {dashboard_active}"));
     match action {
         CloseAction::Tray => {
             if window.hide().is_err() {
@@ -387,23 +402,25 @@ mod tests {
     }
 
     #[test]
-    fn login_startup_and_two_factor_close_always_quit() {
+    fn login_close_obeys_macos_preference_and_keeps_windows_policy() {
         for saved in [None, Some(settings(CloseAction::Tray)), Some(settings(CloseAction::Quit))] {
-            assert_eq!(close_action_for_window("console", saved, false), Some(CloseAction::Quit));
+            let expected = if cfg!(target_os = "macos") { saved.unwrap_or_default().close_action } else { CloseAction::Quit };
+            assert_eq!(close_action_for_window("console", saved, false), Some(expected));
             assert_eq!(close_action_for_window("main", saved, false), None);
         }
     }
 
     #[test]
-    fn signing_out_restores_quit_without_changing_the_saved_preference() {
+    fn signing_out_preserves_macos_close_preference() {
         let state = ConsoleSettingsState::load(None);
         let action = || close_action_for_window("console", state.get().ok(),
             state.dashboard_active.load(Ordering::Acquire));
-        assert_eq!(action(), Some(CloseAction::Quit));
+        let logged_out = if cfg!(target_os = "macos") { CloseAction::Tray } else { CloseAction::Quit };
+        assert_eq!(action(), Some(logged_out));
         state.set_dashboard_active(true);
         assert_eq!(action(), Some(CloseAction::Tray));
         state.set_dashboard_active(false);
-        assert_eq!(action(), Some(CloseAction::Quit));
+        assert_eq!(action(), Some(logged_out));
         assert_eq!(state.get().unwrap().close_action, CloseAction::Tray);
     }
 

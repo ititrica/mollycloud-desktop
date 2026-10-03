@@ -1208,7 +1208,7 @@ function App() {
       className="flex flex-col h-screen overflow-hidden bg-background text-foreground selection:bg-primary/30 pb-4"
       style={{ overflowX: "hidden", paddingTop: contentTopOffset }}
     >
-      <div className="molly-private-target"><strong>本机工具配置</strong> · 导入只保存供应商；点击启用后，配置将用于本机工具。切换后请重新打开对应 CLI。</div>
+      {currentView === "providers" && <div className="molly-private-target"><strong>本机工具配置</strong> · 导入只保存供应商；点击启用后，配置将用于本机工具。切换后请重新打开对应 CLI。</div>}
       {(dragBarHeight > 0 || useAppWindowControls) && (
         <div
           className="fixed top-0 left-0 right-0 z-[70] flex items-center justify-end px-2"

@@ -161,12 +161,12 @@ watch(phase, (next) => {
 const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "project-key" | "key" | "usage" | "assistant" | "code" | "image" | "skills" | "island" | "prompts" | "mcp" }> = [
   { id: "overview", label: "概览", icon: "overview" },
   { id: "ccswitch", label: "API 密钥", icon: "project-key" },
+  { id: "skills", label: "Skill 管理器", icon: "skills" },
   { id: "prompts", label: "提示词管理", icon: "prompts" },
   { id: "mcp", label: "MCP 管理", icon: "mcp" },
   { id: "assistant", label: "Molly助手", icon: "assistant" },
   ...(isWindows ? [{ id: "netspeed" as const, label: "灵动岛", icon: "island" as const }] : []),
   { id: "images", label: "生图工作台", icon: "image" },
-  { id: "skills", label: "Skill 管理器", icon: "skills" },
 ];
 
 const availablePageIds = new Set<Page>([

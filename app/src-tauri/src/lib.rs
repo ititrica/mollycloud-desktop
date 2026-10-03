@@ -356,6 +356,7 @@ fn is_pet_visible(app: AppHandle) -> bool {
 fn set_topmost(app: AppHandle, state: State<'_, TopmostState>, on: bool) -> bool {
     if let Some(win) = app.get_webview_window("main") {
         // 同步 Tauri 内部标志，避免后续其它窗口操作覆盖
+        #[cfg(not(target_os = "macos"))]
         let _ = win.set_always_on_top(on);
         // 直接 Win32 立即生效
         screen::set_topmost(&win, on);
@@ -1874,6 +1875,7 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
+            console_settings::handle_run_event(app, &event);
             #[cfg(target_os = "macos")]
             match event {
                 tauri::RunEvent::Reopen { .. } => show_console(app),

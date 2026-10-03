@@ -59,6 +59,7 @@ fn request_close(window: &tauri::WebviewWindow) -> Result<(), String> {
 
 fn main() {
     let login_mode = std::env::args().any(|argument| argument == "--login");
+    let no_pet = std::env::args().any(|argument| argument == "--no-pet");
     let temporary = tempfile::tempdir().expect("temporary settings directory");
     let path = temporary.path().join("console-settings.json");
     let webview_data = temporary.path().join("webview");
@@ -96,10 +97,10 @@ fn main() {
             .data_directory(webview_data.clone())
             .build()?;
             // A live pet window must not keep the login-close case running.
-            tauri::WebviewWindowBuilder::new(app, "main",
+            if !no_pet { tauri::WebviewWindowBuilder::new(app, "main",
                 tauri::WebviewUrl::External("about:blank".parse().unwrap()))
                 .title("MollyCloud isolated pet verification")
-                .visible(false).skip_taskbar(true).data_directory(webview_data).build()?;
+                .visible(false).skip_taskbar(true).data_directory(webview_data).build()?; }
             let handle = app.handle().clone();
             let watchdog = handle.clone();
             std::thread::spawn(move || {
@@ -122,7 +123,7 @@ fn main() {
                     let label = closed_rx
                         .recv_timeout(std::time::Duration::from_secs(5))
                         .map_err(|_| "Missing tray CloseRequested event")?;
-                    if login_mode {
+                    if login_mode && !cfg!(target_os = "macos") {
                         if label != "console" { return Err("Unexpected login close target".into()); }
                         return Ok(());
                     }
@@ -131,6 +132,16 @@ fn main() {
                     }
                     if console.is_visible().map_err(|error| error.to_string())? {
                         return Err("Tray close did not hide the console window".into());
+                    }
+                    // Keep all fixture windows hidden long enough to catch an
+                    // implicit exit, then reopen and exercise the close again.
+                    std::thread::sleep(std::time::Duration::from_millis(800));
+                    console.show().map_err(|error| error.to_string())?;
+                    request_close(&console)?;
+                    closed_rx.recv_timeout(std::time::Duration::from_secs(3)).map_err(|error| error.to_string())?;
+                    std::thread::sleep(std::time::Duration::from_millis(800));
+                    if handle.get_webview_window("console").is_none() || console.is_visible().unwrap_or(true) {
+                        return Err("Repeated tray close stopped the background console".into());
                     }
                     handle
                         .state::<ConsoleSettingsState>()
@@ -158,13 +169,13 @@ fn main() {
         .expect("build isolated native close host");
     let exit_events = Arc::new(Mutex::new((false, false)));
     let exit_output = exit_events.clone();
-    let exit_code = app.run_return(move |_, event| match event {
+    let exit_code = app.run_return(move |app, event| { console_settings::handle_run_event(app, &event); match event {
         tauri::RunEvent::ExitRequested { code: Some(0), .. } => {
             exit_events.lock().unwrap().0 = true
         }
         tauri::RunEvent::Exit => exit_events.lock().unwrap().1 = true,
         _ => {}
-    });
+    }});
     // The close callback wakes the worker immediately before the event loop
     // exits; allow that result to finish publishing without touching other apps.
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
@@ -192,10 +203,10 @@ fn main() {
             .get()
             .unwrap()
             .close_action,
-        if login_mode { CloseAction::Tray } else { CloseAction::Quit },
+        if login_mode && !cfg!(target_os = "macos") { CloseAction::Tray } else { CloseAction::Quit },
         "saved close policy did not survive reload"
     );
-    if login_mode {
+    if login_mode && !cfg!(target_os = "macos") {
         println!("PASS: login CloseRequested exits normally with a live pet window, preserving the saved tray preference");
     } else {
         println!("PASS: native console CloseRequested hides for tray, exits normally for quit, and persists selection in temporary storage");

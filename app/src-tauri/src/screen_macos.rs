@@ -15,7 +15,6 @@ struct ScreenFrame {
     top: f64,
     width: f64,
     height: f64,
-    work: [f64; 4],
 }
 static SCREENS: OnceLock<RwLock<Vec<ScreenFrame>>> = OnceLock::new();
 static WINDOW_SCALE: AtomicU64 = AtomicU64::new(1.0f64.to_bits());
@@ -42,18 +41,11 @@ fn refresh_screens() {
         .iter()
         .map(|screen| {
             let frame = screen.frame();
-            let work = screen.visibleFrame();
             ScreenFrame {
                 left: frame.origin.x,
                 top: desktop_top - frame.origin.y - frame.size.height,
                 width: frame.size.width,
                 height: frame.size.height,
-                work: [
-                    work.origin.x,
-                    desktop_top - work.origin.y - work.size.height,
-                    work.size.width,
-                    work.size.height,
-                ],
             }
         })
         .collect();
@@ -113,6 +105,8 @@ pub fn configure_pet_window(win: &WebviewWindow) {
             }
         });
         PET_WINDOWS.get_or_init(Default::default).lock().unwrap().insert(pointer as usize);
+        let native = unsafe { &*pointer.cast::<NSWindow>() };
+        if native.level() > 0 { native.setLevel(pet_window_level(true)); }
     };
     if MainThreadMarker::new().is_some() { configure(); }
     else { let _ = win.run_on_main_thread(configure); }
@@ -184,10 +178,10 @@ pub fn work_area_at(x: i32, y: i32) -> WorkArea {
             })
         {
             return WorkArea {
-                left: (screen.work[0] * scale).round() as i32,
-                top: (screen.work[1] * scale).round() as i32,
-                width: (screen.work[2] * scale).round() as i32,
-                height: (screen.work[3] * scale).round() as i32,
+                left: (screen.left * scale).round() as i32,
+                top: (screen.top * scale).round() as i32,
+                width: (screen.width * scale).round() as i32,
+                height: (screen.height * scale).round() as i32,
             };
         }
     }
@@ -208,11 +202,36 @@ pub fn set_ignore_cursor(win: &WebviewWindow, ignore: bool) {
         IGNORE_CURSOR.store(target, Ordering::Relaxed);
     }
 }
+fn pet_window_level(topmost: bool) -> isize {
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" { fn CGWindowLevelForKey(key: u32) -> i32; }
+    // CoreGraphics keys are not levels. Floating (key 5) sits above regular
+    // applications and below Dock/main-menu levels; normal is key 4.
+    unsafe { CGWindowLevelForKey(if topmost { 5 } else { 4 }) as isize }
+}
+
 pub fn is_topmost(win: &WebviewWindow) -> bool {
-    win.is_always_on_top().unwrap_or(false)
+    let window = win.clone();
+    let query = move || window.ns_window().ok().is_some_and(|pointer| {
+        let native = unsafe { &*pointer.cast::<objc2_app_kit::NSWindow>() };
+        native.level() == pet_window_level(true)
+    });
+    if MainThreadMarker::new().is_some() { return query(); }
+    let (tx, rx) = std::sync::mpsc::channel();
+    if win.run_on_main_thread(move || { let _ = tx.send(query()); }).is_err() { return true; }
+    // Do not reorder floating windows when AppKit is temporarily busy.
+    rx.recv_timeout(std::time::Duration::from_millis(250)).unwrap_or(true)
 }
 pub fn set_topmost(win: &WebviewWindow, on: bool) {
-    let _ = win.set_always_on_top(on);
+    let window = win.clone();
+    let set = move || {
+        if let Ok(pointer) = window.ns_window() {
+            let native = unsafe { &*pointer.cast::<objc2_app_kit::NSWindow>() };
+            native.setLevel(pet_window_level(on));
+        }
+    };
+    if MainThreadMarker::new().is_some() { set(); }
+    else { let _ = win.run_on_main_thread(set); }
 }
 
 pub fn move_window_toward(
@@ -335,9 +354,9 @@ pub fn cursor_client_pos(win: &WebviewWindow) -> Option<(i32, i32)> {
 mod tests {
     use super::*;
     #[test]
-    fn character_can_reach_all_work_area_edges_at_each_scale() {
+    fn character_can_reach_full_screen_edges_at_each_scale() {
         for scale in [1, 2] {
-            let area = WorkArea { left: -1920 * scale, top: 30 * scale, width: 1920 * scale, height: 1050 * scale };
+            let area = WorkArea { left: -1920 * scale, top: 0, width: 1920 * scale, height: 1080 * scale };
             let bounds = (200 * scale, 100 * scale, 500 * scale, 600 * scale);
             let (x, y) = clamp_to_model(&area, -10000, -10000, bounds, false);
             assert_eq!((x + bounds.0, y + bounds.1), (area.left, area.top));
@@ -353,7 +372,6 @@ mod tests {
             top: 100.0,
             width: 1920.0,
             height: 1080.0,
-            work: [-1920.0, 125.0, 1920.0, 1000.0],
         };
         assert_eq!(distance_to_frame(&screen, -1000.0, 500.0), 0.0);
         assert_eq!(distance_to_frame(&screen, 20.0, 500.0), 400.0);

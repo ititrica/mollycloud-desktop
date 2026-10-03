@@ -39,12 +39,12 @@ module.exports = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         blue: {
-          50: "var(--color-lime-soft)", 100: "var(--color-lime-soft)",
-          200: "var(--color-lime-border)", 300: "var(--color-lime-border)",
-          400: "var(--color-lime)", 500: "var(--color-lime)",
-          600: "var(--color-lime-hover)", 700: "var(--color-lime-pressed)",
-          800: "var(--color-lime-deep)", 900: "var(--color-on-lime)",
-          950: "var(--color-on-lime)",
+          50: "hsl(var(--molly-accent-hsl) / <alpha-value>)", 100: "hsl(var(--molly-accent-hsl) / <alpha-value>)",
+          200: "hsl(var(--molly-accent-border-hsl) / <alpha-value>)", 300: "hsl(var(--molly-accent-border-hsl) / <alpha-value>)",
+          400: "hsl(var(--molly-primary-hsl) / <alpha-value>)", 500: "hsl(var(--molly-primary-hsl) / <alpha-value>)",
+          600: "hsl(var(--molly-primary-hover-hsl) / <alpha-value>)", 700: "hsl(var(--molly-primary-pressed-hsl) / <alpha-value>)",
+          800: "hsl(var(--molly-ring-hsl) / <alpha-value>)", 900: "hsl(var(--molly-primary-foreground-hsl) / <alpha-value>)",
+          950: "hsl(var(--molly-primary-foreground-hsl) / <alpha-value>)",
         },
         gray: {
           50: "#fafafa",
@@ -173,4 +173,3 @@ module.exports = {
   },
   plugins: [],
 };
-
