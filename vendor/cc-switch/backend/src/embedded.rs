@@ -179,10 +179,18 @@ pub fn init_for_test(
     build_plugin(Some(app_data_root))
 }
 
+pub fn init_guarded(gate: impl Fn() -> bool + Send + Sync + 'static) -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    build_guarded(None, Arc::new(gate))
+}
 fn build_plugin(app_data_override: Option<PathBuf>) -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    build_guarded(app_data_override, Arc::new(|| true))
+}
+fn build_guarded(app_data_override: Option<PathBuf>, gate: Arc<dyn Fn() -> bool + Send + Sync>) -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    let setup_gate=gate.clone();
     let upstream = crate::upstream_handler();
     tauri::plugin::Builder::new("molly-ccswitch")
         .setup(move |app, _| {
+            if !setup_gate() { return Ok(()); }
             let initialization = (|| -> Result<(), Box<dyn std::error::Error>> {
             let app_data = match &app_data_override { Some(path) => path.clone(), None => app.path().app_data_dir()? };
             initialize_paths(&app_data)?;
@@ -229,6 +237,7 @@ fn build_plugin(app_data_override: Option<PathBuf>) -> tauri::plugin::TauriPlugi
             Ok(())
         })
         .invoke_handler(move |invoke| {
+            if !gate() { invoke.resolver.reject("插件未安装或需要重启后启用"); return true; }
             if invoke.message.webview().window().label() != "console" {
                 invoke.resolver.reject("内置 CC Switch 仅供 MollyCloud 控制台访问");
                 return true;
@@ -309,6 +318,8 @@ pub(crate) fn validate_settings(
         crate::opencode_config::get_opencode_dir(),
         crate::openclaw_config::get_openclaw_dir(),
         crate::hermes_config::get_hermes_dir(),
+        crate::mcode_config::data_dir(),
+        crate::mcode_config::config_path(),
     ] {
         require_config_path(&path)?;
     }
@@ -408,7 +419,7 @@ fn is_managed_tree_entry(root: &Path, path: &Path) -> bool {
         ["home", ".codex", "sessions" | "archived_sessions" | "log", ..] => false,
         ["home", ".gemini", "tmp" | "history", ..] => false,
         ["home", ".cc-switch" | ".claude" | ".codex" | ".gemini" | ".grok" | ".config" | ".openclaw"
-        | ".hermes" | ".pi" | "appdata", ..] => true,
+        | ".hermes" | ".pi" | ".minimax" | "appdata", ..] => true,
         _ => false,
     }
 }
@@ -615,6 +626,17 @@ fn molly_provider_config(
             "api": "openai-responses",
             "models": [{"id": input.model, "name": input.model, "contextWindow": 128000, "maxTokens": 32768}],
         }),
+        "mcode" => {
+            let mut models = serde_json::Map::new();
+            models.insert(input.model.clone(), json!({"name": input.model}));
+            json!({
+                "name": input.name,
+                "kind": "custom",
+                "api": "openai-responses",
+                "options": {"baseURL": input.base_url, "apiKey": input.api_key},
+                "models": models,
+            })
+        }
         _ => return Err("请选择 CC Switch 支持的 Agent。".into()),
     };
     Ok(config)
@@ -660,7 +682,7 @@ fn save_molly_provider(db: &Database, input: MollyProviderImport) -> Result<Stri
     });
     provider.name = input.name;
     provider.settings_config = settings_config;
-    provider.website_url = Some(input.base_url);
+    provider.website_url = url::Url::parse(&input.base_url).ok().map(|url| url.origin().ascii_serialization());
     provider
         .created_at
         .get_or_insert_with(|| chrono::Utc::now().timestamp());
@@ -726,6 +748,16 @@ pub fn import_molly_provider(
         json!({"app":app_type, "providerId":id}),
     );
     Ok(id)
+}
+
+/// Account balance remains a Molly host capability, never a vendored JS script.
+pub fn is_molly_imported_provider(app: &tauri::AppHandle, agent: &str, id: &str) -> Result<bool, String> {
+    if !id.starts_with("molly-") { return Ok(false); }
+    let state = app.try_state::<AppState>().ok_or("内置 CC Switch 尚未初始化。")?;
+    let provider = state.db.get_provider_by_id(id, agent).map_err(|e| e.to_string())?;
+    Ok(provider.is_some_and(|provider| {
+        provider.notes.as_deref().is_some_and(|note| note.starts_with("由 MollyCloud API 密钥页导入；"))
+    }))
 }
 
 #[cfg(test)]
@@ -823,6 +855,7 @@ mod tests {
             "openclaw",
             "hermes",
             "pi",
+            "mcode",
         ];
         let mut ids = std::collections::HashSet::new();
         for agent in agents {
@@ -851,6 +884,9 @@ mod tests {
             assert!(serialized.contains("secret-not-real"));
             assert!(serialized.contains("model-selected-by-user"));
             assert!(db.get_current_provider(agent).unwrap().is_none());
+            if agent == "mcode" {
+                crate::mcode_config::validate_provider(&id, &provider.settings_config).unwrap();
+            }
             if agent == "claude-desktop" {
                 crate::claude_desktop_config::validate_provider(&provider).unwrap();
                 assert_eq!(
@@ -874,6 +910,22 @@ mod tests {
             },
         )
         .is_err());
+    }
+
+    #[test]
+    fn molly_import_separates_website_from_model_api() {
+        let db = Database::memory().unwrap();
+        let id = save_molly_provider(&db, MollyProviderImport {
+            account_id: "mock-account".into(), key_id: "mock-key".into(),
+            name: "MollyCloud".into(), app: "codex".into(),
+            api_key: "mock-not-real".into(),
+            base_url: "https://mollycloud.cn/v1".into(),
+            model: "mock-model".into(), usage_script: None,
+        }).unwrap();
+        let card = db.get_provider_by_id(&id, "codex").unwrap().unwrap();
+        assert_eq!(card.website_url.as_deref(), Some("https://mollycloud.cn"));
+        assert_eq!(card.resolve_usage_credentials(&crate::AppType::Codex).0, "https://mollycloud.cn/v1");
+        assert!(db.get_current_provider("codex").unwrap().is_none());
     }
 
     #[test]
@@ -996,6 +1048,7 @@ mod tests {
         )
         .unwrap();
         assert!(require_config_path(&external_manager.join("cc-switch.db")).is_err());
+        verify_mcode_system_configuration(&db, &system_home, &external_manager);
         let mut override_settings = crate::settings::AppSettings::default();
         override_settings.codex_config_dir =
             Some(temp.path().join("custom-codex").display().to_string());
@@ -1133,5 +1186,69 @@ mod tests {
             assert_eq!(std::fs::read_to_string(&gemini_settings).unwrap(), gemini_edited_settings);
             assert_eq!(std::fs::read_to_string(&gemini_env).unwrap(), gemini_proxy_env);
         });
+    }
+
+    fn verify_mcode_system_configuration(db: &Database, home: &Path, external_manager: &Path) {
+        use crate::mcode_config;
+        assert_eq!(mcode_config::data_dir(), home.join(".minimax"));
+        let path = mcode_config::config_path();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let original = "defaultModel: minimax/native\ncustom_provider:\n  native:\n    kind: account\n    name: Keep\nminimax_api:\n  apiKey: mock-native-key\nunknown: [a, b]\n";
+        std::fs::write(&path, original).unwrap();
+        let id = save_molly_provider(db, MollyProviderImport {
+            account_id: "minimax-test".into(), key_id: "key".into(),
+            name: "Molly MiniMax test".into(), app: "mcode".into(),
+            api_key: "mock-not-real".into(), base_url: "https://example.test/v1".into(),
+            model: "test-model".into(), usage_script: None,
+        }).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original, "import is DB-only");
+        let config = db.get_provider_by_id(&id, "mcode").unwrap().unwrap().settings_config;
+        let lock = path.with_extension("yaml.lock");
+        std::fs::create_dir(&lock).unwrap();
+        assert!(mcode_config::set_provider(&id, config.clone()).is_err());
+        assert!(lock.exists(), "do not remove the native tool's active lock");
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        std::fs::remove_dir(&lock).unwrap();
+        mcode_config::set_provider(&id, config.clone()).unwrap();
+        let before: serde_yaml::Value = serde_yaml::from_str(original).unwrap();
+        let mut after: serde_yaml::Value = serde_yaml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        for field in ["defaultModel", "minimax_api", "unknown"] {
+            assert_eq!(before[field], after[field]);
+        }
+        assert_eq!(before["custom_provider"]["native"], after["custom_provider"]["native"]);
+        assert!(mcode_config::set_provider("native", config.clone()).is_err());
+        after["defaultModel"] = format!("custom_provider:{id}/test-model").into();
+        std::fs::write(&path, serde_yaml::to_string(&after).unwrap()).unwrap();
+        assert!(mcode_config::remove_provider(&id).is_err());
+        let mut replacement = config.clone();
+        replacement["models"] = json!({"different-model":{}});
+        assert!(mcode_config::set_provider(&id, replacement).is_err());
+        after["defaultModel"] = before["defaultModel"].clone();
+        std::fs::write(&path, serde_yaml::to_string(&after).unwrap()).unwrap();
+        mcode_config::remove_provider(&id).unwrap();
+        assert_eq!(serde_yaml::from_str::<serde_yaml::Value>(&std::fs::read_to_string(&path).unwrap()).unwrap(), before);
+
+        let mcp_path = mcode_config::data_dir().join("mcp.json");
+        let original_mcp = json!({"extra":42,"mcpServers":{"keep":{"url":"https://example.test/mcp","enabled":false}}});
+        std::fs::write(&mcp_path, original_mcp.to_string()).unwrap();
+        crate::mcp::mcode::sync("test", Some(&json!({"command":"mock-server","args":[]}))).unwrap();
+        let mcp: serde_json::Value = crate::config::read_json_file(&mcp_path).unwrap();
+        assert_eq!(mcp["mcpServers"]["keep"], original_mcp["mcpServers"]["keep"]);
+        assert_eq!(mcp["extra"], 42);
+        assert_eq!(mcp["mcpServers"]["test"]["enabled"], true);
+        crate::mcp::mcode::sync("test", None).unwrap();
+        assert_eq!(crate::config::read_json_file::<serde_json::Value>(&mcp_path).unwrap(), original_mcp);
+
+        // The shared path guard must reject a junction into standalone CC Switch
+        // before creating a lock, directory, or touching the target configuration.
+        let preserved = home.join("minimax-preserved");
+        std::fs::rename(mcode_config::data_dir(), &preserved).unwrap();
+        link_test_directory(external_manager, &mcode_config::data_dir());
+        assert!(validate_settings(&crate::settings::get_settings()).is_err());
+        assert!(mcode_config::set_provider(&id, config).is_err());
+        assert!(!external_manager.join("config.yaml").exists());
+        assert!(!external_manager.join("config.yaml.lock").exists());
+        unlink_test_directory(&mcode_config::data_dir());
+        std::fs::rename(preserved, mcode_config::data_dir()).unwrap();
     }
 }

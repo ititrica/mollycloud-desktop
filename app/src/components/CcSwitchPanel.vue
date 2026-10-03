@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { NButton } from "naive-ui";
+import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import type { CcSwitchImportResult } from "../ipc";
 
 const props = defineProps<{
@@ -10,6 +12,7 @@ const props = defineProps<{
 
 const frame = ref<HTMLIFrameElement | null>(null);
 const ready = ref(false);
+const importReady = ref(false);
 const childReportedError = ref(false);
 const loadFailed = ref(false);
 const frameVersion = ref(0);
@@ -18,7 +21,7 @@ let loadTimer: number | undefined;
 const frameUrl = computed(() => {
   const params = new URLSearchParams({ embedded: "1" });
   if (props.preview) params.set("ui-preview", "ccswitch");
-  return `/ccswitch/index.html?${params.toString()}`;
+  return `${props.preview ? "/ccswitch" : "/molly-plugins/ccswitch"}/index.html?${params.toString()}`;
 });
 
 function sendProvider(type: "navigate" | "provider-imported", provider: CcSwitchImportResult): void {
@@ -44,12 +47,28 @@ function receiveMessage(event: MessageEvent): void {
     if (loadTimer) window.clearTimeout(loadTimer);
     return;
   }
+  if (data.type === "import-ready") {
+    importReady.value = true;
+    if (!props.preview) void flushExternalImports();
+    return;
+  }
   if (data.type !== "ready") return;
   ready.value = true;
   childReportedError.value = false;
   loadFailed.value = false;
   if (loadTimer) window.clearTimeout(loadTimer);
   if (props.target) sendProvider("navigate", props.target);
+  if (!props.preview) void flushExternalImports();
+}
+
+async function flushExternalImports(): Promise<void> {
+  if (!ready.value || !importReady.value) return;
+  try {
+    const imports = await invoke<unknown[]>("take_ccswitch_external_imports");
+    for (const request of imports) await emit("deeplink-import", request);
+  } catch (error) {
+    console.error("无法打开 CC Switch 网页导入确认窗口", error);
+  }
 }
 
 function startLoadTimer(): void {
@@ -61,6 +80,7 @@ function startLoadTimer(): void {
 
 function reloadFrame(): void {
   ready.value = false;
+  importReady.value = false;
   childReportedError.value = false;
   loadFailed.value = false;
   frameVersion.value += 1;
@@ -81,7 +101,7 @@ onBeforeUnmount(() => {
   if (loadTimer) window.clearTimeout(loadTimer);
 });
 
-defineExpose({ notifyProviderImported });
+defineExpose({ notifyProviderImported, flushExternalImports });
 </script>
 
 <template>

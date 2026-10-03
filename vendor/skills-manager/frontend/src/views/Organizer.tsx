@@ -24,7 +24,6 @@ export function Organizer() {
     await (project ? api.reorderProjects(ids) : api.reorderPresets(ids));
   });
   return <div className="app-page">
-    <header><h2 className="app-page-title">分组与项目</h2><p className="app-page-subtitle">把常用技能保存为预设，或按项目维护独立的技能工作区。</p></header>
     <section className="app-panel p-5"><div className="app-toolbar mb-4"><h3 className="molly-section-heading"><Layers size={20}/>预设分组</h3><button className="app-button-primary" onClick={() => setCreate(true)}><Plus size={16}/>新建预设</button></div>
       {!presets.length && <p className="molly-empty">还没有预设。在技能库中选择技能，再将它们加入分组。</p>}
       {presets.map((p, i) => <div className="molly-list-row" key={p.id}><button className="molly-list-main" onClick={() => {setViewedPresetId(p.id); navigate("/my-skills");}}><strong>{p.name}</strong><span>{p.skill_count} 个技能{p.description ? ` · ${p.description}` : ""}</span></button><div className="molly-row-actions"><button className="app-button-secondary" disabled={busy || !i} aria-label={`上移 ${p.name}`} onClick={() => void reorder(i,false)}><ArrowUp size={15}/></button><button className="app-button-secondary" onClick={() => setRename(p)}>编辑</button><button className="app-button-secondary" onClick={() => setRemove({...p,project:false})}>删除</button></div></div>)}

@@ -122,4 +122,19 @@ describe('serverSentEvents', () => {
     })).rejects.toMatchObject({ name: 'AbortError' })
     expect(cancel).toHaveBeenCalledOnce()
   })
+  it('retains a multi-megabyte final image event across small byte chunks', async () => {
+    const b64 = 'A'.repeat(4 * 1024 * 1024)
+    const bytes = new TextEncoder().encode(`data: ${JSON.stringify({ type: 'image_generation.completed', b64_json: b64 })}\n\ndata: [DONE]\n\n`)
+    const events: Array<Record<string, unknown>> = []
+    const response = new Response(new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let offset = 0; offset < bytes.length; offset += 49152) controller.enqueue(bytes.subarray(offset, offset + 49152))
+        controller.close()
+      },
+    }))
+    await readJsonServerSentEvents(response, (event) => { events.push(event) })
+    expect(events).toHaveLength(1)
+    expect(events[0].b64_json).toBe(b64)
+  })
+
 })

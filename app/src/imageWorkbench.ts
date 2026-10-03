@@ -54,24 +54,53 @@ export async function forwardImageRequest(request: NetworkRequest, id: string, s
   validateImageRequest(request);
   signal.throwIfAborted();
   if ('__TAURI_INTERNALS__' in window) {
-    const channel = new Channel<{ type: string; status?: number; headers?: Record<string, string>; data?: string }>();
-    channel.onmessage = (data) => {
-      if (signal.aborted) return;
-      if (data.type === 'headers') send({ value: { status: data.status, headers: data.headers } });
-      if (data.type === 'chunk') send({ type: 'chunk', bytes: Uint8Array.from(atob(data.data!), char => char.charCodeAt(0)) });
-    };
+    const channel = new Channel<{ type: string; status?: number; headers?: Record<string, string>; data?: string; bytes?: number }>();
+    let receivedBytes = 0;
+    let ended = false;
+    let finished = false;
+    let deliveryError: Error | undefined;
+    let resolveEnd!: () => void;
+    let rejectEnd!: (reason: unknown) => void;
+    const delivered = new Promise<void>((resolve, reject) => { resolveEnd = resolve; rejectEnd = reject; });
+    // A cancellation can reject delivery before the native invocation returns.
+    void delivered.catch(() => undefined);
     const cancel = () => { void invoke('cancel_image_request', { id }).catch(() => undefined); };
-    signal.addEventListener('abort', cancel, { once: true });
+    const abort = () => { cancel(); rejectEnd(signal.reason ?? new DOMException('请求已取消', 'AbortError')); };
+    channel.onmessage = (data) => {
+      if (signal.aborted || deliveryError || ended || finished) return;
+      try {
+        if (data.type === 'headers') send({ value: { status: data.status, headers: data.headers } });
+        if (data.type === 'chunk') {
+          const bytes = Uint8Array.from(atob(data.data!), char => char.charCodeAt(0));
+          receivedBytes += bytes.byteLength;
+          send({ type: 'chunk', bytes });
+        }
+        if (data.type === 'end') {
+          if (!Number.isSafeInteger(data.bytes) || data.bytes !== receivedBytes) throw new Error('图片响应交付不完整，请重新尝试。');
+          // This marker shares the ordered Channel with every body chunk.
+          ended = true; send({ type: 'end' }); resolveEnd();
+        }
+      } catch (reason) {
+        deliveryError = reason instanceof Error ? reason : new Error('图片响应交付失败。');
+        rejectEnd(deliveryError); cancel();
+      }
+    };
+    signal.addEventListener('abort', abort, { once: true });
     let body: string | null = null;
     if (request.bytes) {
       const parts: string[] = [];
       for (let i = 0; i < request.bytes.length; i += 32768) parts.push(String.fromCharCode(...request.bytes.subarray(i, i + 32768)));
       body = btoa(parts.join(''));
     }
+    let deliveryTimer: ReturnType<typeof setTimeout> | undefined;
     try {
       await invoke('image_request', { id, request: { url: request.url, method: request.method, headers: request.headers, body }, channel });
-      send({ type: 'end' });
-    } finally { signal.removeEventListener('abort', cancel); }
+      // Invocation completion does not mean queued Channel bytes reached JS.
+      if (!ended) deliveryTimer = setTimeout(() => { deliveryError = new Error('图片响应尾部交付超时，请重新加载工作台。'); rejectEnd(deliveryError); cancel(); }, 30000);
+      await delivered;
+    } catch (reason) {
+      throw deliveryError ?? reason;
+    } finally { finished = true; clearTimeout(deliveryTimer); signal.removeEventListener('abort', abort); }
     return;
   }
   // 浏览器预览直接请求；桌面版使用上面的流式转发。

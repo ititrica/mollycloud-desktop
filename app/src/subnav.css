@@ -1,0 +1,8 @@
+/* The Overview subnavigation is the standard for all console feature tabs. */
+.molly-subnav { position:relative; display:flex; flex:none; gap:24px; min-width:0; overflow-x:auto; border-bottom:1px solid var(--color-border); }
+.molly-subnav > :is(button, a) { position:relative; display:inline-flex; align-items:center; flex:none; padding:10px 2px 13px; border:0; border-radius:0; background:transparent; color:var(--color-text-muted); font-family:var(--font-body); font-size:14px; line-height:1.5; font-weight:400; text-decoration:none; white-space:nowrap; cursor:pointer; transition:color var(--motion-duration,180ms) ease; }
+.molly-subnav > :is(button, a):hover { color:var(--color-text); }
+.molly-subnav > :is(button, a):is([aria-current="page"], .active) { color:var(--color-text); font-weight:600; }
+.molly-subnav > :is(button, a):focus-visible { outline:2px solid var(--color-lime-deep); outline-offset:-2px; border-radius:4px; }
+.molly-subnav > .selection-indicator { position:absolute; top:0; left:0; pointer-events:none; opacity:0; background:var(--color-lime); border-radius:3px; }
+@media (prefers-reduced-motion:reduce) { .molly-subnav > :is(button, a) { transition:none; } }

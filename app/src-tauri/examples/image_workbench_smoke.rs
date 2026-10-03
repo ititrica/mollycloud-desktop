@@ -1,4 +1,6 @@
-//! Isolated native host: real production UI, real image bridge, mock account only.
+#[path = "../src/console_plugins.rs"]
+mod console_plugins;
+// Isolated native host: real production UI, real image bridge, mock account only.
 #[path = "../src/image_workbench.rs"]
 mod image_workbench;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -55,6 +57,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             image_workbench::image_request,
             image_workbench::cancel_image_request,
+            console_plugins::list_console_plugins,
             set_mock_account,
             bootstrap_public,
             bootstrap_calls,
@@ -65,6 +68,7 @@ fn main() {
             set_console_dashboard_active
         ])
         .setup(move |app| {
+            console_plugins::initialize_at(app.handle(), profile.parent().expect("temporary profile parent").join("plugins"));
             tauri::WebviewWindowBuilder::new(
                 app,
                 "console",

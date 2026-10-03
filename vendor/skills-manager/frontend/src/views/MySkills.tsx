@@ -1107,18 +1107,11 @@ export function MySkills() {
 
   return (
     <div className="app-page">
-      <div className="app-page-header pr-2 pb-1 flex items-center justify-between gap-3">
-        <h1 className="app-page-title flex items-center gap-2">
-          {t("mySkills.title")}
-          <span className="app-badge">
-            {skills.length}
-          </span>
-        </h1>
-
-      </div>
-
       <div className="app-toolbar">
         <div className="flex flex-1 items-center gap-3">
+          <span className="app-badge shrink-0" aria-label={`${t("mySkills.title")} ${skills.length}`}>
+            {skills.length}
+          </span>
           <div className="relative w-full min-w-[200px] max-w-[280px]">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
             <input

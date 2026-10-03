@@ -41,3 +41,7 @@ async function bootstrap() {
   );
 }
 void bootstrap();
+
+import "../../../../app/src/scrollbars.css";
+
+import "../../../../app/src/console-inputs.css";

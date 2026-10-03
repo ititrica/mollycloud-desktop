@@ -1,5 +1,5 @@
 use crate::{
-    api::{MOLLY_OPENAI_ROOT, SERVICE_ORIGIN},
+    api::{MOLLY_CCSWITCH_IMPORT_ROOT, MOLLY_OPENAI_ROOT, SERVICE_ORIGIN},
     state::RuntimeState,
 };
 use arboard::Clipboard;
@@ -160,6 +160,9 @@ pub async fn fetch_dashboard(state: State<'_, RuntimeState>) -> Result<Dashboard
             .api
             .get_authenticated("/keys?page=1&page_size=100", &token),
     )?;
+    let ids = crate::account::key_ids(&keys);
+    let stats = if ids.is_empty() { Value::Null } else { state.api.post_authenticated("/usage/dashboard/api-keys-usage", &serde_json::json!({"api_key_ids":ids}), &token).await.unwrap_or(Value::Null) };
+    crate::account::apply_key_usage(&mut keys, &stats);
     mask_api_keys(&mut keys);
     Ok(DashboardPayload {
         user,
@@ -170,7 +173,7 @@ pub async fn fetch_dashboard(state: State<'_, RuntimeState>) -> Result<Dashboard
     })
 }
 
-fn mask_api_keys(value: &mut Value) {
+pub(crate) fn mask_api_keys(value: &mut Value) {
     let Some(items) = value.get_mut("items").and_then(Value::as_array_mut) else {
         return;
     };
@@ -278,6 +281,7 @@ pub async fn import_api_key_to_ccswitch(
     state: State<'_, RuntimeState>,
     app: AppHandle,
 ) -> Result<CcSwitchImportOutcome, String> {
+    crate::console_plugins::require(&app, "ccswitch")?;
     if key_id.trim().is_empty() {
         return Err("未找到要导入的 API 密钥".to_owned());
     }
@@ -302,6 +306,7 @@ pub async fn import_api_key_to_ccswitch(
             | "openclaw"
             | "hermes"
             | "pi"
+            | "mcode"
     ) {
         return Err("请选择 CC Switch 支持的 Agent".to_owned());
     }
@@ -328,22 +333,9 @@ pub async fn import_api_key_to_ccswitch(
         .and_then(Value::as_str)
         .filter(|key| !key.is_empty())
         .ok_or_else(|| "API 密钥内容为空".to_owned())?;
-    let usage_script = r#"({
-      request: {
-        url: "{{baseUrl}}/usage",
-        method: "GET",
-        headers: { "Authorization": "Bearer {{apiKey}}" }
-      },
-      extractor: function(response) {
-        const remaining = response?.remaining ?? response?.quota?.remaining ?? response?.balance;
-        const unit = response?.unit ?? response?.quota?.unit ?? "USD";
-        return {
-          isValid: response?.is_active ?? response?.isValid ?? true,
-          remaining,
-          unit
-        };
-      }
-    })"#;
+    // The embedded bridge queries the host for Molly account balance after
+    // verifying the provider. /v1/usage is not an API-key balance endpoint.
+    let usage_script = "/* MollyCloud account balance is supplied by the host. */";
 
     let input = molly_ccswitch::MollyProviderImport {
         account_id,
@@ -351,7 +343,7 @@ pub async fn import_api_key_to_ccswitch(
         name: name.to_owned(),
         app: agent.clone(),
         api_key: api_key.to_owned(),
-        base_url: MOLLY_OPENAI_ROOT.to_owned(),
+        base_url: MOLLY_CCSWITCH_IMPORT_ROOT.to_owned(),
         model: model.to_owned(),
         usage_script: Some(usage_script.to_owned()),
     };
@@ -364,6 +356,54 @@ pub async fn import_api_key_to_ccswitch(
         provider_id,
         app: agent,
     })
+}
+
+#[tauri::command]
+pub async fn query_molly_provider_usage(
+    app: AppHandle,
+    state: State<'_, RuntimeState>,
+    agent: String,
+    provider_id: String,
+) -> Result<Option<molly_ccswitch::UsageResult>, String> {
+    crate::console_plugins::require(&app, "ccswitch")?;
+    if !molly_ccswitch::is_molly_imported_provider(&app, &agent, &provider_id)? {
+        return Ok(None);
+    }
+    let token = state.access_token().await?;
+    let user = state.api.get_authenticated("/auth/me", &token).await?;
+    Ok(Some(molly_usage_from_user(&user)))
+}
+
+fn molly_usage_from_user(user: &Value) -> molly_ccswitch::UsageResult {
+    let balance = user.get("balance").and_then(|value| {
+        value.as_f64().or_else(|| value.as_str().and_then(|text| text.parse::<f64>().ok()))
+    }).filter(|amount| amount.is_finite());
+    molly_ccswitch::UsageResult {
+        success: balance.is_some(),
+        data: balance.map(|remaining| vec![molly_ccswitch::UsageData {
+            plan_name: Some("MollyCloud 当前登录账户".into()),
+            remaining: Some(remaining), total: None, used: None,
+            unit: Some("USD".into()), is_valid: Some(true),
+            invalid_message: None, extra: None,
+        }]),
+        error: balance.is_none().then(|| "账户余额暂不可用".into()),
+    }
+}
+
+#[cfg(test)]
+mod molly_ccswitch_usage_tests {
+    use super::molly_usage_from_user;
+    use serde_json::json;
+
+    #[test]
+    fn formats_logged_in_balance_without_exposing_login_or_api_keys() {
+        let result = molly_usage_from_user(&json!({"balance":"12.75", "token":"private", "api_key":"mock-not-real"}));
+        assert!(result.success);
+        assert_eq!(result.data.unwrap()[0].remaining, Some(12.75));
+        let invalid = molly_usage_from_user(&json!({"balance":null}));
+        assert!(!invalid.success);
+        assert!(invalid.data.is_none());
+    }
 }
 
 #[derive(Serialize)]
@@ -382,6 +422,11 @@ fn account_identity(user: &Value) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn logout(state: State<'_, RuntimeState>, app: AppHandle) -> Result<(), String> {
+    // Serialize against a checkout being opened so no old-account view can appear after logout.
+    let gate = app.state::<crate::recharge::RechargeState>();
+    let _guard = gate.0.lock().await;
+    crate::recharge::close(&app).await?;
+    app.state::<crate::payments::PaymentState>().0.lock().await.clear();
     let refresh_token = state.refresh_token().await.ok();
     if let Some(refresh_token) = refresh_token {
         let _ = state.api.logout(&refresh_token).await;

@@ -717,8 +717,7 @@ export function InstallSkills() {
 
   return (
     <div className="app-page gap-4">
-      <div className="app-page-header border-b-0 pb-0">
-        <h1 className="app-page-title mb-4">{t("install.title")}</h1>
+      <div>
         <div className="flex gap-1 border-b border-border-subtle">
           {[
             { id: "market" as const, label: t("install.browseMarket"), icon: Box },

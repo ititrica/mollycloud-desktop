@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { checkResourceConfig, containsCredential, isCredentialFile } from './check-package-inputs.mjs';
 
 test('bundle allows shipped assets and rejects user data', () => {
-  const config = { build: { frontendDist: '../dist' }, bundle: { resources: ['../THIRD_PARTY_NOTICES.md', '../public/models/'] } };
+  const config = { build: { frontendDist: '../dist' }, bundle: { resources: ['../THIRD_PARTY_NOTICES.md', '../public/models/', '../../vendor/netspeed-dynamic/helpers/NSD_Fps_Plugin.exe', '../../vendor/netspeed-dynamic/helpers/NSD_Taskbar_Plugin.exe'] } };
   assert.doesNotThrow(() => checkResourceConfig(config));
   assert.throws(() => checkResourceConfig({ ...config, bundle: { resources: [...config.bundle.resources, 'C:/Users/example/AppData/Roaming/cn.mollycloud.client'] } }));
   for (const path of ['api_key.bin', 'public/models/api_key.tmp', 'auth.json', 'public/.env.local', 'user-data/Default/Preferences', 'public/test.db']) assert.equal(isCredentialFile(path), true);

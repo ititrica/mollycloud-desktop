@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onActivated, onBeforeUnmount, onDeactivated, ref, toRaw, watch } from "vue";
 import { NAlert, NButton, NCheckbox, NInput, NInputNumber, NModal, NSelect, NSwitch } from "naive-ui";
 import AppIcon from "./AppIcon.vue";
 import { importPetModel, modelAutoOptions, modelParameters, petDraftSchema, requestPetSettings, type PetDraft, type PetSettingsRequest, type PetSettingsSnapshot } from "../petSettings";
+import { defaultSpeechConfig, sameSpeechEndpoint, SpeechPlayer, type SpeechStatus } from "../speech";
+import { emitTo } from "@tauri-apps/api/event";
 import { PROVIDERS } from "../petra/assistant/AssistantClient";
 
-const props = defineProps<{ show: boolean }>();
-const emit = defineEmits<{ "update:show": [show: boolean]; closed: [] }>();
+const props = defineProps<{ show: boolean; embedded?: boolean }>();
+const emit = defineEmits<{ "update:show": [show: boolean]; closed: []; busy: [boolean] }>();
 const tab = ref<"model" | "assistant">("model");
 const snapshot = ref<PetSettingsSnapshot | null>(null);
 const draft = ref<PetDraft | null>(null);
@@ -16,20 +18,48 @@ const error = ref("");
 const notice = ref("");
 const apiKey = ref("");
 const clearApiKey = ref(false);
+const speechApiKey = ref("");
+const clearSpeechApiKey = ref(false);
+const speechStatus = ref<SpeechStatus>({ phase: "idle" });
+const speechPlayer = new SpeechPlayer(status => { speechStatus.value = status; });
+const speechPlaying = computed(() => ["preparing", "playing"].includes(speechStatus.value.phase));
+const savedSpeechKey = computed(() => Boolean(snapshot.value?.speechKeyConfigured && draft.value && sameSpeechEndpoint(draft.value.speech, snapshot.value.draft.speech)));
+const speechOptions = [{ label: "MiMo（冰糖 · 流式）", value: "mimo" }, { label: "自定义 OpenAI 协议", value: "custom" }];
+function changeSpeechProvider(value: string) {
+  speechPlayer.stop();
+  if (!draft.value) return;
+  draft.value.speech = value === "mimo" ? { ...defaultSpeechConfig, enabled: draft.value.speech.enabled, volume: draft.value.speech.volume } : { ...draft.value.speech, provider: "custom", baseUrl: "", model: "tts-1", voice: "alloy" };
+  speechApiKey.value = ""; clearSpeechApiKey.value = false;
+}
+async function testSpeech() {
+  if (!draft.value || speechPlaying.value) return;
+  error.value = "";
+  try {
+    if (!("__TAURI_INTERNALS__" in window)) throw new Error("语音试听需要在桌面端使用，浏览器预览不调用真实服务。");
+    await emitTo("main", "assistant-speech-stop");
+    await speechPlayer.play("你好呀，我是 Molly！今天也要一起开心地度过哦。", { config: { ...draft.value.speech }, apiKey: speechApiKey.value, clearApiKey: clearSpeechApiKey.value }, savedSpeechKey.value && !clearSpeechApiKey.value); }
+  catch (reason) { fail(reason); }
+}
+onBeforeUnmount(() => { speechPlayer.stop(); emit("busy",false); });
+onDeactivated(() => speechPlayer.stop());
+onActivated(() => { if (props.embedded && snapshot.value && !dirty.value && !busy.value) void load(); });
+watch(busy, value => emit("busy",value), {flush:"sync"});
+const frameProps = computed(() => props.embedded ? {} : {show:props.show,to:"#console-settings-layer",maskClosable:!busy.value,closeOnEsc:!busy.value,transformOrigin:"center"});
 const availableModels = ref<string[]>([]);
 const confirmDelete = ref("");
 const confirmClear = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 let version = 0;
-const dirty = computed(() => JSON.stringify(draft.value) !== JSON.stringify(snapshot.value?.draft ?? null) || Boolean(apiKey.value.trim()) || clearApiKey.value);
+const dirty = computed(() => JSON.stringify(draft.value) !== JSON.stringify(snapshot.value?.draft ?? null) || Boolean(apiKey.value.trim()) || clearApiKey.value || Boolean(speechApiKey.value.trim()) || clearSpeechApiKey.value);
 const savedKeyAvailable = computed(() => snapshot.value?.apiKeyConfigured && draft.value?.assistant.provider === snapshot.value.draft.assistant.provider && draft.value?.assistant.customBaseUrl === snapshot.value.draft.assistant.customBaseUrl);
 const providerOptions = Object.entries(PROVIDERS).map(([value, info]) => ({ value, label: info.label }));
 const sides = [{ key: "left", label: "左边界" }, { key: "right", label: "右边界" }, { key: "top", label: "上边界" }, { key: "bottom", label: "下边界" }] as const;
 function receive(value: PetSettingsSnapshot) {
   snapshot.value = value;
-  draft.value = structuredClone(value.draft);
+  draft.value = structuredClone(toRaw(value.draft));
   apiKey.value = "";
   clearApiKey.value = false;
+  speechApiKey.value = ""; clearSpeechApiKey.value = false;
 }
 function fail(reason: unknown) { error.value = reason instanceof Error ? reason.message : String(reason); }
 async function load() {
@@ -40,16 +70,17 @@ async function load() {
   catch (reason) { if (current === version) fail(reason); }
   finally { if (current === version) loading.value = false; }
 }
-function cancel() { if (!busy.value) emit("update:show", false); }
+function cancel() { speechPlayer.stop(); if (busy.value) return; if (props.embedded && snapshot.value) { receive(snapshot.value); error.value = ""; notice.value = "修改已撤销"; } else emit("update:show", false); }
 async function save() {
   if (!draft.value || busy.value) return;
   const parsed = petDraftSchema.safeParse(draft.value);
   if (!parsed.success) { error.value = parsed.error.issues[0]?.message ?? "请检查设置"; return; }
+  speechPlayer.stop();
   busy.value = true;
   error.value = "";
   try {
-    receive(await requestPetSettings({ action: "save", draft: parsed.data, apiKey: apiKey.value, clearApiKey: clearApiKey.value }));
-    emit("update:show", false);
+    receive(await requestPetSettings({ action: "save", draft: parsed.data, apiKey: apiKey.value, clearApiKey: clearApiKey.value, speechApiKey: speechApiKey.value, clearSpeechApiKey: clearSpeechApiKey.value }));
+    if (props.embedded) notice.value = "设置已保存"; else emit("update:show", false);
   } catch (reason) { fail(reason); }
   finally { busy.value = false; }
 }
@@ -88,17 +119,18 @@ async function fetchModels() {
   } catch (reason) { fail(reason); }
   finally { busy.value = false; }
 }
+watch(() => [draft.value?.speech.provider, draft.value?.speech.baseUrl, draft.value?.speech.model, draft.value?.speech.voice, draft.value?.speech.volume, speechApiKey.value, clearSpeechApiKey.value], () => speechPlayer.stop());
 watch(() => draft.value?.assistant.provider, () => { availableModels.value = []; });
 watch(() => props.show, show => {
-  if (show) { tab.value = "model"; snapshot.value = null; draft.value = null; notice.value = ""; confirmDelete.value = ""; confirmClear.value = false; availableModels.value = []; void load(); }
-  else { ++version; apiKey.value = ""; clearApiKey.value = false; }
+  if (show) { tab.value = props.embedded ? "assistant" : "model"; snapshot.value = null; draft.value = null; notice.value = ""; confirmDelete.value = ""; confirmClear.value = false; availableModels.value = []; void load(); }
+  else { ++version; apiKey.value = ""; clearApiKey.value = false; speechApiKey.value = ""; clearSpeechApiKey.value = false; speechPlayer.stop(); }
 }, { immediate: true });
 </script>
 
 <template>
-  <n-modal :show="show" to="#console-settings-layer" :mask-closable="!busy" :close-on-esc="!busy" transform-origin="center" @update:show="cancel" @after-leave="emit('closed')">
-    <div class="console-settings-dialog pet-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="pet-settings-title" :aria-busy="loading || busy">
-      <header class="console-settings-header">
+  <component :is="embedded ? 'section' : NModal" v-bind="frameProps" class="pet-settings-frame" :class="{'pet-settings-frame--embedded':embedded}" @update:show="cancel" @after-leave="emit('closed')">
+    <div class="console-settings-dialog pet-settings-dialog" :class="{'pet-settings-dialog--embedded':embedded}" :role="embedded ? undefined : 'dialog'" :aria-modal="embedded ? undefined : true" :aria-labelledby="embedded ? undefined : 'pet-settings-title'" :aria-busy="loading || busy">
+      <header v-if="!embedded" class="console-settings-header">
         <span class="console-settings-icon"><AppIcon name="settings" /></span>
         <div><h2 id="pet-settings-title">桌宠设置</h2><p>调整 Molly 的外观与小助手偏好。</p></div>
       </header>
@@ -161,13 +193,28 @@ watch(() => props.show, show => {
               <div class="pet-setting-field"><label for="pet-persona">人格设定</label><n-input v-model:value="draft.assistant.persona" type="textarea" maxlength="1200" :disabled="busy" :input-props="{ id: 'pet-persona' }" :autosize="{ minRows: 3, maxRows: 6 }" /></div>
               <div class="pet-setting-field"><label for="pet-greet">主动问候间隔（分钟）</label><n-input-number v-model:value="draft.assistant.greetInterval" :min="5" :max="120" :step="5" :disabled="busy" :input-props="{ id: 'pet-greet' }" :parse="value => Number(value) || 20" /></div>
               <p class="console-settings-hint">主动问候会将当前前台窗口标题和进程名发送给所选 AI 服务。</p>
+              <section class="speech-settings" aria-label="在线语音">
+                <div class="pet-setting-switch"><span>语音朗读</span><n-switch v-model:value="draft.speech.enabled" :disabled="busy" aria-label="语音朗读" /></div>
+                <p class="console-settings-hint">朗读 Molly 的回复、主动问候与抽卡点评，语音内容会发送给所选语音服务。</p>
+                <p v-if="savedSpeechKey && !draft.speech.enabled" class="console-settings-hint" role="status">语音密钥已保存；打开“语音朗读”并保存后，Molly 才会播放回复。</p>
+                <div class="pet-setting-field"><label id="speech-provider-label">语音服务</label><n-select :value="draft.speech.provider" :options="speechOptions" :disabled="busy" aria-labelledby="speech-provider-label" @update:value="changeSpeechProvider" /></div>
+                <p v-if="draft.speech.provider === 'mimo'" class="console-settings-hint speech-preset">MiMo V2.5 TTS · 冰糖音色 · 低延迟流式播放</p>
+                <template v-else>
+                  <div class="pet-setting-field"><label for="speech-base">语音 API 端点</label><n-input v-model:value="draft.speech.baseUrl" :disabled="busy" :input-props="{ id: 'speech-base' }" placeholder="https://api.example.com/v1" /></div>
+                  <div class="native-columns"><div class="pet-setting-field"><label for="speech-model">语音模型</label><n-input v-model:value="draft.speech.model" :disabled="busy" :input-props="{ id: 'speech-model' }" placeholder="tts-1" /></div><div class="pet-setting-field"><label for="speech-voice">音色 ID</label><n-input v-model:value="draft.speech.voice" :disabled="busy" :input-props="{ id: 'speech-voice' }" placeholder="alloy" /></div></div>
+                </template>
+                <div class="pet-setting-field"><label for="speech-key">语音 API 密钥</label><n-input v-model:value="speechApiKey" type="password" show-password-on="click" :disabled="busy || clearSpeechApiKey" :input-props="{ id: 'speech-key', autocomplete: 'new-password' }" :placeholder="savedSpeechKey ? '已保存，留空保持原密钥' : '手动填写语音服务密钥'" /><small>独立于对话密钥，使用 Windows 加密保存在本机。更换服务或端点后需重新填写。</small><n-checkbox v-if="snapshot.speechKeyConfigured" v-model:checked="clearSpeechApiKey" :disabled="busy">清除已保存的语音密钥</n-checkbox></div>
+                <label class="pet-setting-range"><span>朗读音量<output>{{ Math.round(draft.speech.volume * 100) }}%</output></span><input v-model.number="draft.speech.volume" type="range" min="0" max="1" step="0.05" :disabled="busy" aria-label="朗读音量" /></label>
+                <div class="speech-test-actions"><n-button :disabled="busy || clearSpeechApiKey || (!speechApiKey.trim() && !savedSpeechKey)"  @click="speechPlaying ? speechPlayer.stop() : testSpeech()">{{ speechPlaying ? '停止试听' : '试听声音' }}</n-button><span role="status">{{ speechStatus.phase === 'preparing' ? '正在合成…' : speechStatus.phase === 'playing' ? '正在播放…' : '' }}</span></div>
+                <p class="console-settings-hint">试听使用当前草稿，会产生语音服务用量；试听后点击保存以应用设置。</p>
+              </section>
               <n-button :disabled="busy || dirty" @click="confirmClear = true">清空对话历史</n-button>
               <n-alert v-if="confirmClear" class="pet-settings-confirm" type="warning" :bordered="false" :show-icon="false">清空桌宠与控制台共享的对话历史，长期记忆保留。<div class="pet-settings-inline-actions"><n-button :disabled="busy" @click="confirmClear = false">保留</n-button><n-button type="error" :loading="busy" @click="manage({ action: 'clear-history' }, '对话历史已清空，长期记忆保留。')">确认清空</n-button></div></n-alert>
             </div>
           </fieldset>
         </div>
-        <footer class="console-settings-actions"><n-button size="large" :disabled="busy" @click="cancel">取消</n-button><n-button type="primary" size="large" attr-type="submit" :loading="busy" :disabled="!draft || loading">保存</n-button></footer>
+        <footer class="console-settings-actions"><n-button size="large" :disabled="busy" @click="cancel">{{ embedded ? '撤销修改' : '取消' }}</n-button><n-button type="primary" size="large" attr-type="submit" :loading="busy" :disabled="!draft || loading">保存</n-button></footer>
       </form>
     </div>
-  </n-modal>
+  </component>
 </template>

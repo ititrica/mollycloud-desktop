@@ -1,15 +1,22 @@
+mod console_plugins;
+pub use console_plugins::require_skills_cli;
 mod audio;
 mod api;
+mod key_groups;
+mod subscriptions;
+mod payments;
+mod recharge;
+#[cfg(feature = "recharge-smoke")]
+pub use recharge::run_smoke as run_recharge_smoke;
 mod assistant;
+mod account;
 mod assistant_config;
+mod tts;
 mod commands;
 mod console_settings;
 mod codex_activity;
 mod ccswitch;
-#[cfg(not(feature = "mcp-market-smoke"))]
-mod mcp_market;
-#[cfg(feature = "mcp-market-smoke")]
-pub mod mcp_market;
+mod ccswitch_deeplink;
 mod image_workbench;
 mod launch;
 mod proxy;
@@ -25,7 +32,7 @@ use assistant_config::{get_assistant_config, save_assistant_config};
 use ccswitch::launch_ccswitch_cli;
 use console_settings::{get_console_settings, save_console_settings, set_console_dashboard_active};
 use commands::{
-    bootstrap_public, complete_two_factor, copy_api_endpoint, copy_api_key, fetch_account_balance,
+    bootstrap_public, complete_two_factor, copy_api_endpoint, copy_api_key, fetch_account_balance, query_molly_provider_usage,
     fetch_ccswitch_import_models, fetch_dashboard, import_api_key_to_ccswitch, login, logout,
     play_overlay_motion, restore_session, set_overlay_interactive,
 };
@@ -1616,7 +1623,10 @@ mod interaction_tests {
 pub fn run() {
     let runtime_state = RuntimeState::new().expect("failed to initialize Molly runtime");
     let builder = tauri::Builder::default().plugin(tauri_plugin_single_instance::init(
-        |app, _arguments, _working_directory| show_console(app),
+        |app, arguments, _working_directory| {
+            ccswitch_deeplink::accept_arguments(app, arguments);
+            show_console(app);
+        },
     ));
     // updater 插件在 dev / release 都注册，使 tauri dev 下也能真实测试 check() 网络链路。
     // 开发版禁止实际安装由前端 import.meta.env.DEV 保护（见 UpdateManager.performUpdate）。
@@ -1624,9 +1634,9 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(molly_ccswitch::init())
-        .plugin(molly_skills::init())
         .plugin(image_workbench::plugin())
+        .plugin(molly_netspeed::init())
+        .manage(ccswitch_deeplink::PendingImports::default())
         .manage(image_workbench::ImageRequests::default())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -1660,8 +1670,23 @@ pub fn run() {
             model_bounds: std::sync::Mutex::new((0, 0, 700, 700)),
         })
         .manage(runtime_state)
-        .manage(mcp_market::MarketState::default())
-        .invoke_handler(tauri::generate_handler![
+        .manage(recharge::RechargeState::default())
+        .manage(payments::PaymentState::default())
+        .manage(subscriptions::SubscriptionState::default())
+        .manage(tts::SpeechState::default())
+        .invoke_handler(|invoke| {
+            // The built-in island only uses its scoped service namespace. Host
+            // commands (account, files, shell and Petra control) are not exposed.
+            if invoke.message.webview().label() == "netspeed-widget" {
+                invoke.resolver.reject("灵动岛不能调用控制台或桌宠命令");
+                return true;
+            }
+            let dispatch: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
+            key_groups::fetch_key_groups, key_groups::change_key_group, key_groups::create_api_key, key_groups::delete_api_key,
+            subscriptions::fetch_subscriptions, subscriptions::reset_subscription, subscriptions::update_subscription_auto_renew,
+            payments::payment_checkout, payments::payment_orders, payments::payment_create_order, payments::payment_order, payments::payment_cancel_order, payments::open_payment_order,
+            recharge::open_recharge_view, recharge::close_recharge_view,
+            console_plugins::list_console_plugins, console_plugins::change_console_plugin, console_plugins::check_console_plugin,
             trash_files, work_area_at, cursor_pos, hide_pet, is_pet_visible, set_topmost, is_topmost, show_pet,
             quit_app, restart_app, debug_mark, read_file_bytes, save_psd,
             read_psd, list_models, read_model_manifest, read_builtin_psd,
@@ -1676,21 +1701,27 @@ pub fn run() {
             set_volume, send_notification, get_weather,
             schedule_shutdown, cancel_shutdown,
             bootstrap_public, login, complete_two_factor, restore_session,
-            fetch_dashboard, fetch_account_balance, copy_api_endpoint, copy_api_key, fetch_ccswitch_import_models, import_api_key_to_ccswitch, logout,
+            fetch_dashboard, fetch_account_balance, query_molly_provider_usage, copy_api_endpoint, copy_api_key, fetch_ccswitch_import_models, import_api_key_to_ccswitch, logout,
+            ccswitch_deeplink::has_ccswitch_external_import, ccswitch_deeplink::take_ccswitch_external_imports,
+            ccswitch_deeplink::ccswitch_web_import_handler, ccswitch_deeplink::register_ccswitch_web_import,
+            ccswitch_deeplink::unregister_ccswitch_web_import,
             launch_ccswitch_cli,
-            mcp_market::mcp_market_status, mcp_market::mcp_market_install,
-            mcp_market::mcp_market_action, mcp_market::mcp_market_search,
-            mcp_market::mcp_market_resolve, mcp_market::mcp_market_cleanup,
             image_workbench::image_request, image_workbench::cancel_image_request,
             get_console_settings, save_console_settings, set_console_dashboard_active,
             set_overlay_interactive, play_overlay_motion,
             assistant_status, assistant_chat, get_assistant_config, save_assistant_config,
+            account::assistant_account_health, account::assistant_account_tool, account::assistant_local_query,
             petra_assistant_models, petra_assistant_chat,
+            tts::get_speech_settings, tts::save_speech_settings, tts::save_pet_credentials, tts::synthesize_speech, tts::cancel_speech,
             check_for_desktop_update, open_desktop_update,
             codex_activity::get_codex_activity, codex_activity::open_codex_activity,
             codex_activity::add_codex_activity_home,
-        ])
+            ];
+            dispatch(invoke)
+        })
         .setup(|app| {
+            // Record setup before creating the console: WebView creation pumps
+            // window events and may already receive island IPC on Windows.
             LOG_DIR.get_or_init(|| {
                 let dir = app
                     .path()
@@ -1707,12 +1738,28 @@ pub fn run() {
                 .unwrap_or(0);
             LOG_START_OFFSET.get_or_init(|| offset);
             log_line("=== pet started ===");
+            log_line("startup: initializing console modules");
+            let plugins = console_plugins::initialize(app.handle())?;
+            let cc = plugins.clone();
+            app.handle().plugin(molly_ccswitch::init_guarded(move || cc.enabled("ccswitch")))?;
+            let skills = plugins.clone();
+            app.handle().plugin(molly_skills::init_guarded(move || skills.enabled("skills")))?;
+            let handle = app.handle().clone();
+            let config = app.config().app.windows.iter().find(|w|w.label=="console").ok_or("missing console config")?;
+            log_line("startup: creating console window");
+            tauri::WebviewWindowBuilder::from_config(app, config)?
+                .on_web_resource_request(move |request, response| console_plugins::intercept(&handle, request, response))
+                .build()?;
+            log_line("startup: console window ready");
             log_environment();
             console_settings::initialize(app.handle());
             codex_activity::initialize(app.handle());
+            ccswitch_deeplink::accept_arguments(app.handle(), std::env::args());
+            ccswitch_deeplink::ensure_ccswitch_web_import();
 
             let handle = app.handle().clone();
             setup_tray(app)?;
+            molly_netspeed::start(app.handle());
             console_settings::apply_startup_visibility(app.handle());
             spawn_clickthrough_watcher(handle.clone());
             spawn_pet_mover(handle.clone());
@@ -1722,9 +1769,13 @@ pub fn run() {
             let state = app.state::<AudioState>();
             let enabled = state.enabled.clone();
             std::thread::spawn(move || audio::start_loopback_capture(handle, enabled));
+            log_line("startup: background services ready");
             Ok(())
         })
-        .on_window_event(console_settings::handle_window_event)
+        .on_window_event(|window, event| {
+            console_settings::handle_window_event(window, event);
+            recharge::handle_window_event(window, event);
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -22,6 +22,10 @@ struct ReleaseManifest {
     version: String,
     download_url: String,
     #[serde(default)]
+    sha256: Option<String>,
+    #[serde(default)]
+    size_bytes: Option<u64>,
+    #[serde(default)]
     notes: Option<String>,
 }
 
@@ -29,8 +33,11 @@ struct ReleaseManifest {
 #[serde(rename_all = "camelCase")]
 pub struct AvailableUpdate {
     pub version: String,
+    pub current_version: String,
     pub download_url: String,
     pub notes: Option<String>,
+    pub sha256: String,
+    pub size_bytes: u64,
 }
 
 fn parse_version(raw: &str) -> Result<Version, String> {
@@ -46,12 +53,20 @@ fn is_release_download_url(raw: &str) -> bool {
         return false;
     };
     url.scheme() == "https"
+        && url.port().is_none()
         && url
             .host_str()
             .is_some_and(|host| host.eq_ignore_ascii_case(RELEASE_HOST))
         && url.username().is_empty()
         && url.password().is_none()
-        && url.path().to_ascii_lowercase().ends_with(".exe")
+        && url.query().is_none()
+        && url.fragment().is_none()
+        && release_url_version(url.path()).is_some()
+}
+
+fn release_url_version(path: &str) -> Option<Version> {
+    let version = path.strip_prefix("/MollyCloud_")?.strip_suffix("_x64-setup.exe")?;
+    parse_version(version).ok()
 }
 
 fn parse_available_update(
@@ -66,8 +81,18 @@ fn parse_available_update(
     if latest <= current {
         return Ok(None);
     }
-    if !is_release_download_url(&manifest.download_url) {
+    if !is_release_download_url(&manifest.download_url)
+        || Url::parse(&manifest.download_url)
+            .map_or(true, |url| release_url_version(url.path()).as_ref() != Some(&latest))
+    {
         return Err("更新清单中的下载地址未获信任".to_owned());
+    }
+    let sha256 = manifest.sha256.ok_or("更新清单中的安装包校验信息无效")?;
+    let size_bytes = manifest.size_bytes.ok_or("更新清单中的安装包校验信息无效")?;
+    if sha256.len() != 64 || !sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
+        || size_bytes == 0
+    {
+        return Err("更新清单中的安装包校验信息无效".to_owned());
     }
 
     let notes = manifest.notes.and_then(|value| {
@@ -80,8 +105,11 @@ fn parse_available_update(
     });
     Ok(Some(AvailableUpdate {
         version: latest.to_string(),
+        current_version: current.to_string(),
         download_url: manifest.download_url,
         notes,
+        sha256: sha256.to_ascii_lowercase(),
+        size_bytes,
     }))
 }
 
@@ -98,7 +126,8 @@ fn manifest_request_url(current_version: &str) -> String {
 fn build_client(proxy_url: Option<String>) -> Result<reqwest::Client, String> {
     let mut builder = reqwest::Client::builder()
         .timeout(REQUEST_TIMEOUT)
-        .https_only(true);
+        .https_only(true)
+        .redirect(reqwest::redirect::Policy::none());
     if let Some(proxy_url) = proxy_url {
         let proxy = reqwest::Proxy::all(proxy_url).map_err(|_| "系统代理配置无效".to_owned())?;
         builder = builder.proxy(proxy);
@@ -181,15 +210,20 @@ mod tests {
         let manifest = br#"{
           "version": "v0.1.2",
           "downloadUrl": "https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe",
-          "notes": "Startup check fixed"
+          "notes": "Startup check fixed",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sizeBytes": 12345
         }"#;
         assert_eq!(
             parse_available_update("0.1.1", manifest).unwrap(),
             Some(AvailableUpdate {
                 version: "0.1.2".to_owned(),
+                current_version: "0.1.1".to_owned(),
                 download_url: "https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe"
                     .to_owned(),
                 notes: Some("Startup check fixed".to_owned()),
+                sha256: "a".repeat(64),
+                size_bytes: 12345,
             })
         );
     }
@@ -202,7 +236,17 @@ mod tests {
 
     #[test]
     fn rejects_a_download_outside_the_release_domain() {
-        let manifest = br#"{"version":"0.1.2","downloadUrl":"https://example.com/MollyCloud_0.1.2_x64-setup.exe"}"#;
+        let manifest = br#"{"version":"0.1.2","downloadUrl":"https://example.com/MollyCloud_0.1.2_x64-setup.exe","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sizeBytes":12345}"#;
         assert!(parse_available_update("0.1.1", manifest).is_err());
+    }
+
+    #[test]
+    fn rejects_missing_checksum_or_mismatched_versioned_file() {
+        let absent = br#"{"version":"0.1.2","downloadUrl":"https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe"}"#;
+        assert!(parse_available_update("0.1.1", absent).is_err());
+        let mismatched = br#"{"version":"0.1.2","downloadUrl":"https://desktop.veriolink.com/MollyCloud_0.1.3_x64-setup.exe","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sizeBytes":12345}"#;
+        assert!(parse_available_update("0.1.1", mismatched).is_err());
+        assert!(!is_release_download_url("https://desktop.veriolink.com/MollyCloud_0.1.2_x64-setup.exe?src=other"));
+        assert!(!is_release_download_url("https://desktop.veriolink.com/MollyCloud_fake_x64-setup.exe"));
     }
 }

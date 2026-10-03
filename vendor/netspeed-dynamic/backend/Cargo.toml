@@ -1,0 +1,61 @@
+[package]
+name = "molly-netspeed"
+version = "2.4.6"
+description = "Built-in MollyCloud island, adapted from NetSpeed Dynamic"
+license = "MIT"
+edition = "2021"
+links = "molly-netspeed"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
+
+[features]
+test-hooks = []
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# 添加 sysinfo 库来监控网络
+sysinfo = "0.30"
+windows-sys = { version = "0.59", features = [
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Controls",
+] }
+tokio = { version = "1", features = ["full", "rt-multi-thread"] }
+urlencoding = "2.1.3"
+lazy_static = "1.5.0"
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "windef", "shellapi", "winbase", "handleapi", "libloaderapi"] }
+reqwest = { version = "0.12", features = ["json"] }
+windows = { version = "0.58.0", features = [
+    "UI_Notifications_Management",
+    "UI_Notifications",
+    "Foundation",
+    "Foundation_Collections",
+    "ApplicationModel",
+    "implement",
+    "Win32_Media_Audio",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_System_Com",
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Media_Control",
+    "Storage_Streams",
+    "Win32_System_Power",
+    "Win32_System_JobObjects",
+    "Win32_Security",
+] }
+cpal = "0.15"
+realfft = "3"
+rand = "0.8"
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+surge-ping = "0.8"
+# 活动池 HTTP 入站服务（127.0.0.1:47300）
+axum = { version = "0.8", features = ["json", "tokio"] }
+
+sha2 = "0.10"

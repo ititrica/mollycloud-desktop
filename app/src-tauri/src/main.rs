@@ -3,6 +3,10 @@
 
 fn main() {
     if molly_skills::is_cli_request() {
+        if let Err(error)=mollycloud_lib::require_skills_cli() {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
         molly_skills::cli::main();
         return;
     }

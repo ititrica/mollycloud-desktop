@@ -1,7 +1,7 @@
 {
   "name": "mollycloud",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "npm run build:ccswitch && npm run build:image-workbench && npm run build:skills-manager && vite",
@@ -9,13 +9,16 @@
     "build": "node scripts/check-package-inputs.mjs && npm run build:ccswitch && npm run build:image-workbench && npm run build:skills-manager && vue-tsc --noEmit && vite build && node scripts/check-package-inputs.mjs --built",
     "build:image-workbench": "node scripts/build-image-workbench.mjs",
     "build:ccswitch": "node scripts/build-ccswitch.mjs",
+    "check:ccswitch-upgrade": "node scripts/check-ccswitch-upgrade.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "import:model": "node scripts/import-live2d.mjs",
     "release:manifest": "node scripts/create-release-manifest.mjs",
-    "test": "vitest run",
+    "release:r2": "node scripts/publish-desktop-release.mjs",
+    "test": "vitest run && node --test scripts/publish-desktop-release.node.mjs scripts/plugin-assets.node.mjs",
     "check:design": "node scripts/verify-design.mjs",
-    "build:skills-manager": "node scripts/build-skills-manager.mjs"
+    "build:skills-manager": "node scripts/build-skills-manager.mjs",
+    "release:plugins": "node scripts/check-package-inputs.mjs && node scripts/package-plugins.mjs"
   },
   "dependencies": {
     "@pixi/unsafe-eval": "6.5.10",

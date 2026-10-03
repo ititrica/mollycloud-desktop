@@ -1,3 +1,7 @@
+import { AccountReminderMonitor } from "../assistantAccount";
+import { canSendAccountReminder, sendAccountReminder } from "./assistant/AssistantPanel";
+import { getSpeechSettings } from "../speech";
+import { stopAssistantSpeech } from "./assistant/AssistantSpeech";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow, LogicalPosition } from "@tauri-apps/api/window";
@@ -258,6 +262,7 @@ interface ConsoleAssistantConfig {
 }
 
 function applyConsoleAssistantSwitch(config: ConsoleAssistantConfig) {
+  if (!config.enabled) stopAssistantSpeech();
   settings.assistant.enabled = config.enabled;
   saveSettings(settings);
   if (!config.enabled) {
@@ -661,16 +666,17 @@ async function petSettingsSnapshot(): Promise<PetSettingsSnapshot> {
   const modelName = currentModel.name ?? "";
   const defaults = view instanceof Rigged2DView ? Object.fromEntries(modelParameters.map(p => [p.key, (view as Rigged2DView).getDefault(p.key)])) : {};
   const apiKeyConfigured = await invoke<boolean>("has_api_key");
+  const speech = await getSpeechSettings();
   return {
     draft: {
       model: { type: currentModel.type, name: modelName }, modelScale: settings.modelScale,
       boundsPadding: { ...settings.boundsPadding }, debugBorder: debugBorderVisible, debugModelBounds: debugModelBoundsVisible,
       params: { ...defaults, ...settings.modelParams[modelName] },
       auto: Object.fromEntries(modelAutoOptions.map(opt => [opt.key, settings.modelAuto[modelName]?.[opt.key] ?? true])),
-      assistant: { ...settings.assistant },
+      assistant: { ...settings.assistant }, speech: speech.config,
     },
     models: [...builtins.map(name => ({ type: manifest.type === "psd" ? "manifest" as const : "live2d" as const, name })), ...imported.map(name => ({ type: "import" as const, name }))],
-    defaults, supportsAdjust: view instanceof Rigged2DView, apiKeyConfigured,
+    defaults, supportsAdjust: view instanceof Rigged2DView, apiKeyConfigured, speechKeyConfigured: speech.apiKeyConfigured,
   };
 }
 
@@ -729,7 +735,8 @@ async function handlePetSettings(request: PetSettingsRequest): Promise<PetSettin
     // A failed local write or DPAPI save must not be reported as a successful save.
     localStorage.setItem("live2d-pet-settings", JSON.stringify(next));
     try {
-      if (request.clearApiKey || request.apiKey?.trim() || endpointChanged) await invoke("set_api_key", { apiKey: request.clearApiKey ? "" : request.apiKey?.trim() ?? "" });
+      await invoke("save_pet_credentials", { update: { config: draft.speech, apiKey: request.speechApiKey, clearApiKey: request.clearSpeechApiKey }, assistantApiKey: request.clearApiKey ? "" : request.apiKey?.trim() || (endpointChanged ? "" : null) });
+      stopAssistantSpeech();
     } catch (error) { localStorage.setItem("live2d-pet-settings", JSON.stringify(previous)); throw error; }
     Object.assign(settings, next);
     clearApiKeyCache();
@@ -741,11 +748,14 @@ async function handlePetSettings(request: PetSettingsRequest): Promise<PetSettin
     }
     if (draft.debugBorder !== debugBorderVisible) toggleDebugBorder();
     if (draft.debugModelBounds !== debugModelBoundsVisible) toggleModelBounds();
-    if (!draft.assistant.enabled) { closeAssistant(); clearBubbles(); }
+    if (!draft.assistant.enabled) { stopAssistantSpeech(); closeAssistant(); clearBubbles(); }
     await syncAssistantSwitchToConsole(draft.assistant.enabled);
   } else throw new Error("不支持的桌宠设置操作。");
   return petSettingsSnapshot();
 }
+
+const accountReminderMonitor = new AccountReminderMonitor(canSendAccountReminder, sendAccountReminder);
+window.addEventListener("pagehide", () => accountReminderMonitor.stop());
 
 async function boot() {
   void listen<OverlayAccount>("account-balance-updated", (event) => balancePill.update(event.payload ?? {}));
@@ -758,7 +768,7 @@ async function boot() {
     const snapshot = await invoke<ActivitySnapshot>("get_codex_activity");
     if (activityRevision === revision) balancePill.updateActivity(snapshot);
   }).catch(() => undefined);
-  void listen("account-session-changed", () => balancePill.update({}));
+  void listen("account-session-changed", () => { balancePill.update({}); accountReminderMonitor.reset(); void accountReminderMonitor.check(); });
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("ui-preview") === "overlay") {
     balancePill.update({ balance: 3.72, today_tokens: 128400 });
   }
@@ -777,6 +787,7 @@ async function boot() {
     if (text) void submitAssistantMessage(text);
   });
   void listen("petra-assistant-history-request", publishAssistantHistory);
+  void listen("assistant-speech-stop", stopAssistantSpeech);
   void listen("live2d-motion", () => view?.playClick());
 
   try {
@@ -828,6 +839,7 @@ async function boot() {
     () => engine.suspend(3600_000),
     () => engine.suspend(IDLE_AFTER_DRAG_MS),
   );
+  accountReminderMonitor.start();
   // 启动一律正常站立（不自动恢复待机）
   if (settings.idleMode) {
     settings.idleMode = false;

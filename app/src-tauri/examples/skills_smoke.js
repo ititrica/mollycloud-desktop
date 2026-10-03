@@ -13,17 +13,7 @@
     const p=window.__skillPaths;
     await wait(()=>document.querySelector('[aria-label="Skill 管理器"]'),'Skill navigation');
     await rejects(()=>call('get_managed_skills'),'Module stays lazy before opening');
-    document.querySelector('[aria-label="MCP 市场"]').click();
-    await wait(()=>document.querySelector('#mcp-experimental-title'),'Experimental warning');
-    check(!document.querySelector('.mcp-market'),'Market remains unmounted before acknowledgement');
-    button(document.querySelector('.console-settings-dialog'),'暂不进入').click();
-    await wait(()=>!document.querySelector('.app-shell').inert,'Cancel warning');
-    check(!localStorage.getItem('mollycloud:mcp-experimental-ack:v1'),'Cancel does not persist acknowledgement');
-    document.querySelector('[aria-label="MCP 市场"]').click();
-    await wait(()=>document.querySelector('#mcp-experimental-title'),'Warning opens again');
-    button(document.querySelector('.console-settings-dialog'),'我已知晓').click();
-    await wait(()=>!document.querySelector('.app-shell').inert,'Acknowledge closes warning');
-    check(localStorage.getItem('mollycloud:mcp-experimental-ack:v1')==='acknowledged','Acknowledgement persisted');
+    check(!document.querySelector('[aria-label="MCP 市场"]'),'Independent MCP market removed');
     document.querySelector('[aria-label="Skill 管理器"]').click();
     await wait(()=>document.querySelector('.skills-frame')?.contentDocument.querySelector('.molly-skills-tabs'),'Skill frontend loads');
     const frame=document.querySelector('.skills-frame'), doc=frame.contentDocument;

@@ -46,6 +46,7 @@ import { ImportExportSection } from "@/components/settings/ImportExportSection";
 import { BackupListSection } from "@/components/settings/BackupListSection";
 import { WebdavSyncSection } from "@/components/settings/WebdavSyncSection";
 import { AboutSection } from "@/components/settings/AboutSection";
+import { WebImportSettings } from "@/components/settings/WebImportSettings";
 import { ProxyTabContent } from "@/components/settings/ProxyTabContent";
 import { ConnectivityCheckConfigPanel } from "@/components/usage/ConnectivityCheckConfigPanel";
 import { UsageDashboard } from "@/components/usage/UsageDashboard";
@@ -512,7 +513,7 @@ export function SettingsPage({
 
               <TabsContent value="about" className="mt-0">
                 <AboutSection isPortable={isPortable} embedded />
-                <section className="rounded-xl glass-card p-6 space-y-4"><h2 className="text-lg font-semibold">CC Switch 3.20.3 · MollyCloud 内置版</h2><p className="text-sm text-muted-foreground">原版 CC Switch 界面与核心配置功能，模块随 MollyCloud 更新。内置版不注册外部协议，支持管理本机工具配置、环境变量冲突、MCP、Skills 和会话。供应商库、备份及代理端口独立于外部 CC Switch；请避免同时用两个管理器切换同一工具。</p><p className="text-sm">Copyright © 2025 Jason Young · MIT License</p><a className="text-sm underline" href="./LICENSE.txt" target="_blank" rel="noreferrer">查看 MIT 许可证</a><Button variant="outline" onClick={() => void settingsApi.openExternal("https://github.com/farion1231/cc-switch")}>CC Switch 源码</Button></section>
+                <section className="rounded-xl glass-card p-6 space-y-4"><h2 className="text-lg font-semibold">CC Switch 3.20.4 · MollyCloud 内置版</h2><p className="text-sm text-muted-foreground">原版 CC Switch 界面与核心配置功能，模块随 MollyCloud 更新。供应商库、备份及代理端口独立于外部 CC Switch，请避免同时用两个管理器切换同一工具。</p><p className="text-sm">Copyright © 2025 Jason Young · MIT License</p><a className="text-sm underline" href="./LICENSE.txt" target="_blank" rel="noreferrer">查看 MIT 许可证</a><Button variant="outline" onClick={() => void settingsApi.openExternal("https://github.com/farion1231/cc-switch")}>CC Switch 源码</Button><WebImportSettings /></section>
               </TabsContent>
 
               <TabsContent value="usage" className="mt-0">

@@ -5,6 +5,7 @@ import App from "./App.vue";
 import { createThemeOverrides } from "./theme";
 import { resolvedTheme, themePreference } from "./appearance";
 import "./styles.css";
+import "./scrollbars.css";
 import "vfonts/FiraCode.css";
 
 const themeOverrides = shallowRef<ReturnType<typeof createThemeOverrides>>();

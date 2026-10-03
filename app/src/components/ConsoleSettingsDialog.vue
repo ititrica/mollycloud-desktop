@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { version as bundledAppVersion } from "../../package.json";
 import { NAlert, NButton, NModal, NSwitch } from "naive-ui";
+import PluginManager from "./PluginManager.vue";
+import { loadPlugins, pluginBusy, pluginNeedsRestart } from "../plugins";
+import { invoke } from "@tauri-apps/api/core";
 import AppIcon from "./AppIcon.vue";
-import { desktopApi, type ConsoleCloseAction } from "../ipc";
+import { desktopApi, type ConsoleCloseAction, type DesktopUpdate } from "../ipc";
 import { setThemePreference, themeOptions, themePreference, type ThemePreference } from "../appearance";
 
-const props = defineProps<{ show: boolean }>();
-const emit = defineEmits<{ "update:show": [show: boolean]; closed: [] }>();
+const props = defineProps<{ show: boolean; initialTab?: "general" | "plugins" }>();
+const emit = defineEmits<{ "update:show": [show: boolean]; closed: []; "check-update": [update: DesktopUpdate | null] }>();
+const activeTab = ref<"general" | "plugins">("general");
 const draftCloseAction = ref<ConsoleCloseAction>("tray");
 const draftAutostart = ref(false);
 const draftAutostartMinimized = ref(false);
@@ -15,7 +20,8 @@ const loading = ref(false);
 const loaded = ref(false);
 const saving = ref(false);
 const errorMessage = ref("");
-const appVersion = ref("0.1.3");
+const updateMessage = ref("");
+const appVersion = ref(bundledAppVersion);
 let loadVersion = 0;
 
 async function loadSettings(): Promise<void> {
@@ -23,6 +29,7 @@ async function loadSettings(): Promise<void> {
   loading.value = true;
   loaded.value = false;
   errorMessage.value = "";
+  updateMessage.value = "";
   draftTheme.value = themePreference.value;
   try {
     const settings = await desktopApi.getConsoleSettings();
@@ -39,14 +46,23 @@ async function loadSettings(): Promise<void> {
 }
 
 async function loadAppVersion(): Promise<void> {
-  appVersion.value = await desktopApi.getAppVersion().catch(() => "0.1.3");
+  appVersion.value = await desktopApi.getAppVersion().catch(() => bundledAppVersion);
 }
 
-async function openMoreClientDownloads(): Promise<void> {
+const checkingUpdate = ref(false);
+async function checkForUpdate(): Promise<void> {
+  if (checkingUpdate.value || saving.value) return;
+  checkingUpdate.value = true;
+  errorMessage.value = "";
+  updateMessage.value = "";
   try {
-    await desktopApi.openMoreClientDownloads();
+    const update = await desktopApi.checkForDesktopUpdate();
+    emit("check-update", update);
+    if (!update) updateMessage.value = "当前已是最新版本";
   } catch (error) {
     errorMessage.value = String(error instanceof Error ? error.message : error);
+  } finally {
+    checkingUpdate.value = false;
   }
 }
 
@@ -58,6 +74,7 @@ async function saveSettings(): Promise<void> {
   if (!loaded.value || saving.value) return;
   saving.value = true;
   errorMessage.value = "";
+  updateMessage.value = "";
   try {
     await desktopApi.saveConsoleSettings({
       closeAction: draftCloseAction.value,
@@ -75,6 +92,8 @@ async function saveSettings(): Promise<void> {
 
 watch(() => props.show, (show) => {
   if (show) {
+    activeTab.value = props.initialTab ?? "general";
+    void loadPlugins();
     void loadSettings();
     void loadAppVersion();
   }
@@ -102,13 +121,15 @@ watch(draftAutostart, (enabled) => {
         <span class="console-settings-icon"><AppIcon name="settings" /></span>
         <div><h2 id="console-settings-title">设置</h2><p id="console-settings-description">让 MollyCloud 按你的习惯运行。</p></div>
       </header>
+      <nav class="settings-tabs" aria-label="设置分类"><button type="button" :aria-current="activeTab === 'general' ? 'page' : undefined" @click="activeTab = 'general'">通用设置</button><button type="button" :aria-current="activeTab === 'plugins' ? 'page' : undefined" @click="activeTab = 'plugins'">功能插件<span>3</span></button></nav>
       <form class="console-settings-form" @submit.prevent="saveSettings">
-        <div class="console-settings-body">
+        <div v-show="activeTab === 'general'" class="console-settings-body">
           <fieldset class="console-settings-section" :disabled="loading || saving || !loaded">
             <legend>外观</legend>
             <p class="console-settings-hint">控制台与内嵌工作台使用同一外观，默认跟随系统。</p>
             <div class="console-theme-options">
               <label v-for="option in themeOptions" :key="option.value" class="console-theme-option" :class="{ 'is-selected': draftTheme === option.value }">
+                <span class="theme-preview" :class="`theme-preview--${option.value}`" aria-hidden="true"><i /></span>
                 <AppIcon :name="option.icon" /><span>{{ option.label }}</span>
                 <input v-model="draftTheme" type="radio" name="console-theme" :value="option.value" :aria-label="option.label" />
               </label>
@@ -116,16 +137,16 @@ watch(draftAutostart, (enabled) => {
           </fieldset>
           <fieldset class="console-settings-section" :disabled="loading || saving || !loaded">
             <legend>关闭窗口</legend>
-            <p class="console-settings-hint">点击控制台右上角的关闭按钮时</p>
+            <p class="console-settings-hint">关闭控制台时，退出程序或保留桌宠继续运行。</p>
             <div class="console-settings-options">
               <label class="console-close-option" :class="{ 'is-selected': draftCloseAction === 'quit' }">
                 <span class="console-close-option__icon"><AppIcon name="power" /></span>
-                <span class="console-close-option__copy"><strong>退出程序</strong><small>关闭控制台和桌宠，退出 MollyCloud。</small></span>
+                <span class="console-close-option__copy"><strong>退出程序</strong></span>
                 <input v-model="draftCloseAction" type="radio" name="console-close-action" value="quit" aria-label="退出程序" />
               </label>
               <label class="console-close-option" :class="{ 'is-selected': draftCloseAction === 'tray' }">
                 <span class="console-close-option__icon"><AppIcon name="tray" /></span>
-                <span class="console-close-option__copy"><strong>最小化到托盘</strong><small>隐藏控制台，桌宠继续运行，可从托盘重新打开。</small></span>
+                <span class="console-close-option__copy"><strong>最小化到托盘</strong></span>
                 <input v-model="draftCloseAction" type="radio" name="console-close-action" value="tray" aria-label="最小化到托盘" />
               </label>
             </div>
@@ -133,28 +154,35 @@ watch(draftAutostart, (enabled) => {
           <fieldset class="console-settings-section" :disabled="loading || saving || !loaded">
             <legend>系统启动</legend>
             <p class="console-settings-hint">登录 Windows 后自动启动 MollyCloud</p>
+            <div class="console-settings-startup">
             <label class="console-settings-toggle" :class="{ 'is-selected': draftAutostart }">
-              <span><strong>开机自启动</strong><small>自动启动控制台与桌宠，无需手动打开应用。</small></span>
-              <n-switch v-model:value="draftAutostart" size="large" aria-label="开机自启动" />
+              <span><strong>开机自启动</strong></span>
+              <n-switch v-model:value="draftAutostart" size="small" aria-label="开机自启动" />
             </label>
             <label class="console-settings-toggle console-settings-toggle--dependent" :class="{ 'is-selected': draftAutostartMinimized, 'is-disabled': !draftAutostart }">
-              <span><strong>启动后最小化到托盘</strong><small>开机启动时不显示控制台，可从托盘或桌宠菜单打开。</small></span>
-              <n-switch v-model:value="draftAutostartMinimized" size="large" aria-label="启动后最小化到托盘" :disabled="!draftAutostart" />
+              <span><strong>启动后最小化到托盘</strong></span>
+              <n-switch v-model:value="draftAutostartMinimized" size="small" aria-label="启动后最小化到托盘" :disabled="!draftAutostart" />
             </label>
+            </div>
           </fieldset>
           <p v-if="loading" class="console-settings-status" role="status">正在读取设置…</p>
+          <p v-if="updateMessage" class="console-settings-status" role="status">{{ updateMessage }}</p>
           <n-alert v-if="errorMessage" class="console-settings-error" type="error" :bordered="false" :show-icon="false" role="alert">
             {{ errorMessage }}
             <n-button v-if="!loaded && !loading" size="small" secondary @click="loadSettings">重新读取</n-button>
           </n-alert>
         </div>
+        <div v-if="activeTab === 'plugins'" class="console-settings-body"><PluginManager /></div>
         <footer class="console-settings-actions console-settings-actions--with-about">
           <div class="console-settings-release">
             <span>v{{ appVersion }}</span>
-            <n-button class="console-settings-download" size="small" secondary attr-type="button" aria-label="下载更多版本客户端" :disabled="saving" @click="openMoreClientDownloads"><AppIcon name="update" /><span>更多版本客户端</span></n-button>
-            <span class="console-settings-download-code">密码 7s3y</span>
+            <n-button class="console-settings-download" size="small" secondary attr-type="button" aria-label="检查更新" :disabled="saving || checkingUpdate" :loading="checkingUpdate" @click="checkForUpdate"><AppIcon name="update" /><span>检查更新</span></n-button>
           </div>
-          <div class="console-settings-actions__primary">
+          <div v-if="activeTab === 'plugins'" class="console-settings-actions__primary">
+            <n-button v-if="pluginNeedsRestart" secondary :disabled="!!pluginBusy" @click="invoke('restart_app')">重启应用</n-button>
+            <n-button type="primary" size="large" :disabled="!!pluginBusy" @click="cancel">完成</n-button>
+          </div>
+          <div v-else class="console-settings-actions__primary">
             <n-button class="console-settings-cancel" size="large" :disabled="saving" @click="cancel">取消</n-button>
             <n-button class="console-settings-save" type="primary" size="large" attr-type="submit" :loading="saving" :disabled="!loaded || loading">保存</n-button>
           </div>

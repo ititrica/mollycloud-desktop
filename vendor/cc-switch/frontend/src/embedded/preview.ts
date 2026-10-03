@@ -8,7 +8,7 @@ export function installReadOnlyPreview(): void {
     websiteUrl: "https://mollycloud.cn", notes: "界面预览数据，未导入真实密钥", createdAt: 1,
     settingsConfig: { auth: { OPENAI_API_KEY: "" }, config: 'model_provider = "mollycloud"\nmodel = "gpt-5.5"\n[model_providers.mollycloud]\nname = "MollyCloud"\nbase_url = "https://example.invalid/v1"\nwire_api = "responses"' },
   };
-  const visibleApps = { claude: true, codex: true, gemini: true, "claude-desktop": false, grokbuild: false, opencode: false, openclaw: false, hermes: false, pi: false };
+  const visibleApps = { claude: true, codex: true, gemini: true, "claude-desktop": false, grokbuild: false, opencode: false, openclaw: false, hermes: false, pi: false, mcode: false };
   const takeovers = Object.fromEntries(Object.keys(visibleApps).map((app) => [app, false]));
   const noDataCommands = new Set(["get_installed_skills", "get_skill_repos", "get_skill_backups", "scan_unmanaged_skills", "get_failover_queue", "get_available_providers_for_failover", "get_custom_endpoints", "get_universal_providers", "get_mcp_servers", "get_all_mcp_servers", "get_prompts", "get_usage_trends", "get_provider_stats", "get_model_stats", "get_model_pricing"]);
   let callbackId = 0;

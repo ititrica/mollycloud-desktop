@@ -105,7 +105,13 @@ pub fn init_for_test(root: PathBuf, home: PathBuf) -> tauri::plugin::TauriPlugin
     TEST_HOME.set(home).expect("test home set once");
     build_plugin(Some(root))
 }
+pub fn init_guarded(gate: impl Fn() -> bool + Send + Sync + 'static) -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    build_guarded(None, Arc::new(gate))
+}
 fn build_plugin(root: Option<PathBuf>) -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    build_guarded(root, Arc::new(|| true))
+}
+fn build_guarded(root: Option<PathBuf>, gate: Arc<dyn Fn() -> bool + Send + Sync>) -> tauri::plugin::TauriPlugin<tauri::Wry> {
     let handler = crate::handler();
     tauri::plugin::Builder::new("molly-skills")
         .setup(move |app, _| {
@@ -113,6 +119,7 @@ fn build_plugin(root: Option<PathBuf>) -> tauri::plugin::TauriPlugin<tauri::Wry>
             Ok(())
         })
         .invoke_handler(move |invoke| {
+            if !gate() { invoke.resolver.reject("插件未安装或需要重启后启用"); return true; }
             if invoke.message.webview().label() != "console" || !ALLOWED_COMMANDS.contains(&invoke.message.command()) {
                 invoke.resolver.reject("此 Skill 操作只允许从 Molly 控制台执行"); return true;
             }

@@ -19,7 +19,7 @@ describe("immutable native iframe bridges", () => {
     expect(Object.getOwnPropertyDescriptors(fixture.child)).toEqual(before);
     expect(before.__TAURI_INTERNALS__?.writable).toBe(false);
     expect(before.__TAURI_INTERNALS__?.configurable).toBe(false);
-    expect(await getVersion()).toBe("3.20.3");
+    expect(await getVersion()).toBe("3.20.4");
   });
 
   it("delivers events through the parent's registry and unregisters exactly once", async () => {

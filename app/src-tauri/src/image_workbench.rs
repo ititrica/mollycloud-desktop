@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tauri::{ipc::Channel, State};
+use tauri::{ipc::Channel, State, Manager};
 use tokio::sync::Notify;
 
 #[derive(Default)]
@@ -28,6 +28,9 @@ pub enum ImageEvent {
     },
     Chunk {
         data: String,
+    },
+    End {
+        bytes: usize,
     },
 }
 
@@ -56,6 +59,7 @@ pub async fn image_request(
     if window.label() != "console" {
         return Err("仅控制台可以转发生图请求。".into());
     }
+    crate::console_plugins::require(&window.app_handle(), "images")?;
     if id.len() > 100 {
         return Err("请求标识无效。".into());
     }
@@ -182,6 +186,9 @@ async fn transfer(request: ImageRequest, channel: Channel<ImageEvent>) -> Result
                 .map_err(|_| "工作台已关闭。")?;
         }
     }
+    // Keep EOF in the same ordered channel; the invoke reply can overtake
+    // large cached channel messages on their way to the WebView.
+    channel.send(ImageEvent::End { bytes: total }).map_err(|_| "工作台已关闭。")?;
     Ok(())
 }
 
@@ -204,7 +211,11 @@ pub fn plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             };
             #[cfg(any(not(debug_assertions), feature = "image-workbench-smoke"))]
             let asset = context.app_handle().asset_resolver().get(format!("image-workbench/{path}")).map(|asset| (asset.bytes, asset.mime_type));
-            let _ = context;
+            let asset = match crate::console_plugins::asset(context.app_handle(), "images", path) {
+                Some(Ok(bytes)) => Some((bytes, crate::console_plugins::mime(path).to_owned())),
+                Some(Err(_)) => None,
+                None => asset,
+            };
             match asset {
                 Some((bytes, mime)) => tauri::http::Response::builder()
                     .header("Content-Type", mime).header("Access-Control-Allow-Origin", "*")
@@ -239,4 +250,17 @@ mod tests {
             assert!(validate_url(url).is_err());
         }
     }
+    #[tokio::test]
+    async fn streamed_body_ends_on_the_same_channel_after_every_byte() {
+        use std::io::{Read,Write};
+        let listener=std::net::TcpListener::bind("127.0.0.1:0").unwrap();let address=listener.local_addr().unwrap();
+        let expected=format!("data: {{\"b64_json\":\"{}\"}}\n\ndata: [DONE]\n\n","A".repeat(3*1024*1024));let payload=expected.clone();
+        let server=std::thread::spawn(move||{let(mut socket,_)=listener.accept().unwrap();let mut request=[0u8;4096];let _=socket.read(&mut request).unwrap();write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\n\r\n",payload.len()).unwrap();socket.write_all(payload.as_bytes()).unwrap();});
+        let events=Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));let capture=events.clone();
+        let channel=Channel::new(move|message|{if let tauri::ipc::InvokeResponseBody::Json(text)=message{capture.lock().unwrap().push(serde_json::from_str(&text).unwrap());}Ok(())});
+        transfer(ImageRequest{url:format!("http://{address}/v1/images/generations"),method:"POST".into(),headers:HashMap::new(),body:Some(STANDARD.encode(b"{}"))},channel).await.unwrap();server.join().unwrap();
+        let events=events.lock().unwrap();assert_eq!(events.first().unwrap()["type"],"headers");assert_eq!(events.last().unwrap()["type"],"end");
+        let actual=events.iter().filter(|event|event["type"]=="chunk").flat_map(|event|STANDARD.decode(event["data"].as_str().unwrap()).unwrap()).collect::<Vec<_>>();assert_eq!(actual,expected.as_bytes());assert_eq!(events.last().unwrap()["bytes"].as_u64().unwrap(),actual.len()as u64);
+    }
+
 }

@@ -761,11 +761,7 @@ export function Backup() {
 
   return (
     <div className="app-page">
-      <div className="app-page-header pr-2 pb-1 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="app-page-title">{t("backup.title")}</h1>
-          <p className="mt-1 text-[13px] text-muted">{t("backup.subtitle")} GitHub 设备授权使用上游 Skills Manager 的 OAuth 应用；也可使用自己的访问令牌或 Git 远程仓库。</p>
-        </div>
+      <div className="flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={() => refreshGitStatus(true)}

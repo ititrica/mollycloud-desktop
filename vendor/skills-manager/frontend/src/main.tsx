@@ -15,3 +15,8 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>
 );
 logStartupEvent("root_rendered", performance.now()).catch(() => {});
+
+import "../../../../app/src/scrollbars.css";
+
+import "../../../../app/src/console-inputs.css";
+import "../../../../app/src/subnav.css";

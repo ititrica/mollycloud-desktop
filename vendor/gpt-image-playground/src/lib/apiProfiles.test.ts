@@ -1693,3 +1693,15 @@ describe('custom providers', () => {
     expect(restoredProfile.apiProxy).toBe(false)
   })
 })
+
+describe('MollyCloud Images streaming preset', () => {
+  it('creates the requested defaults while retaining an explicitly saved profile', async () => {
+    vi.stubEnv('VITE_DEFAULT_API_URL', 'https://mollycloud.cn/v1?provider=openai&apiMode=images&model=gpt-image-2.5&streamImages=true&streamPartialImages=1&profileName=MollyCloud')
+    vi.resetModules()
+    const profiles = await import('./apiProfiles')
+    const fresh = profiles.createDefaultOpenAIProfile()
+    expect(fresh).toMatchObject({ provider: 'openai', apiMode: 'images', model: 'gpt-image-2.5', streamImages: true, streamPartialImages: 1, apiKey: '' })
+    const saved = profiles.normalizeApiProfile({ ...fresh, provider: 'sb2api-async', baseUrl: 'https://custom.example/v1', model: 'saved-model', apiKey: 'mock-profile-key', streamImages: false, streamPartialImages: 2 })
+    expect(saved).toMatchObject({ provider: 'sb2api-async', baseUrl: 'https://custom.example/v1', model: 'saved-model', apiKey: 'mock-profile-key', streamImages: false, streamPartialImages: 2 })
+  })
+})

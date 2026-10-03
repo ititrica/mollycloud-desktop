@@ -834,18 +834,7 @@ export function WorkspaceView({ config }: { config: WorkspaceConfig }) {
   if (!currentTool) {
     return (
       <div className="app-page">
-        <div className="app-page-header flex flex-col gap-2.5 pb-3 pr-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="app-page-title flex items-center gap-2.5">
-                <Globe className="h-5 w-5 text-accent" />
-                {t(config.i18nKeys.title)}
-                <span className="app-badge">{installedTools.length}</span>
-              </h1>
-            </div>
-          </div>
-
-          {presets.length > 0 && (
+        {presets.length > 0 && (
             <PresetBar
               presets={presets}
               managedSkills={managedSkills}
@@ -855,8 +844,7 @@ export function WorkspaceView({ config }: { config: WorkspaceConfig }) {
               onRemoveSkill={handlePresetRemove}
               onComplete={handlePresetComplete}
             />
-          )}
-        </div>
+        )}
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {installedTools.map((tool) => {
@@ -887,19 +875,18 @@ export function WorkspaceView({ config }: { config: WorkspaceConfig }) {
 
   return (
     <div className="app-page">
-      {/* Header */}
-      <div className="app-page-header flex flex-col gap-2.5 pb-3 pr-2">
+      <div className="app-workspace-toolbar flex flex-col gap-2.5 pr-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-[1_1_360px]">
-            <h1 className="app-page-title flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 text-[13px] text-secondary">
               <AgentIcon
                 agentKey={currentTool.key}
                 displayName={currentTool.display_name}
-                className="h-7 w-7 rounded-lg"
+                className="h-6 w-6 rounded-lg"
               />
-              {currentTool.display_name}
+              <strong>{currentTool.display_name}</strong>
               <span className="app-badge">{localSkills.length}</span>
-            </h1>
+            </div>
             <p className="mt-1 truncate text-[13px] text-muted" title={currentTool.skills_dir}>
               {compactHomePath(currentTool.skills_dir)}
               <span className="px-1.5">·</span>

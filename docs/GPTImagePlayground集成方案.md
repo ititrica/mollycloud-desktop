@@ -76,3 +76,22 @@ node scripts/verify-image-workbench.mjs --native
 - [Agent API](https://github.com/CookSleep/gpt_image_playground/blob/da4fda85b59ecacc51d6a1e2ef680e3abb9e29b8/src/lib/agentApi.ts)
 - [IndexedDB 存储](https://github.com/CookSleep/gpt_image_playground/blob/da4fda85b59ecacc51d6a1e2ef680e3abb9e29b8/src/lib/db.ts)
 - [MIT 许可证](https://github.com/CookSleep/gpt_image_playground/blob/da4fda85b59ecacc51d6a1e2ef680e3abb9e29b8/LICENSE)
+
+
+2026-10-02 更新：工作台资源现支持独立插件包的安装、卸载、更新和回退；此前“只随主应用发布”的描述已由 [功能插件方案](功能插件方案.md) 中的版本兼容边界取代。原生适配、私有目录和生图隔离要求保持有效。
+
+## 2026-10-03 Images 流式尾部截断修复
+
+用户提供的错误记录包含未闭合的 `b64_json` JSON 字符串。解码 PNG 为 1388×1133，最后 `IDAT` 块声明 48,583 字节数据，当前块至少缺少 19,527 字节才能完整，且没有 `IEND`。这表明缺的是实际响应尾部。
+
+已在宿主网络桥接层复现：`forwardImageRequest()` 原本在 `await invoke('image_request')` 后直接向 sandbox 发送 `end`。原生命令返回时，大块 Channel 消息还可能正在通过缓存取回；`mollyBridge.ts` 收到 `end` 后关闭并删除响应流，迟到的尾部数据会被丢弃。原版 `serverSentEvents.ts` 对完整的大事件可正常解析，其“无法解析”提示只是收到不完整 JSON 后的结果。
+
+修复：原生 `ImageEvent::End { bytes }` 放在同一有序 Channel 的所有 Chunk 之后发送。宿主收到结束标记、且累计接收字节数等于原生总数后才通知子页面关闭流；调用完成后继续等待尾部交付，保留取消与错误处理，并以 30 秒尾部交付超时作为异常防护。没有更改原版工作台 UI、API 配置、手动密钥、opaque sandbox、MessageChannel 权限或网络上限。
+
+验证使用本机模拟接口，未重发真实图片生成：旧代码的大响应 / 字节不匹配 / 尾部取消三项回归均失败，修复后四项桥接回归通过；85 项前端 / 5 项脚本测试、59 项上游 SSE / API 相关测试、2 项原生图片测试通过。完整前端构建、资源检查通过。独立真实 WebView2 的 16 组集成检查通过，包括 4,194,424 字符 PNG base64 SSE 的完整末尾与 DONE、生成 / 下载 / 参考图编辑、取消、错误、账户隔离和 sandbox 无通用 IPC。固定报告与日志在 `artifacts/image-stream-20261003/`。
+
+当前安装器保持原归档，需重建含本修复的原生版本后使用。附件中已丢失的图片尾部不能从这份截断数据本地还原；本次没有自动重试付费生成。
+
+## 2026-10-03 0.2.0 默认预设
+
+新配置默认 OpenAI 兼容接口 / Images API / gpt-image-2.5 / 流式开启 / 中间步骤图像数 1；手动密钥默认空，已有保存配置保持原值。由 `app/scripts/build-image-workbench.mjs` 的构建 URL 参数明确指定，避免改变整个上游项目的默认行为。真实隔离 WebView2 已确认五项默认参数和生成请求 `stream:true`、`partial_images:1`，默认创建与已保存配置保留单测通过。已收入 0.2.0 本地安装器，证据位于 `artifacts/releases/0.2.0/`。

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { z } from "zod";
+import { defaultSpeechConfig, speechConfigSchema } from "./speech";
 import type { AssistantSettings } from "./petra/utils/settings";
 
 export const modelParameters = [
@@ -26,6 +27,7 @@ export const petDraftSchema = z.object({
   modelScale: finite.min(0.2).max(2),
   boundsPadding: z.object({ left: finite.min(-120).max(120), right: finite.min(-120).max(120), top: finite.min(-120).max(120), bottom: finite.min(-120).max(120) }),
   debugBorder: z.boolean(), debugModelBounds: z.boolean(),
+  speech: speechConfigSchema.default(defaultSpeechConfig),
   params: z.record(z.string(), finite), auto: z.record(z.string(), z.boolean()),
   assistant: z.object({
     enabled: z.boolean(),
@@ -53,11 +55,12 @@ export interface PetSettingsSnapshot {
   defaults: Record<string, number>;
   supportsAdjust: boolean;
   apiKeyConfigured: boolean;
+  speechKeyConfigured?: boolean;
   availableModels?: string[];
 }
 export type PetSettingsRequest =
   | { action: "read" }
-  | { action: "save"; draft: PetDraft; apiKey?: string; clearApiKey?: boolean }
+  | { action: "save"; draft: PetDraft; apiKey?: string; clearApiKey?: boolean; speechApiKey?: string; clearSpeechApiKey?: boolean }
   | { action: "select"; model: PetDraft["model"] }
   | { action: "delete"; name: string }
   | { action: "clear-history" }
@@ -68,7 +71,7 @@ function previewSnapshot(): PetSettingsSnapshot {
   const assistant: AssistantSettings = { enabled: true, provider: "mollycloud", model: "", persona: "你叫 Molly，语气自然、简洁、友好。", customBaseUrl: "", greetInterval: 20 };
   const defaults = Object.fromEntries(modelParameters.map(p => [p.key, p.key.endsWith("Ease") ? 0.2 : 1]));
   const saved = localStorage.getItem(previewKey);
-  return { draft: saved ? petDraftSchema.parse(JSON.parse(saved)) : { model: { type: "manifest", name: "Molly.psd" }, modelScale: 1, boundsPadding: { left: 0, right: 0, top: 0, bottom: 0 }, debugBorder: false, debugModelBounds: false, params: defaults, auto: { autoBlink: true, autoRand: true, autoIdle: true }, assistant }, models: [{ type: "manifest", name: "Molly.psd" }, { type: "manifest", name: "seethrough_output.psd" }], defaults, supportsAdjust: true, apiKeyConfigured: false };
+  return { draft: saved ? petDraftSchema.parse(JSON.parse(saved)) : { model: { type: "manifest", name: "Molly.psd" }, modelScale: 1, boundsPadding: { left: 0, right: 0, top: 0, bottom: 0 }, debugBorder: false, debugModelBounds: false, params: defaults, auto: { autoBlink: true, autoRand: true, autoIdle: true }, assistant, speech: { ...defaultSpeechConfig } }, models: [{ type: "manifest", name: "Molly.psd" }, { type: "manifest", name: "seethrough_output.psd" }], defaults, supportsAdjust: true, apiKeyConfigured: false };
 }
 
 export async function requestPetSettings(request: PetSettingsRequest): Promise<PetSettingsSnapshot> {
@@ -76,7 +79,7 @@ export async function requestPetSettings(request: PetSettingsRequest): Promise<P
     if (!import.meta.env.DEV || new URLSearchParams(location.search).get("ui-preview") !== "console") throw new Error("桌宠设置需要在 MollyCloud 桌面端使用。");
     const state = previewSnapshot();
     if (request.action === "save") {
-      if (request.apiKey?.trim()) throw new Error("浏览器预览不能保存真实 API 密钥。");
+      if (request.apiKey?.trim() || request.speechApiKey?.trim()) throw new Error("浏览器预览不能保存真实 API 密钥。");
       localStorage.setItem(previewKey, JSON.stringify(petDraftSchema.parse(request.draft)));
       return previewSnapshot();
     }

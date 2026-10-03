@@ -4,6 +4,7 @@ import { floatingWindowTool } from "./FloatingWindowInfo";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
+  local_account?: boolean;
   content: string | null;
   tool_call_id?: string;
   name?: string;
@@ -57,6 +58,7 @@ export const PROVIDERS: Record<AssistantProvider, ProviderInfo> = {
 };
 
 const BASE_PROMPT =
+  "账户查询由本机接口直接处理，不能猜测余额、额度或到期时间，也不要调用账户查询工具；不索取或复述密钥、令牌。\n" +
   "你是桌面小助手，回复简洁友好。工具使用原则：\n" +
   "1. 用户要求打开/启动本机已安装的软件（如网易云音乐、微信、QQ、记事本、计算器、VS Code、浏览器）时，必须调用 launch_application 工具，只需传入应用名称，不要猜路径；\n" +
   "2. 只有明确需要执行受支持的系统命令（如 ipconfig、dir、ping 等查询类操作）时才调用 run_shell；普通“打开软件”请求一律不要用 run_shell；\n" +
@@ -216,38 +218,7 @@ const TOOLS = [
       },
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "get_account_overview",
-      description: "读取已登录 MollyCloud 用户的余额、账户状态和并发额度。只读。",
-      parameters: { type: "object", properties: {}, additionalProperties: false },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_subscription_status",
-      description: "读取已登录 MollyCloud 用户的订阅、系统分配用量和到期时间。只读。",
-      parameters: { type: "object", properties: {}, additionalProperties: false },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_usage_summary",
-      description: "读取已登录 MollyCloud 用户今日及累计请求、Token 和费用。只读。",
-      parameters: { type: "object", properties: {}, additionalProperties: false },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_api_key_status",
-      description: "读取 MollyCloud API 密钥的名称、状态、额度与最后使用时间；不会返回完整密钥。只读。",
-      parameters: { type: "object", properties: {}, additionalProperties: false },
-    },
-  },
+
 ];
 
 function systemPrompt(persona: string, memory: MemoryStore): string {
@@ -268,10 +239,10 @@ function systemPrompt(persona: string, memory: MemoryStore): string {
 
 /** 上下文窗口管理：截断 history（最近 N 条 + 字符上限），记忆并入 system。
  *  截断时不切断 tool_calls 序列（不删除紧跟 tool 消息的 assistant 消息）。 */
-function buildMessages(history: ChatMessage[], persona: string, memory: MemoryStore): ChatMessage[] {
+export function buildMessages(history: ChatMessage[], persona: string, memory: MemoryStore): ChatMessage[] {
   const MAX_MSGS = 20;
   const MAX_CHARS = 6000;
-  let msgs = history.slice(-MAX_MSGS);
+  let msgs = history.filter(message => !message.local_account).slice(-MAX_MSGS);
   let total = msgs.reduce((s, m) => s + (m.content?.length ?? 0), 0);
   while (msgs.length > 2 && total > MAX_CHARS) {
     // 若下一条是 tool 消息，说明当前是带 tool_calls 的 assistant，不能删

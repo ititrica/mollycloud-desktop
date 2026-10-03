@@ -11,9 +11,22 @@ export function invoke<T>(command: string, args?: Record<string, unknown>, optio
   if (command === "open_provider_terminal") {
     return bridge.invoke<T>("launch_ccswitch_cli", { appType: args?.app, providerId: args?.providerId, cwd: args?.cwd });
   }
+  if (["register_ccswitch_web_import", "unregister_ccswitch_web_import", "ccswitch_web_import_handler"].includes(command)) {
+    return bridge.invoke<T>(command, args);
+  }
+  if ((command === "queryProviderUsage" || command === "testUsageScript") &&
+      typeof args?.providerId === "string" && args.providerId.startsWith("molly-")) {
+    return bridge.invoke<T | null>("query_molly_provider_usage", {
+      agent: args.app, providerId: args.providerId,
+    }).then((result) => result ?? bridge.invoke<T>(`plugin:molly-ccswitch|${command}`, args, options)) as Promise<T>;
+  }
   if (command === "open_external") {
     try {
       const url = new URL(String(args?.url ?? ""));
+      // Repair links on cards imported before the website/API split.
+      if (url.hostname === "mollycloud.cn" && url.pathname.replace(/\/+$/, "") === "/v1") {
+        url.pathname = "/";
+      }
       if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("protocol");
       return bridge.invoke<T>("open_url", { url: url.toString() });
     } catch {

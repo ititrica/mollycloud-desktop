@@ -1,36 +1,46 @@
 <script setup lang="ts">
-import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, KeepAlive, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   NAlert,
   NButton,
   NCard,
   NCheckbox,
-  NDataTable,
   NDropdown,
   NInput,
   NModal,
   NSwitch,
   NTag,
-  type DataTableColumns,
   type DropdownOption,
 } from "naive-ui";
+import { plugins, loadPlugins, pluginUsable, pluginKey } from "./plugins";
+import { useSlidingSelection } from "./useSlidingSelection";
+import { enterNavPanel, leaveNavPanel, cancelNavPanel } from "./navigationMotion";
 import AppIcon from "./components/AppIcon.vue";
 import CcSwitchImportDialog from "./components/CcSwitchImportDialog.vue";
 import CcSwitchPanel from "./components/CcSwitchPanel.vue";
 import ImageWorkbenchPanel from "./components/ImageWorkbenchPanel.vue";
 import ConsoleSettingsDialog from "./components/ConsoleSettingsDialog.vue";
 import PetSettingsDialog from "./components/PetSettingsDialog.vue";
-import McpMarketPanel from "./components/McpMarketPanel.vue";
+import AssistantConversation from "./components/AssistantConversation.vue";
+import { keyUsage, keyQuota, costLabel } from "./keyUsage";
 import SkillManagerPanel from "./components/SkillManagerPanel.vue";
-import McpExperimentalDialog from "./components/McpExperimentalDialog.vue";
-import { asArray, asRecord, type AccountBalance, type AssistantConfig, type DashboardPayload, type ServiceBootstrap } from "./contracts";
+import NetSpeedPanel from "./components/NetSpeedPanel.vue";
+import KeyGroupPicker from "./components/KeyGroupPicker.vue";
+import CreateKeyDialog from "./components/CreateKeyDialog.vue";
+import DeleteKeyDialog from "./components/DeleteKeyDialog.vue";
+import { groupFromKey } from "./keyGroups";
+import RechargePanel from "./components/RechargePanel.vue";
+import SubscriptionsPanel from "./components/SubscriptionsPanel.vue";
+import type { SpeechStatus } from "./speech";
+import { emitTo } from "@tauri-apps/api/event";
+import { asArray, asRecord, type AccountBalance, type AssistantConfig, type DashboardPayload, type ServiceBootstrap, type KeyGroupChanged } from "./contracts";
 import { formatBalance, formatDate, formatMoney, formatTokens, numberValue, textValue } from "./format";
 import { desktopApi, type CcSwitchImportResult, type DesktopUpdate } from "./ipc";
 
-type Page = "overview" | "subscriptions" | "keys" | "usage" | "assistant" | "ccswitch" | "images" | "mcp" | "skills";
+type Page = "overview" | "subscriptions" | "keys" | "usage" | "recharge" | "assistant" | "ccswitch" | "netspeed" | "images" | "skills";
 type Phase = "starting" | "login" | "two-factor" | "dashboard";
 type AssistantDisplayMessage = { role: "user" | "assistant"; content: string };
-type OverviewIcon = "wallet" | "spend" | "subscription" | "code";
+type OverviewIcon = "wallet" | "spend" | "subscription" | "key" | "request" | "token" | "database" | "clock";
 type OverviewTarget = "recharge" | "subscriptions" | "keys" | "usage";
 
 const phase = ref<Phase>("starting");
@@ -50,21 +60,28 @@ const autoLogin = ref(false);
 const acceptedAgreement = ref(true);
 const agreementOpen = ref(false);
 const consoleSettingsOpen = ref(false);
+const settingsTab = ref<"general" | "plugins">("general");
+function openPluginSettings() { settingsTab.value = "plugins"; consoleSettingsOpen.value = true; }
+watch(phase, (value) => { if (value === "dashboard") void loadPlugins(); });
 const consoleSettingsButton = ref<HTMLButtonElement | null>(null);
 const petSettingsOpen = ref(false);
-const mcpModalOpen = ref(false);
-const mcpVisited = ref(false);
 const skillsVisited = ref(false);
 const skillsModalOpen = ref(false);
-const mcpWarningOpen = ref(false);
-const mcpAcknowledgementKey = "__TAURI_INTERNALS__" in window ? "mollycloud:mcp-experimental-ack:v1" : "mollycloud:preview:mcp-experimental-ack:v1";
-const mcpAcknowledged = ref(false);
-try { mcpAcknowledged.value = localStorage.getItem(mcpAcknowledgementKey) === "acknowledged"; } catch { /* First-use consent remains available without storage. */ }
-const petSettingsButton = ref<HTMLButtonElement | null>(null);
+const subscriptionModalOpen = ref(false);
 const sidebarCollapsed = ref(false);
 const ccSwitchImportOpen = ref(false);
 const ccSwitchImportKeyId = ref("");
 const ccSwitchImportName = ref("");
+const createKeyOpen = ref(false);
+const deleteKeyOpen = ref(false);
+const deleteKeyTarget = ref({ id: "", name: "" });
+const deleteKeyTrigger = ref<HTMLElement | null>(null);
+// Ignore stale dashboard responses that started before a confirmed deletion.
+const deletedKeyIds = ref(new Set<string>());
+const createKeyTrigger = ref<HTMLElement | null>(null);
+const keyGroupSuccess = ref("");
+const rechargeVisited = ref(false);
+const userMenuOpen = ref(false);
 const submitting = ref(false);
 const refreshing = ref(false);
 const errorMessage = ref("");
@@ -79,46 +96,77 @@ const ccSwitchVisited = ref(false);
 const imageWorkbenchVisited = ref(false);
 const ccSwitchTarget = ref<CcSwitchImportResult | null>(null);
 const ccSwitchPanel = ref<InstanceType<typeof CcSwitchPanel> | null>(null);
+const sidebarNav = ref<HTMLElement | null>(null);
+const overviewNav = ref<HTMLElement | null>(null);
+const primarySelection = computed(() => ["overview", "subscriptions", "usage", "recharge"].includes(activePage.value) ? "overview" : activePage.value);
+useSlidingSelection(sidebarNav, primarySelection);
+useSlidingSelection(overviewNav, activePage, true);
 const consolePreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get("ui-preview") === "console";
 const endpointCopied = ref(false);
 const assistantMessages = ref<AssistantDisplayMessage[]>([]);
 const assistantDraft = ref("");
 const assistantSending = ref(false);
 const assistantChatError = ref("");
-const assistantHistory = ref<HTMLElement | null>(null);
+const assistantSpeechStatus = ref<SpeechStatus>({ phase: "idle" });
+async function stopSpeech() {
+  assistantSpeechStatus.value = { phase: "idle" };
+  if (!consolePreview) await emitTo("main", "assistant-speech-stop").catch(() => {});
+}
+const assistantPanel = ref<{ scrollToEnd?: () => void } | null>(null);
+const assistantTab = ref<"chat" | "settings">("chat");
+const assistantNav = ref<HTMLElement | null>(null);
+const assistantSettingsBusy = ref(false);
+useSlidingSelection(assistantNav, assistantTab, true);
+const assistantPanelProps = computed(() => assistantTab.value === "chat" ? { messages: assistantMessages.value, username: textValue(user.value.username, "我"), draft: assistantDraft.value, sending: assistantSending.value, error: assistantChatError.value, speechStatus: assistantSpeechStatus.value } : { show: true, embedded: true });
 const desktopUpdate = ref<DesktopUpdate | null>(null);
+const updateDialogOpen = ref(false);
+const updateDialogError = ref("");
+const updateOpening = ref(false);
+const notifiedUpdateVersion = ref<string | null>(null);
+watch([desktopUpdate, phase, consoleSettingsOpen, petSettingsOpen, ccSwitchImportOpen, skillsModalOpen, subscriptionModalOpen, createKeyOpen, deleteKeyOpen], ([update, currentPhase]) => {
+  if (!update || currentPhase !== "dashboard") {
+    updateDialogOpen.value = false;
+    return;
+  }
+  if (consoleSettingsOpen.value || petSettingsOpen.value || ccSwitchImportOpen.value || skillsModalOpen.value || subscriptionModalOpen.value || createKeyOpen.value || deleteKeyOpen.value) return;
+  if (currentPhase === "dashboard" && update && notifiedUpdateVersion.value !== update.version) {
+    notifiedUpdateVersion.value = update.version;
+    updateDialogError.value = "";
+    updateDialogOpen.value = true;
+  }
+});
 let refreshTimer: number | undefined;
 let balanceRefreshTimer: number | undefined;
 let balanceRefreshInFlight = false;
 let copyFeedbackTimer: number | undefined;
 let unlistenAssistantConfig: (() => void) | undefined;
 let unlistenAssistantHistory: (() => void) | undefined;
+let unlistenSpeech: (() => void) | undefined;
 let unlistenAssistantState: (() => void) | undefined;
 let unlistenPetVisibility: (() => void) | undefined;
+let unlistenExternalImport: (() => void) | undefined;
+let unlistenNavigation: (() => void) | undefined;
+const pendingExternalImport = ref(false);
+watch(phase, (next) => {
+  if (next === "dashboard" && pendingExternalImport.value) {
+    pendingExternalImport.value = false;
+    selectPage("ccswitch");
+  }
+});
 
-const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "key" | "usage" | "assistant" | "code" | "image" | "mcp" | "skills" }> = [
+const navigation: Array<{ id: Page; label: string; icon: "overview" | "subscription" | "project-key" | "key" | "usage" | "assistant" | "code" | "image" | "skills" | "island" }> = [
   { id: "overview", label: "概览", icon: "overview" },
-  { id: "subscriptions", label: "订阅", icon: "subscription" },
-  { id: "keys", label: "API 密钥", icon: "key" },
-  { id: "usage", label: "用量", icon: "usage" },
-  { id: "assistant", label: "Molly助手", icon: "assistant" },
+  { id: "keys", label: "API 密钥", icon: "project-key" },
   { id: "ccswitch", label: "CC Switch", icon: "code" },
+  { id: "assistant", label: "Molly助手", icon: "assistant" },
+  { id: "netspeed", label: "灵动岛", icon: "island" },
   { id: "images", label: "生图工作台", icon: "image" },
-  { id: "mcp", label: "MCP 市场", icon: "mcp" },
   { id: "skills", label: "Skill 管理器", icon: "skills" },
 ];
 
-const pageMeta: Record<Page, { kicker: string; title: string; description: string }> = {
-  overview: { kicker: "账户总览", title: "概览", description: "余额、订阅和今日使用情况集中显示在这里。" },
-  subscriptions: { kicker: "账户权益", title: "订阅", description: "查看当前订阅、到期时间和系统分配用量。" },
-  keys: { kicker: "开发接入", title: "API 密钥", description: "复制 API 端点并查看已有密钥的使用状态。" },
-  usage: { kicker: "使用统计", title: "用量", description: "汇总请求、Token 和实际消费数据。" },
-  assistant: { kicker: "桌面伙伴", title: "Molly助手", description: "与桌面 Molly 共用对话记录和发送能力。" },
-  ccswitch: { kicker: "工具配置", title: "CC Switch", description: "管理供应商与本机工具配置。" },
-  images: { kicker: "图片创作", title: "生图工作台", description: "生成、编辑图片，保存创作记录。" },
-  skills: { kicker: "扩展能力", title: "Skill 管理器", description: "发现、整理与部署技能，让每个 Agent 拥有合适的能力。" },
-  mcp: { kicker: "扩展工具", title: "MCP 市场", description: "发现工具，一键安装到你使用的 Agent。" },
-};
+const availablePageIds = new Set<Page>([
+  ...navigation.map(item => item.id), "subscriptions", "usage", "recharge",
+]);
 
 const settings = computed(() => asRecord(bootstrap.value?.settings));
 const siteName = computed(() => textValue(settings.value.site_name, "MollyCloud"));
@@ -131,18 +179,19 @@ const subscriptionSummary = computed(() => asRecord(dashboard.value?.subscriptio
 const subscriptions = computed(() => asArray(subscriptionSummary.value.subscriptions));
 const subscriptionProgress = computed(() => asArray(dashboard.value?.subscription_progress));
 const keyPage = computed(() => asRecord(dashboard.value?.keys));
-const keys = computed(() => asArray(keyPage.value.items));
+const keys = computed(() => asArray(keyPage.value.items).filter(item => !deletedKeyIds.value.has(String(item.id))));
 const userInitial = computed(() => textValue(user.value.username ?? user.value.email, "M").slice(0, 1).toUpperCase());
-const currentPageMeta = computed(() => pageMeta[activePage.value]);
+const overviewPages = [
+  { id: "overview", label: "账户概览" },
+  { id: "subscriptions", label: "订阅" },
+  { id: "usage", label: "用量" },
+  { id: "recharge", label: "充值" },
+] as const;
+const isOverviewPage = computed(() => overviewPages.some((item) => item.id === activePage.value));
 const isEmbeddedPage = computed(() => ["assistant", "ccswitch", "images"].includes(activePage.value));
+const isToolPage = computed(() => ["netspeed", "skills"].includes(activePage.value));
+const showAccountHeader = computed(() => !isEmbeddedPage.value && !isToolPage.value);
 const apiEndpoint = "https://mollycloud.cn/v1";
-const greeting = computed(() => {
-  const hour = new Date().getHours();
-  if (hour < 6) return "夜深了";
-  if (hour < 12) return "早上好";
-  if (hour < 18) return "下午好";
-  return "晚上好";
-});
 const accountReminder = computed(() => {
   if (activePage.value === "subscriptions") {
     const expiring = subscriptions.value.find((item) => {
@@ -181,97 +230,29 @@ const visibleAccountReminder = computed(() => {
   return reminder;
 });
 
-const stats = computed<Array<{ label: string; value: string; tone: string; icon: OverviewIcon; target: OverviewTarget }>>(() => [
-  { label: "账户余额", value: formatBalance(user.value.balance), tone: "lime", icon: "wallet", target: "recharge" },
-  { label: "累计消费", value: formatMoney(usage.value.total_actual_cost), tone: "blue", icon: "spend", target: "usage" },
-  { label: "活跃订阅", value: String(numberValue(subscriptionSummary.value.active_count)), tone: "violet", icon: "subscription", target: "subscriptions" },
-  { label: "API 密钥", value: String(numberValue(usage.value.active_api_keys)), tone: "white", icon: "code", target: "keys" },
+const stats = computed<Array<{ label: string; value: string; detail: string; tone: string; icon: OverviewIcon; target: OverviewTarget }>>(() => [
+  { label: "余额", value: formatBalance(user.value.balance), detail: "可用余额", tone: "lime", icon: "wallet", target: "recharge" },
+  { label: "API 密钥", value: String(numberValue(keyPage.value.total ?? usage.value.active_api_keys)), detail: `${numberValue(usage.value.active_api_keys)} 个启用`, tone: "neutral", icon: "key", target: "keys" },
+  { label: "今日请求", value: numberValue(usage.value.today_requests).toLocaleString("zh-CN"), detail: `累计 ${numberValue(usage.value.total_requests).toLocaleString("zh-CN")}`, tone: "lime", icon: "request", target: "usage" },
+  { label: "今日消费", value: formatMoney(usage.value.today_actual_cost), detail: `累计 ${formatMoney(usage.value.total_actual_cost)}`, tone: "neutral", icon: "spend", target: "usage" },
+  { label: "今日 Token", value: formatTokens(usage.value.today_tokens), detail: "今日累计使用", tone: "amber", icon: "token", target: "usage" },
+  { label: "累计 Token", value: formatTokens(usage.value.total_tokens), detail: "全部历史用量", tone: "neutral", icon: "database", target: "usage" },
+  { label: "活跃订阅", value: String(numberValue(subscriptionSummary.value.active_count)), detail: "查看订阅权益", tone: "lime", icon: "subscription", target: "subscriptions" },
+  { label: "平均响应", value: usage.value.average_duration_ms == null ? "—" : `${(numberValue(usage.value.average_duration_ms) / 1000).toFixed(2)}s`, detail: "平均请求耗时", tone: "rose", icon: "clock", target: "usage" },
 ]);
+const tokenBreakdown = computed(() => {
+  const parts = [
+    { label: "输入", value: numberValue(usage.value.total_input_tokens), tone: "blue" },
+    { label: "输出", value: numberValue(usage.value.total_output_tokens), tone: "lime" },
+    { label: "缓存创建", value: numberValue(usage.value.total_cache_creation_tokens), tone: "amber" },
+    { label: "缓存读取", value: numberValue(usage.value.total_cache_read_tokens), tone: "violet" },
+  ];
+  const total = parts.reduce((sum, part) => sum + part.value, 0);
+  return parts.map((part) => ({ ...part, share: total ? part.value / total * 100 : 0 }));
+});
 
 const userMenuOptions: DropdownOption[] = [
   { label: "退出登录", key: "sign-out", props: { class: "naive-user-menu__logout" } },
-];
-
-const keyTableColumns: DataTableColumns<Record<string, unknown>> = [
-  {
-    title: "名称",
-    key: "name",
-    width: 125,
-    render: (row) => h("strong", textValue(row.name, "未命名")),
-  },
-  {
-    title: "密钥",
-    key: "key",
-    width: 235,
-    render: (row) => h("div", { class: "key-cell" }, [
-      h("code", textValue(row.key, "sk-••••")),
-      h(NButton, {
-        class: "key-copy-button",
-        size: "small",
-        tertiary: true,
-        onClick: () => void copyKey(row),
-      }, {
-        default: () => [
-          h(AppIcon, { name: "copy" }),
-          copiedKeyId.value === String(row.id) ? "已复制" : "复制",
-        ],
-      }),
-    ]),
-  },
-  {
-    title: "分组",
-    key: "group",
-    width: 150,
-    render: (row) => {
-      const group = asRecord(row.group);
-      const groupName = textValue(row.group_name ?? group.name, row.group_id ? `分组 ${String(row.group_id)}` : "未分组");
-      const platform = textValue(group.platform, "");
-      return h("div", { class: "group-cell" }, [
-        h("strong", groupName),
-        platform ? h("small", platformLabel(platform)) : null,
-      ]);
-    },
-  },
-  {
-    title: "状态",
-    key: "status",
-    width: 90,
-    render: (row) => h(NTag, {
-      size: "small",
-      bordered: false,
-      type: row.status === "active" ? "success" : "default",
-    }, { default: () => row.status === "active" ? "正常" : textValue(row.status) }),
-  },
-  {
-    title: "已用额度",
-    key: "quota_used",
-    width: 115,
-    render: (row) => formatMoney(row.quota_used),
-  },
-  {
-    title: "内置 CC Switch",
-    key: "ccs_import",
-    width: 218,
-    render: (row) => {
-      const keyId = String(row.id);
-      const imported = importedProviders.value[keyId];
-      return h("div", { class: "ccs-import-actions" }, [
-        h(NButton, {
-          class: "ccs-import-button",
-          size: "small",
-          secondary: true,
-          "data-key-id": keyId,
-          onClick: () => openCcSwitchImport(row),
-        }, { default: () => imported ? "再次导入" : "导入到内置 CC Switch" }),
-        imported ? h(NButton, {
-          size: "small",
-          quaternary: true,
-          onClick: () => openImportedProvider(imported),
-          "aria-label": `在内置 CC Switch 中打开 ${textValue(row.name, "此供应商")}`,
-        }, { default: () => "打开" }) : null,
-      ]);
-    },
-  },
 ];
 
 function platformLabel(platform: string): string {
@@ -306,11 +287,14 @@ async function initialize(): Promise<void> {
   }
   if (import.meta.env.DEV && uiPreview === "console") {
     const previewPage = previewParams.get("preview-page");
-    if (previewPage && navigation.some((item) => item.id === previewPage)) selectPage(previewPage as Page);
+    if (previewPage && availablePageIds.has(previewPage as Page)) selectPage(previewPage as Page);
     bootstrap.value = { service_origin: "https://mollycloud.cn", health: { status: "ok" }, settings: { site_name: "MollyCloud" } };
     dashboard.value = {
       user: { username: "演示用户", email: "demo@mollycloud.cn", balance: 12.35 },
-      subscriptions: { active_count: 1, subscriptions: [{ id: "demo", status: "active", expires_at: "2026-10-01T00:00:00Z", monthly_usage_usd: 12.6, group: { name: "Molly Pro", monthly_limit_usd: 50 } }] },
+      subscriptions: { active_count: 2, subscriptions: [
+        { id: 9101, status: "active", expires_at: new Date(Date.now() + 6 * 86_400_000).toISOString(), group: { name: "GPT Pro 高级推理周订阅", weekly_limit_usd: 120 } },
+        { id: 9102, status: "active", expires_at: new Date(Date.now() + 24 * 86_400_000).toISOString(), monthly_usage_usd: 28.4, group: { name: "Claude Plus 月订阅", monthly_limit_usd: 200 } },
+      ] },
       subscription_progress: [],
       usage: {
         today_tokens: 128400, today_requests: 48, today_actual_cost: 1.28,
@@ -319,7 +303,7 @@ async function initialize(): Promise<void> {
         total_cache_creation_tokens: 0, total_cache_read_tokens: 179340000,
         active_api_keys: 2,
       },
-      keys: { items: [{ id: "demo-key", name: "Molly Desktop", key: "sk-••••942A", status: "active", quota_used: 12.6, group_id: 1, group: { name: "Molly Pro", platform: "openai" } }] },
+      keys: { items: [{ id: "demo-key", name: "Molly Desktop", key: "sk-••••942A", status: "active", quota_used: 0, usage: { total_actual_cost: 12.6032, today_actual_cost: 0.0278 }, group_id: 1, group: { name: "Molly Pro", platform: "openai", rate_multiplier: 1, subscription_type: "subscription" } }] },
     };
     assistantConfig.value = { enabled: true, provider: "mollycloud", model: "gpt-5-mini", persona: "", custom_base_url: "", greet_interval: 20, molly_key_id: "demo-key", api_key_configured: false };
     assistantMessages.value = [
@@ -402,6 +386,12 @@ async function submitTwoFactor(): Promise<void> {
   }
 }
 
+let subscriptionRefreshQueued = false;
+function refreshSubscriptionDashboard(): void {
+  // A read started before a paid reset may still return the old balance.
+  if (refreshing.value) subscriptionRefreshQueued = true;
+  else void refreshDashboard();
+}
 async function refreshDashboard(): Promise<void> {
   if (refreshing.value) return;
   refreshing.value = true;
@@ -410,11 +400,14 @@ async function refreshDashboard(): Promise<void> {
     dashboard.value = await desktopApi.fetchDashboard();
     void desktopApi.syncPetAccountBalance(accountBalanceFromDashboard(dashboard.value));
     lastUpdated.value = new Date();
-    await maybeShowAccountReminder();
   } catch (reason) {
     if (!dashboard.value) errorMessage.value = friendlyError(reason);
   } finally {
     refreshing.value = false;
+    if (subscriptionRefreshQueued) {
+      subscriptionRefreshQueued = false;
+      void refreshDashboard();
+    }
   }
 }
 
@@ -441,7 +434,6 @@ async function refreshAccountBalance(): Promise<void> {
     const account = await desktopApi.fetchAccountBalance();
     applyAccountBalance(account);
     void desktopApi.syncPetAccountBalance(account);
-    await maybeShowAccountReminder();
   } catch (reason) {
     if (!dashboard.value) errorMessage.value = friendlyError(reason);
   } finally {
@@ -449,15 +441,6 @@ async function refreshAccountBalance(): Promise<void> {
   }
 }
 
-async function maybeShowAccountReminder(): Promise<void> {
-  const reminder = visibleAccountReminder.value;
-  if (!reminder) return;
-  const key = `molly-reminder-${reminder.id}`;
-  const lastShown = Number(localStorage.getItem(key) ?? 0);
-  if (Date.now() - lastShown < 12 * 60 * 60 * 1000) return;
-  localStorage.setItem(key, String(Date.now()));
-  await desktopApi.showPetBubble(`${reminder.title}。${reminder.detail}`).catch(() => undefined);
-}
 
 function startRefreshTimer(): void {
   if (refreshTimer) window.clearInterval(refreshTimer);
@@ -470,11 +453,16 @@ function startBalanceRefreshTimer(): void {
 }
 
 async function signOut(): Promise<void> {
+  deleteKeyOpen.value = false;
+  createKeyOpen.value = false;
+  rechargeVisited.value = false;
   await desktopApi.logout();
   if (refreshTimer) window.clearInterval(refreshTimer);
   if (balanceRefreshTimer) window.clearInterval(balanceRefreshTimer);
   void desktopApi.syncPetAccountBalance({ balance: null, today_tokens: null });
   dashboard.value = null;
+  deletedKeyIds.value.clear();
+  keyGroupSuccess.value = "";
   restoredUser.value = null;
   email.value = "";
   acceptedAgreement.value = true;
@@ -520,8 +508,7 @@ async function setPetVisibility(visible: boolean): Promise<void> {
 
 async function scrollAssistantToEnd(): Promise<void> {
   await nextTick();
-  const element = assistantHistory.value;
-  if (element) element.scrollTop = element.scrollHeight;
+  await assistantPanel.value?.scrollToEnd?.();
 }
 
 function applyAssistantHistory(payload: { messages?: unknown[] }): void {
@@ -530,7 +517,7 @@ function applyAssistantHistory(payload: { messages?: unknown[] }): void {
     if (!item || typeof item !== "object") return [];
     const message = item as Record<string, unknown>;
     if ((message.role !== "user" && message.role !== "assistant") || typeof message.content !== "string") return [];
-    const content = message.content.trim().slice(0, 500);
+    const content = message.content.trim().slice(0, 2000);
     return content ? [{ role: message.role, content } as AssistantDisplayMessage] : [];
   });
   void scrollAssistantToEnd();
@@ -571,29 +558,16 @@ function handleAssistantKeydown(event: KeyboardEvent): void {
 }
 
 function selectPage(page: Page): void {
-  if (page === "mcp" && !mcpAcknowledged.value) { mcpWarningOpen.value = true; return; }
+  if (assistantSettingsBusy.value) return;
   activePage.value = page;
+  if (page === "recharge") rechargeVisited.value = true;
   if (page === "ccswitch") ccSwitchVisited.value = true;
   if (page === "images") imageWorkbenchVisited.value = true;
-  if (page === "mcp") mcpVisited.value = true;
   if (page === "skills") skillsVisited.value = true;
   if (page === "assistant") {
     void loadPetVisibility();
     void requestAssistantHistory();
   }
-}
-
-function acknowledgeMcp(): void {
-  mcpAcknowledged.value = true;
-  try { localStorage.setItem(mcpAcknowledgementKey, "acknowledged"); }
-  catch { errorMessage.value = "已确认本次提示，但无法保存确认记录，下次启动可能再次提示。"; }
-  mcpWarningOpen.value = false;
-  selectPage("mcp");
-}
-
-function cancelMcpWarning(): void {
-  mcpWarningOpen.value = false;
-  void nextTick(() => document.querySelector<HTMLButtonElement>('[aria-label="MCP 市场"]')?.focus());
 }
 
 function toggleSidebar(): void {
@@ -622,27 +596,53 @@ function closeConsoleWindow(): void {
   void withConsoleWindow("close");
 }
 
-function openImportedProvider(provider: CcSwitchImportResult): void {
-  ccSwitchTarget.value = { ...provider };
-  selectPage("ccswitch");
-}
 
-async function openRecharge(): Promise<void> {
-  errorMessage.value = "";
-  try {
-    await desktopApi.openRecharge();
-  } catch (reason) {
-    errorMessage.value = `无法打开充值页面：${friendlyError(reason)}`;
-  }
-}
+function openRecharge(): void { selectPage("recharge"); }
 
-async function openSubscriptions(): Promise<void> {
-  errorMessage.value = "";
-  try {
-    await desktopApi.openSubscriptions();
-  } catch (reason) {
-    errorMessage.value = `无法打开我的订阅：${friendlyError(reason)}`;
+function openCreateKey(event: MouseEvent): void {
+  createKeyTrigger.value = event.currentTarget as HTMLElement;
+  createKeyOpen.value = true;
+}
+function openDeleteKey(item: Record<string, unknown>, event: MouseEvent): void {
+  deleteKeyTrigger.value = event.currentTarget as HTMLElement;
+  deleteKeyTarget.value = { id: String(item.id), name: textValue(item.name, '未命名') };
+  deleteKeyOpen.value = true;
+}
+function handleKeyDeleted(keyId: string): void {
+  deletedKeyIds.value.add(keyId);
+  if (dashboard.value) asRecord(dashboard.value.keys).items = keys.value;
+  delete importedProviders.value[keyId];
+  if (copiedKeyId.value === keyId) copiedKeyId.value = "";
+  keyGroupSuccess.value = `已删除密钥 ${deleteKeyTarget.value.name}`;
+  if (!consolePreview) void refreshDashboard();
+}
+function restoreDeleteKeyFocus(): void {
+  const target = deleteKeyTrigger.value;
+  deleteKeyTrigger.value = null;
+  // Wait for the modal focus trap to unmount before restoring the trigger.
+  void nextTick(() => {
+    if (deleteKeyOpen.value || activePage.value !== 'keys') return;
+    if (target?.isConnected) target.focus();
+    else document.querySelector<HTMLButtonElement>('.create-key-button')?.focus();
+  });
+}
+function handleKeyCreated(item: Record<string, unknown>): void {
+  if (dashboard.value) {
+    const page = asRecord(dashboard.value.keys);
+    page.items = [item, ...keys.value];
   }
+  keyGroupSuccess.value = `已创建密钥 ${textValue(item.name)}`;
+  if (!consolePreview) void refreshDashboard();
+}
+function handleKeyGroupChanged(result: KeyGroupChanged): void {
+  const item = keys.value.find(item => String(item.id) === result.key_id);
+  if (item) {
+    item.group_id = result.group.id;
+    item.group_name = result.group.name;
+    item.group = { ...asRecord(item.group), id: result.group.id, name: result.group.name, platform: result.group.platform, rate_multiplier: result.group.rate, description: result.group.description, subscription_type: result.group.subscription ? "subscription" : "standard" };
+  }
+  keyGroupSuccess.value = `分组已切换为 ${result.group.name}`;
+  if (!consolePreview) void refreshDashboard();
 }
 
 async function checkForDesktopUpdate(): Promise<void> {
@@ -657,12 +657,24 @@ async function checkForDesktopUpdate(): Promise<void> {
 
 async function openDesktopUpdate(): Promise<void> {
   const update = desktopUpdate.value;
-  if (!update) return;
+  if (!update || updateOpening.value) return;
+  updateOpening.value = true;
+  updateDialogError.value = "";
   try {
     await desktopApi.openDesktopUpdate(update.downloadUrl);
+    updateDialogOpen.value = false;
   } catch (reason) {
-    errorMessage.value = `无法打开更新下载：${friendlyError(reason)}`;
+    updateDialogError.value = `无法打开更新下载：${friendlyError(reason)}`;
+  } finally {
+    updateOpening.value = false;
   }
+}
+
+function handleSettingsUpdateCheck(update: DesktopUpdate | null): void {
+  if (!update) return;
+  desktopUpdate.value = update;
+  consoleSettingsOpen.value = false;
+  void nextTick(() => { updateDialogError.value = ""; updateDialogOpen.value = true; });
 }
 
 function openOverviewMetric(target: OverviewTarget): void {
@@ -691,24 +703,6 @@ function subscriptionDaysRemaining(item: Record<string, unknown>): number | null
   const timestamp = Date.parse(expiresAt);
   if (!Number.isFinite(timestamp)) return null;
   return Math.max(0, Math.ceil((timestamp - Date.now()) / 86_400_000));
-}
-
-function subscriptionQuota(item: Record<string, unknown>): { used: number; limit: number; percentage: number } | null {
-  const group = asRecord(item.group);
-  const progress = progressFor(item.id);
-  const directLimit = item.limit_usd ?? item.quota_limit_usd ?? group.limit_usd;
-  const directUsed = item.usage_usd ?? item.quota_used_usd ?? item.quota_used;
-  const candidates = [
-    { used: directUsed, limit: directLimit },
-    { used: item.monthly_usage_usd ?? asRecord(progress.monthly).used, limit: group.monthly_limit_usd ?? item.monthly_limit_usd ?? asRecord(progress.monthly).limit },
-    { used: item.weekly_usage_usd ?? asRecord(progress.weekly).used, limit: group.weekly_limit_usd ?? item.weekly_limit_usd ?? asRecord(progress.weekly).limit },
-    { used: item.daily_usage_usd ?? asRecord(progress.daily).used, limit: group.daily_limit_usd ?? item.daily_limit_usd ?? asRecord(progress.daily).limit },
-  ];
-  const selected = candidates.find((candidate) => candidate.limit != null && numberValue(candidate.limit) > 0);
-  if (!selected) return null;
-  const used = numberValue(selected.used);
-  const limit = numberValue(selected.limit);
-  return { used, limit, percentage: Math.max(0, Math.min(100, (used / limit) * 100)) };
 }
 
 async function handleUserMenuSelect(key: string | number): Promise<void> {
@@ -773,6 +767,9 @@ function handleCcSwitchImported(keyId: string, provider: CcSwitchImportResult): 
 onMounted(async () => {
   if ("__TAURI_INTERNALS__" in window) {
     const { listen } = await import("@tauri-apps/api/event");
+    unlistenNavigation = await listen<string>("molly:navigate", event => {
+      if (event.payload === "netspeed" && phase.value === "dashboard") selectPage("netspeed");
+    });
     unlistenAssistantConfig = await listen<AssistantConfig>("assistant-config-changed", (event) => {
       assistantConfig.value = event.payload;
     });
@@ -784,9 +781,21 @@ onMounted(async () => {
       assistantChatError.value = typeof event.payload?.error === "string" ? event.payload.error : "";
       if (!assistantSending.value) void requestAssistantHistory();
     });
+    unlistenSpeech = await listen<SpeechStatus>("assistant-speech-state", event => { assistantSpeechStatus.value = event.payload; });
     unlistenPetVisibility = await listen<boolean>("pet-visibility-changed", (event) => {
       petVisible.value = event.payload;
     });
+    unlistenExternalImport = await listen("ccswitch-external-import", () => {
+      if (phase.value === "dashboard") {
+        selectPage("ccswitch");
+        void ccSwitchPanel.value?.flushExternalImports();
+      }
+      else pendingExternalImport.value = true;
+    });
+    const { invoke } = await import("@tauri-apps/api/core");
+    if (await invoke<boolean>("has_ccswitch_external_import").catch(() => false)) {
+      pendingExternalImport.value = true;
+    }
   }
   void initialize();
   void checkForDesktopUpdate();
@@ -798,7 +807,10 @@ onBeforeUnmount(() => {
   unlistenAssistantConfig?.();
   unlistenAssistantHistory?.();
   unlistenAssistantState?.();
+  unlistenSpeech?.();
   unlistenPetVisibility?.();
+  unlistenExternalImport?.();
+  unlistenNavigation?.();
 });
 </script>
 
@@ -878,7 +890,7 @@ onBeforeUnmount(() => {
     </section>
   </main>
 
-  <main v-else class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }" :inert="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen || mcpModalOpen || mcpWarningOpen">
+  <main v-else class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }" :inert="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen || updateDialogOpen || createKeyOpen || deleteKeyOpen || subscriptionModalOpen">
     <aside :inert="skillsModalOpen" class="sidebar">
       <div class="sidebar-project-bar">
         <div class="sidebar-project-brand" aria-label="MollyCloud">
@@ -886,111 +898,113 @@ onBeforeUnmount(() => {
           <strong>MollyCloud</strong>
         </div>
       </div>
-      <nav aria-label="主导航">
-        <button v-for="item in navigation" :key="item.id" type="button" class="nav-item" :class="{ active: activePage === item.id }" :aria-label="item.label" :title="sidebarCollapsed ? item.label : undefined" :aria-current="activePage === item.id ? 'page' : undefined" @click="selectPage(item.id)">
-          <AppIcon :name="item.icon" /><span>{{ item.label }}</span>
-        </button>
-      </nav>
+      <div class="sidebar-nav-viewport">
+        <nav ref="sidebarNav" aria-label="主导航">
+          <i class="selection-indicator" aria-hidden="true" />
+          <button v-for="item in navigation" :key="item.id" :disabled="assistantSettingsBusy" type="button" class="nav-item" :class="{ active: item.id === 'overview' ? isOverviewPage : activePage === item.id }" :data-page="item.id" :aria-label="item.label" :title="sidebarCollapsed ? item.label : undefined" :aria-current="item.id === 'overview' ? (isOverviewPage ? (activePage === 'overview' ? 'page' : 'true') : undefined) : (activePage === item.id ? 'page' : undefined)" @click="selectPage(item.id)">
+            <AppIcon :name="item.icon" /><span>{{ item.label }}</span>
+          </button>
+        </nav>
+      </div>
       <div class="sidebar-footer">
-        <button ref="consoleSettingsButton" class="sidebar-settings" type="button" aria-label="设置" :title="sidebarCollapsed ? '设置' : undefined" aria-haspopup="dialog" :aria-expanded="consoleSettingsOpen" @click="consoleSettingsOpen = true">
+        <button ref="consoleSettingsButton" class="sidebar-settings" type="button" aria-label="设置" :title="sidebarCollapsed ? '设置' : undefined" aria-haspopup="dialog" :aria-expanded="consoleSettingsOpen" @click="settingsTab = 'general'; consoleSettingsOpen = true">
           <AppIcon name="settings" /><span>设置</span>
         </button>
       </div>
     </aside>
 
-    <section class="workspace" :class="{ 'workspace--assistant': activePage === 'assistant', 'workspace--embedded': isEmbeddedPage }">
-      <header :inert="skillsModalOpen" v-if="!isEmbeddedPage" class="topbar">
-        <div class="page-heading">
-          <span class="page-kicker">{{ currentPageMeta.kicker }}</span>
-          <h1>{{ activePage === 'overview' ? `${greeting}，${textValue(user.username, 'Molly 用户')}` : currentPageMeta.title }}</h1>
-          <p>{{ currentPageMeta.description }}</p>
+    <section class="workspace" :class="{ 'workspace--assistant': activePage === 'assistant', 'workspace--embedded': isEmbeddedPage, 'workspace--tool': isToolPage }">
+      <header :inert="skillsModalOpen" v-if="showAccountHeader" class="topbar">
+        <nav v-if="isOverviewPage" ref="overviewNav" class="overview-subnav molly-subnav" aria-label="概览二级菜单">
+          <i class="selection-indicator" aria-hidden="true" />
+          <button v-for="item in overviewPages" :key="item.id" type="button" :data-page="item.id" :aria-current="activePage === item.id ? 'page' : undefined" @click="selectPage(item.id)">{{ item.label }}</button>
+        </nav>
+        <div v-else-if="activePage === 'keys'" class="key-toolbar" aria-label="密钥操作">
+          <n-button type="primary" class="create-key-button" @click="openCreateKey">＋ 创建密钥</n-button>
+          <button class="endpoint-copy-button" type="button" :class="{ copied: endpointCopied }" :aria-label="`复制 API 端点 ${apiEndpoint}`" :title="`API 端点：${apiEndpoint}，点击复制`" @click="copyEndpoint">
+            <code>{{ apiEndpoint }}</code><AppIcon name="copy" /><span v-if="endpointCopied" class="endpoint-copy-feedback" role="status">已复制</span>
+          </button>
         </div>
         <div class="topbar-actions">
-          <n-button v-if="desktopUpdate" class="update-available" secondary :title="`发现 MollyCloud ${desktopUpdate.version}，点击下载更新`" :aria-label="`软件可更新，版本 ${desktopUpdate.version}，点击下载`" @click="openDesktopUpdate">
+            <button class="account-refresh-button" :class="{ 'is-refreshing': refreshing }" type="button" :disabled="refreshing" :aria-busy="refreshing" aria-label="刷新账户数据" title="刷新账户数据" @click="refreshDashboard">
+              <AppIcon name="refresh" />
+            </button>
+          <n-button v-if="desktopUpdate" class="update-available" secondary :title="`发现 MollyCloud ${desktopUpdate.version}，查看更新说明`" :aria-label="`软件可更新，版本 ${desktopUpdate.version}，查看更新说明`" @click="updateDialogError = ''; updateDialogOpen = true">
             <AppIcon name="update" /><span>软件可更新</span>
           </n-button>
           <n-button class="balance-chip" quaternary :aria-label="`账户余额 ${formatBalance(user.balance)}，前往充值`" @click="openRecharge">
-            <span class="balance-chip__face balance-chip__amount"><AppIcon class="balance-chip__icon" name="wallet" /><small>账户余额</small><strong>{{ formatBalance(user.balance) }}</strong></span>
+            <span class="balance-chip__face balance-chip__amount"><AppIcon class="balance-chip__icon" name="wallet" /><strong>{{ formatBalance(user.balance) }}</strong></span>
             <span class="balance-chip__face balance-chip__recharge">前往充值</span>
           </n-button>
           <div class="topbar-account-actions">
-            <n-dropdown trigger="click" :options="userMenuOptions" @select="handleUserMenuSelect">
+            <n-dropdown trigger="click" :options="userMenuOptions" @select="handleUserMenuSelect" @update:show="userMenuOpen = $event">
               <n-button class="user-chip" quaternary type="default">
                 <span>{{ userInitial }}</span><div><strong>{{ textValue(user.username, 'Molly 用户') }}</strong><small>{{ textValue(user.email) }}</small></div><AppIcon name="chevron" />
               </n-button>
             </n-dropdown>
-            <button class="account-refresh-button" :class="{ 'is-refreshing': refreshing }" type="button" :disabled="refreshing" :aria-busy="refreshing" aria-label="刷新账户数据" title="刷新账户数据" @click="refreshDashboard">
-              <AppIcon name="refresh" />
-            </button>
+
           </div>
         </div>
       </header>
 
       <n-alert :inert="skillsModalOpen" v-if="errorMessage && !isEmbeddedPage" class="page-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
-      <n-alert :inert="skillsModalOpen" v-if="visibleAccountReminder && !isEmbeddedPage" class="account-reminder" :class="{ 'account-reminder--subscription': visibleAccountReminder.kind === 'subscription' }" type="warning" :bordered="false" :show-icon="false">
+      <n-alert :inert="skillsModalOpen" v-if="visibleAccountReminder && showAccountHeader && activePage !== 'recharge'" class="account-reminder" :class="{ 'account-reminder--subscription': visibleAccountReminder.kind === 'subscription' }" type="warning" :bordered="false" :show-icon="false">
         <div class="account-reminder-content">
           <div class="account-reminder-copy"><span class="reminder-spark"><AppIcon v-if="visibleAccountReminder.kind === 'subscription'" name="spark" /><template v-else>!</template></span><div><strong>{{ visibleAccountReminder.title }}</strong><small>{{ visibleAccountReminder.detail }}</small></div></div>
           <n-button size="small" type="primary" @click="openRecharge">前往充值</n-button>
         </div>
       </n-alert>
 
-      <div v-if="activePage === 'overview'" class="page-content overview-page">
+      <Transition :css="false" mode="out-in" @enter="enterNavPanel" @leave="leaveNavPanel" @enter-cancelled="cancelNavPanel" @leave-cancelled="cancelNavPanel">
+      <div v-if="activePage === 'overview'" key="overview" class="page-content overview-page">
         <section class="stats-grid overview-stats" aria-label="账户概览">
           <n-card v-for="card in stats" :key="card.label" class="stat-card overview-stat-card" :class="`stat-card--${card.tone}`" :bordered="false" role="button" tabindex="0" @click="openOverviewMetric(card.target)" @keydown.enter.prevent="openOverviewMetric(card.target)" @keydown.space.prevent="openOverviewMetric(card.target)">
             <div class="stat-card__content">
               <span class="overview-stat-card__icon"><AppIcon :name="card.icon" /></span>
-              <span>{{ card.label }}</span>
-              <strong>{{ card.value }}</strong>
-              <AppIcon class="overview-stat-card__arrow" name="arrow" />
+              <div class="stat-card__copy"><span>{{ card.label }}</span><strong :title="card.value">{{ card.value }}</strong><small>{{ card.detail }}</small></div>
             </div>
           </n-card>
         </section>
-
-        <section class="dashboard-grid dashboard-grid--single">
-          <n-card class="panel panel--wide overview-usage-panel" :bordered="false">
-            <div class="overview-usage-heading"><h2><i />今日用量</h2><span class="updated">{{ lastUpdated ? `更新于 ${lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}` : '正在同步' }}</span></div>
-            <div class="today-usage-grid">
-              <div class="today-usage-item today-usage-item--lime"><span class="today-usage-item__icon"><AppIcon name="token" /></span><div><span>今日 Token</span><strong>{{ formatTokens(usage.today_tokens) }}</strong></div></div>
-              <div class="today-usage-item today-usage-item--blue"><span class="today-usage-item__icon"><AppIcon name="request" /></span><div><span>今日请求</span><strong>{{ numberValue(usage.today_requests).toLocaleString('zh-CN') }}</strong></div></div>
-              <div class="today-usage-item today-usage-item--ink"><span class="today-usage-item__icon"><AppIcon name="spend" /></span><div><span>今日消费</span><strong>{{ formatMoney(usage.today_actual_cost) }}</strong></div></div>
+        <section class="overview-detail-grid">
+          <n-card class="panel overview-token-panel" :bordered="false">
+            <div class="overview-panel-heading"><h2>Token 分布</h2><button type="button" class="text-action" @click="selectPage('usage')">查看用量<AppIcon name="arrow" /></button></div>
+            <p class="overview-caption">累计 Token 按输入、输出和缓存拆分</p>
+            <div class="token-distribution" role="img" :aria-label="tokenBreakdown.map(part => `${part.label} ${part.share.toFixed(1)}%`).join('，')">
+              <span v-for="part in tokenBreakdown" :key="part.label" :class="`metric-${part.tone}`" :style="{ width: `${part.share}%` }" />
             </div>
-            <div class="performance-row"><div><span>RPM</span><strong>{{ numberValue(usage.rpm).toFixed(1) }}</strong></div><div><span>TPM</span><strong>{{ formatTokens(usage.tpm) }}</strong></div><div><span>平均响应</span><strong>{{ Math.round(numberValue(usage.average_duration_ms)) }} ms</strong></div></div>
+            <dl class="token-legend"><div v-for="part in tokenBreakdown" :key="part.label"><dt><i :class="`metric-${part.tone}`" />{{ part.label }}</dt><dd>{{ formatTokens(part.value) }}<small>{{ part.share.toFixed(1) }}%</small></dd></div></dl>
           </n-card>
-
+          <n-card class="panel overview-activity-panel" :bordered="false">
+            <div class="overview-panel-heading"><h2>运行指标</h2><span class="updated">{{ lastUpdated ? lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) + ' 更新' : '正在同步' }}</span></div>
+            <dl class="activity-metrics"><div><dt>每分钟请求 <small>RPM</small></dt><dd>{{ usage.rpm == null ? '—' : numberValue(usage.rpm).toFixed(1) }}</dd></div><div><dt>每分钟 Token <small>TPM</small></dt><dd>{{ usage.tpm == null ? '—' : formatTokens(usage.tpm) }}</dd></div><div><dt>累计实际消费</dt><dd>{{ formatMoney(usage.total_actual_cost) }}</dd></div></dl>
+            <button type="button" class="overview-subscription-link" @click="selectPage('subscriptions')"><AppIcon name="subscription" /><span>管理我的订阅<small>{{ numberValue(subscriptionSummary.active_count) }} 个活跃订阅</small></span><AppIcon name="arrow" /></button>
+          </n-card>
         </section>
       </div>
 
-      <div v-else-if="activePage === 'subscriptions'" class="page-content subscription-page">
-        <div v-if="subscriptions.length" class="subscription-list">
-          <n-card v-for="item in subscriptions" :key="String(item.id)" class="panel subscription-card" :bordered="false" role="link" tabindex="0" aria-label="在网页端打开我的订阅" @click="openSubscriptions" @keydown.enter.prevent="openSubscriptions" @keydown.space.prevent="openSubscriptions">
-            <div class="subscription-card__plan"><n-tag class="state-pill" size="small" :type="item.status === 'active' ? 'success' : 'default'" :bordered="false">{{ item.status === 'active' ? '使用中' : textValue(item.status, '未知状态') }}</n-tag><h2>{{ subscriptionName(item) }}</h2></div>
-            <div class="subscription-card__quota">
-              <span>系统分配用量</span>
-              <strong v-if="subscriptionQuota(item)"><b>{{ formatBalance(subscriptionQuota(item)?.used) }}</b><em>/ {{ formatBalance(subscriptionQuota(item)?.limit) }}</em></strong>
-              <strong v-else><b>未设置上限</b></strong>
-              <i><b :style="{ width: `${subscriptionQuota(item)?.percentage ?? 0}%` }" /></i>
-            </div>
-            <div class="subscription-card__date"><span>到期时间</span><strong>{{ subscriptionExpiresAt(item) ? formatDate(subscriptionExpiresAt(item)) : '长期有效' }}</strong></div>
-            <div class="subscription-card__days"><strong>{{ subscriptionDaysRemaining(item) ?? '∞' }}</strong><small>{{ subscriptionDaysRemaining(item) == null ? '长期有效' : '剩余天数' }}</small></div>
-            <AppIcon class="subscription-card__arrow" name="arrow" />
-          </n-card>
-        </div>
-        <div v-else class="empty-state"><AppIcon name="subscription" /><h2>暂无活跃订阅</h2><p>余额模式仍可正常使用，购买后的订阅会显示在这里。</p></div>
+      <div v-else-if="activePage === 'subscriptions'" key="subscriptions" class="page-content subscription-page">
+        <SubscriptionsPanel :preview="consolePreview" :obscured="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen || updateDialogOpen || createKeyOpen || deleteKeyOpen || userMenuOpen" :server-utc-offset="textValue(asRecord(bootstrap?.settings).server_utc_offset, '')" @changed="refreshSubscriptionDashboard" @modal="subscriptionModalOpen = $event" />
       </div>
 
-      <div v-else-if="activePage === 'keys'" class="page-content keys-page">
-        <n-button class="endpoint-card" block secondary :class="{ copied: endpointCopied }" @click="copyEndpoint">
-          <span class="endpoint-card__copy"><AppIcon name="copy" /></span>
-          <span class="endpoint-card__content"><small>API 端点</small><code>{{ apiEndpoint }}</code></span>
-          <span class="endpoint-card__action" aria-live="polite">{{ endpointCopied ? '已复制到剪贴板' : '点击复制' }}</span>
-        </n-button>
-        <n-card class="table-panel" :bordered="false" content-style="padding: 0">
-          <n-data-table v-if="keys.length" :columns="keyTableColumns" :data="keys" :bordered="false" :single-line="true" :scroll-x="933" />
-          <div v-else class="empty-state"><AppIcon name="key" /><h2>还没有 API 密钥</h2><p>请在 MollyCloud 网页控制台中创建密钥。</p></div>
-        </n-card>
+      <div v-else-if="activePage === 'keys'" key="keys" class="page-content keys-page">
+        <section class="key-directory" aria-label="API 密钥列表">
+          <p v-if="keyGroupSuccess" class="key-group-success" role="status">{{ keyGroupSuccess }}</p>
+          <div class="key-directory-heading">
+            <span class="key-directory-count">共 {{ keys.length }} 个密钥</span>
+          </div>
+          <div v-if="keys.length" class="key-list" role="list">
+            <article v-for="item in keys" :key="String(item.id)" class="key-record" role="listitem">
+              <div class="key-record__identity"><div><strong :title="textValue(item.name)">{{ textValue(item.name, '未命名') }}</strong><n-tag size="small" :bordered="false" :type="item.status === 'active' ? 'success' : 'default'">{{ item.status === 'active' ? '正常' : textValue(item.status) }}</n-tag></div><div class="key-cell"><code :title="textValue(item.key)">{{ textValue(item.key, 'sk-••••') }}</code><n-button class="key-copy-button" size="small" quaternary :aria-label="`复制 ${textValue(item.name, '未命名')} 的密钥`" @click="copyKey(item)"><AppIcon name="copy" />{{ copiedKeyId === String(item.id) ? '已复制' : '复制' }}</n-button></div></div>
+              <div class="key-record__group"><span class="key-field-label">分组</span><KeyGroupPicker :value="groupFromKey(item)" :key-id="String(item.id)" :key-name="textValue(item.name, '未命名')" @changed="handleKeyGroupChanged" /><small>{{ platformLabel(textValue(asRecord(item.group).platform, '')) }}</small></div>
+              <div class="key-record__quota"><span class="key-field-label">累计消费 <small>USD</small></span><strong>{{ costLabel(keyUsage(item).total) }}</strong><small>今日 {{ costLabel(keyUsage(item).today) }}</small><div v-if="keyQuota(item)" class="key-quota-limit"><span>额度 {{ keyQuota(item)!.used.toFixed(2) }} / {{ keyQuota(item)!.limit.toFixed(2) }}</span><i><b :style="{width: `${keyQuota(item)!.percentage}%`}" /></i></div></div>
+              <div class="ccs-import-actions"><n-button class="ccs-import-button" size="small" secondary :data-key-id="String(item.id)" @click="openCcSwitchImport(item)">导入到内置 CC Switch</n-button><n-button class="key-delete-button" size="small" quaternary type="error" :aria-label="`删除 ${textValue(item.name, '未命名')} 的密钥`" @click="openDeleteKey(item, $event)">删除</n-button></div>
+            </article>
+          </div>
+          <div v-else class="empty-state"><AppIcon name="key" /><h2>还没有 API 密钥</h2><p>创建一个密钥，开始接入模型服务。</p><n-button type="primary" @click="openCreateKey">创建密钥</n-button></div>
+        </section>
       </div>
 
-      <div v-else-if="activePage === 'usage'" class="page-content usage-page">
+      <div v-else-if="activePage === 'usage'" key="usage" class="page-content usage-page">
         <section class="usage-stats" aria-label="累计用量与今日用量">
           <n-card class="usage-stat usage-stat--requests" :bordered="false">
             <span class="usage-stat__icon"><AppIcon name="request" /></span>
@@ -1022,73 +1036,67 @@ onBeforeUnmount(() => {
         </n-card>
       </div>
 
-      <div v-else-if="activePage === 'assistant'" class="page-content assistant-page">
-        <n-card class="panel assistant-chat" :bordered="false">
-          <div class="assistant-chat__toolbar">
-            <div><h2>Molly</h2></div>
-            <div class="assistant-toggle-cell">
-              <span>{{ petVisible ? '开启' : '隐藏' }}</span>
-              <n-switch size="large" :value="petVisible" :loading="petToggleLoading" aria-label="显示或隐藏 Live2D 桌宠" @update:value="setPetVisibility" />
-              <button ref="petSettingsButton" class="assistant-settings-button" type="button" aria-label="桌宠设置" aria-haspopup="dialog" :aria-expanded="petSettingsOpen" @click="petSettingsOpen = true"><AppIcon name="settings" /></button>
-            </div>
-          </div>
-
-          <div ref="assistantHistory" class="assistant-chat__history" aria-live="polite" :aria-busy="assistantSending">
-            <div v-if="assistantMessages.length === 0" class="assistant-chat__empty">
-              <div class="assistant-avatar assistant-avatar--molly"><img src="/brand/molly.png" alt="Molly" /></div>
-              <strong>还没有对话</strong>
-              <p>和 Molly 打个招呼吧，这里的对话会与桌面 Molly 同步。</p>
-            </div>
-            <article v-for="(message, index) in assistantMessages" :key="`${index}-${message.role}`" class="assistant-message" :class="`assistant-message--${message.role}`">
-              <div v-if="message.role === 'assistant'" class="assistant-avatar assistant-avatar--molly"><img src="/brand/molly.png" alt="Molly" /></div>
-              <div class="assistant-message__body">
-                <span>{{ message.role === 'assistant' ? 'Molly' : textValue(user.username, '我') }}</span>
-                <p>{{ message.content }}</p>
-              </div>
-              <div v-if="message.role === 'user'" class="assistant-avatar assistant-avatar--user" :aria-label="textValue(user.username, '用户')">{{ userInitial }}</div>
-            </article>
-            <article v-if="assistantSending && assistantMessages[assistantMessages.length - 1]?.role !== 'assistant'" class="assistant-message assistant-message--assistant">
-              <div class="assistant-avatar assistant-avatar--molly"><img src="/brand/molly.png" alt="Molly" /></div>
-              <div class="assistant-message__body assistant-message__body--typing"><span>Molly</span><p><i /><i /><i /></p></div>
-            </article>
-          </div>
-
-          <div class="assistant-composer">
-            <n-alert v-if="assistantChatError" class="assistant-chat__error" type="error" :show-icon="false">{{ assistantChatError }}</n-alert>
-            <div class="assistant-composer__row">
-              <n-input v-model:value="assistantDraft" class="assistant-chat__input" size="large" maxlength="2000" :disabled="assistantSending" :input-props="{ 'aria-label': '给 Molly 发送消息' }" placeholder="给 Molly 发送消息…" @keydown="handleAssistantKeydown" />
-              <div class="assistant-composer__actions">
-                <n-button class="assistant-send-button" type="primary" :loading="assistantSending" :disabled="!assistantDraft.trim() || assistantSending" @click="sendAssistantMessage">发送</n-button>
-              </div>
-            </div>
-          </div>
-        </n-card>
+      <div v-else-if="activePage === 'assistant'" key="assistant" class="page-content assistant-page">
+        <div class="assistant-chat__toolbar">
+          <nav ref="assistantNav" class="assistant-tabs molly-subnav" aria-label="Molly助手分类">
+            <i class="selection-indicator" aria-hidden="true" />
+            <button type="button" :aria-current="assistantTab === 'chat' ? 'page' : undefined" :disabled="assistantSettingsBusy" @click="assistantTab = 'chat'">对话</button>
+            <button type="button" :aria-current="assistantTab === 'settings' ? 'page' : undefined" :disabled="assistantSettingsBusy" @click="assistantTab = 'settings'">设置</button>
+          </nav>
+          <div class="assistant-toggle-cell"><span class="assistant-toggle-state">{{ petVisible ? '开启' : '隐藏' }}</span><n-switch :value="petVisible" :loading="petToggleLoading" aria-label="显示或隐藏 Live2D 桌宠" @update:value="setPetVisibility" /></div>
+        </div>
+        <Transition :css="false" mode="out-in" @enter="enterNavPanel" @leave="leaveNavPanel" @enter-cancelled="cancelNavPanel" @leave-cancelled="cancelNavPanel">
+          <KeepAlive>
+            <component :is="assistantTab === 'chat' ? AssistantConversation : PetSettingsDialog" ref="assistantPanel" :key="assistantTab" v-bind="assistantPanelProps" @update:draft="assistantDraft = $event" @keydown="handleAssistantKeydown" @send="sendAssistantMessage" @stop="stopSpeech" @busy="assistantSettingsBusy = $event" />
+          </KeepAlive>
+        </Transition>
       </div>
 
-      <div v-if="skillsVisited" v-show="activePage === 'skills'" class="page-content skills-page">
+      </Transition>
+
+      <div v-if="activePage === 'netspeed'" class="page-content netspeed-page">
+        <NetSpeedPanel :preview="consolePreview" :active="activePage === 'netspeed'" />
+      </div>
+
+      <section v-if="['ccswitch', 'images', 'skills'].includes(activePage) && !pluginUsable(activePage)" class="plugin-empty page-content">
+        <AppIcon :name="activePage === 'ccswitch' ? 'code' : activePage === 'images' ? 'image' : 'skills'" />
+        <p>{{ plugins.find(p => p.id === activePage)?.installed ? '插件需要重启或更新适配版本后启用。' : '安装插件后，即可在控制台内使用。已有数据会在重新安装后恢复。' }}</p>
+        <n-button type="primary" @click="openPluginSettings">管理功能插件</n-button>
+      </section>
+
+      <div v-if="skillsVisited && pluginUsable('skills')" :key="pluginKey('skills')" v-show="activePage === 'skills'" class="page-content skills-page">
         <SkillManagerPanel :preview="consolePreview" @modal="skillsModalOpen = $event" />
       </div>
 
-      <div v-if="mcpVisited" v-show="activePage === 'mcp'" class="page-content mcp-page">
-        <McpMarketPanel :active="activePage === 'mcp'" @modal="mcpModalOpen = $event" />
-      </div>
-
-      <div v-if="ccSwitchVisited" v-show="activePage === 'ccswitch'" class="page-content ccswitch-page">
+      <div v-if="ccSwitchVisited && pluginUsable('ccswitch')" :key="pluginKey('ccswitch')" v-show="activePage === 'ccswitch'" class="page-content ccswitch-page">
         <CcSwitchPanel ref="ccSwitchPanel" :preview="consolePreview" :target="ccSwitchTarget" />
       </div>
 
-      <div v-if="imageWorkbenchVisited" v-show="activePage === 'images'" class="page-content embedded-page">
+      <div v-if="imageWorkbenchVisited && pluginUsable('images')" :key="pluginKey('images')" v-show="activePage === 'images'" class="page-content embedded-page">
         <ImageWorkbenchPanel v-if="imageAccount" :key="imageAccount" :account="imageAccount" :preview="consolePreview" @settled="refreshDashboard" />
         <p v-else role="status">无法识别当前账户，请刷新账户信息后重试。</p>
       </div>
 
+      <div v-if="rechargeVisited" v-show="activePage === 'recharge'" class="page-content recharge-page">
+        <RechargePanel :active="activePage === 'recharge'" :obscured="consoleSettingsOpen || petSettingsOpen || ccSwitchImportOpen || createKeyOpen || deleteKeyOpen || updateDialogOpen || userMenuOpen" :preview="consolePreview" @refresh="refreshDashboard" />
+      </div>
     </section>
   </main>
 
   <div id="console-settings-layer" class="console-settings-layer" />
-  <McpExperimentalDialog v-if="phase === 'dashboard'" :show="mcpWarningOpen" @acknowledge="acknowledgeMcp" @cancel="cancelMcpWarning" />
-  <ConsoleSettingsDialog v-if="phase === 'dashboard'" v-model:show="consoleSettingsOpen" @closed="consoleSettingsButton?.focus()" />
-  <PetSettingsDialog v-if="phase === 'dashboard'" v-model:show="petSettingsOpen" @closed="petSettingsButton?.focus()" />
+  <n-modal v-if="phase === 'dashboard' && desktopUpdate" v-model:show="updateDialogOpen" preset="card" class="desktop-update-dialog" :bordered="false" title="MollyCloud 有新版本" :mask-closable="true">
+    <div class="desktop-update-content">
+      <p>当前版本 {{ desktopUpdate.currentVersion }}，可更新至 {{ desktopUpdate.version }}。</p>
+      <div v-if="desktopUpdate.notes" class="desktop-update-notes"><strong>更新内容</strong><p>{{ desktopUpdate.notes }}</p></div>
+      <p class="desktop-update-hint">点击下载后将在浏览器中打开安装包。安装由你确认，已有设置会保留。</p>
+      <p class="desktop-update-checksum">文件大小 {{ (desktopUpdate.sizeBytes / 1024 / 1024).toFixed(1) }} MB · SHA-256 {{ desktopUpdate.sha256 }}</p>
+      <n-alert v-if="updateDialogError" type="error" :show-icon="false">{{ updateDialogError }}</n-alert>
+    </div>
+    <template #action><div class="desktop-update-actions"><n-button :disabled="updateOpening" @click="updateDialogOpen = false">稍后</n-button><n-button type="primary" :loading="updateOpening" @click="openDesktopUpdate">下载更新</n-button></div></template>
+  </n-modal>
+  <ConsoleSettingsDialog v-if="phase === 'dashboard'" v-model:show="consoleSettingsOpen" :initial-tab="settingsTab" @check-update="handleSettingsUpdateCheck" @closed="consoleSettingsButton?.focus()" />
+  <CreateKeyDialog v-if="phase === 'dashboard'" v-model:show="createKeyOpen" :preview="consolePreview" @created="handleKeyCreated" @closed="createKeyTrigger?.focus()" />
+  <DeleteKeyDialog v-if="phase === 'dashboard'" v-model:show="deleteKeyOpen" :key-id="deleteKeyTarget.id" :key-name="deleteKeyTarget.name" :preview="consolePreview" @deleted="handleKeyDeleted" @closed="restoreDeleteKeyFocus" />
   <CcSwitchImportDialog
     v-if="phase === 'dashboard'"
     v-model:show="ccSwitchImportOpen"

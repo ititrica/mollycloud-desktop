@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 
 const releaseOrigin = "https://desktop.veriolink.com";
 
@@ -39,9 +39,15 @@ try {
 if (parsedUrl.origin !== releaseOrigin || !parsedUrl.pathname.toLowerCase().endsWith(".exe")) {
   fail(`--download-url 必须是 ${releaseOrigin} 域名下的 .exe 文件`);
 }
+if (parsedUrl.pathname !== `/MollyCloud_${version}_x64-setup.exe` || parsedUrl.search || parsedUrl.hash) {
+  fail("--download-url 文件名必须与发布版本一致，且不能带查询或片段参数");
+}
 
 const installerPath = resolve(installer);
 const outPath = resolve(output);
+if (basename(installerPath) !== `MollyCloud_${version}_x64-setup.exe`) {
+  fail("安装包文件名与版本号不一致");
+}
 const [installerBytes, installerStat] = await Promise.all([readFile(installerPath), stat(installerPath)]);
 if (!installerStat.isFile() || installerStat.size === 0) fail("安装包不存在或为空");
 
@@ -50,6 +56,7 @@ const manifest = {
   downloadUrl: parsedUrl.toString(),
   publishedAt: new Date().toISOString(),
   sha256: createHash("sha256").update(installerBytes).digest("hex"),
+  sizeBytes: installerStat.size,
   ...(notes ? { notes } : {}),
 };
 

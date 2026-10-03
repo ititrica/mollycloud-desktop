@@ -61,6 +61,21 @@ export type ServiceBootstrap = z.infer<typeof serviceBootstrapSchema>;
 export type LoginOutcome = z.infer<typeof loginOutcomeSchema>;
 export type DashboardPayload = z.infer<typeof dashboardPayloadSchema>;
 export type AccountBalance = z.infer<typeof accountBalanceSchema>;
+export const keyGroupSchema = z.object({
+  id: z.string(), name: z.string(), platform: z.string(), subscription: z.boolean(),
+  rate: z.number().finite().nonnegative().nullable(), custom_rate: z.boolean(),
+  description: z.string().default(""), default_rate: z.number().finite().nonnegative().nullable().default(null),
+});
+export const keyGroupsSchema = z.object({ groups: z.array(keyGroupSchema), rates_available: z.boolean() });
+export const keyGroupChangedSchema = z.object({ key_id: z.string(), group: keyGroupSchema });
+export type KeyGroup = z.infer<typeof keyGroupSchema>;
+export type KeyGroups = z.infer<typeof keyGroupsSchema>;
+export type KeyGroupChanged = z.infer<typeof keyGroupChangedSchema>;
+export interface CreateKeyRequest {
+  name: string; group_id: string | null; custom_key?: string | null;
+  ip_whitelist: string[]; ip_blacklist: string[]; quota: number | null;
+  expires_in_days?: number | null; rate_limit_5h?: number | null; rate_limit_1d?: number | null; rate_limit_7d?: number | null;
+}
 export type AssistantStatus = z.infer<typeof assistantStatusSchema>;
 export type AssistantReply = z.infer<typeof assistantReplySchema>;
 export type AssistantConfig = z.infer<typeof assistantConfigSchema>;

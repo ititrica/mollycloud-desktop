@@ -1,0 +1,25 @@
+/* A stable track avoids layout jumps; only its thumb appears on region hover. */
+* { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+*:hover { scrollbar-color: var(--color-scrollbar, #d9dcd5) transparent; }
+*::-webkit-scrollbar { display: block; width: 6px; height: 6px; }
+*::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+*::-webkit-scrollbar-thumb { background: transparent; border-radius: 6px; }
+*:hover::-webkit-scrollbar-thumb { background: var(--color-scrollbar, #d9dcd5); }
+/* Naive UI uses a custom thumb. */
+.n-scrollbar-rail { opacity: 0 !important; transition: opacity 180ms; }
+.n-scrollbar:hover > .n-scrollbar-rail { opacity: 1 !important; }
+.n-scrollbar-rail .n-scrollbar-rail__scrollbar { background-color: var(--color-scrollbar, #d9dcd5) !important; }
+
+.scrollbar-hide, .hide-scrollbar { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.scrollbar-hide:hover, .hide-scrollbar:hover { scrollbar-color: var(--color-scrollbar, #d9dcd5) transparent; }
+.scrollbar-hide::-webkit-scrollbar, .hide-scrollbar::-webkit-scrollbar { display: block; width: 6px; height: 6px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) { --color-scrollbar: #454a40; } }
+
+/* Chromium's standard scrollbar properties override its pseudo elements.
+   Use the pseudo-element implementation here so Windows arrow buttons vanish. */
+@supports selector(::-webkit-scrollbar) {
+  *, *:hover, .scrollbar-hide, .hide-scrollbar, .scrollbar-hide:hover, .hide-scrollbar:hover {
+    scrollbar-width: auto !important; scrollbar-color: auto !important;
+  }
+}

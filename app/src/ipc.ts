@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
+import { version as bundledAppVersion } from "../package.json";
 import {
   accountBalanceSchema,
+  keyGroupsSchema, keyGroupChangedSchema, type KeyGroups, type KeyGroupChanged, type CreateKeyRequest,
   assistantConfigSchema,
   assistantReplySchema,
   assistantStatusSchema,
@@ -19,19 +21,19 @@ import {
 } from "./contracts";
 
 const browserApiRoot = "/molly-api/api/v1";
-const browserAppVersion = "0.1.3";
-const moreClientDownloadsUrl = "https://wwall.lanzouu.com/b01gib2wkh";
+const browserAppVersion = bundledAppVersion;
 let browserAccessToken = "";
 let browserRefreshToken = "";
 let browserTempToken = "";
 let browserPetVisible = true;
+let groupRequest: Promise<KeyGroups> | null = null;
 
 export interface CcSwitchImportResult {
   provider_id: string;
   app: string;
 }
 
-export type CcSwitchAgent = "claude" | "claude-desktop" | "codex" | "gemini" | "grokbuild" | "opencode" | "openclaw" | "hermes" | "pi";
+export type CcSwitchAgent = "claude" | "claude-desktop" | "codex" | "gemini" | "grokbuild" | "opencode" | "openclaw" | "hermes" | "pi" | "mcode";
 
 export interface CcSwitchImportRequest {
   keyId: string;
@@ -42,8 +44,11 @@ export interface CcSwitchImportRequest {
 
 export interface DesktopUpdate {
   version: string;
+  currentVersion: string;
   downloadUrl: string;
   notes?: string;
+  sha256: string;
+  sizeBytes: number;
 }
 
 export type ConsoleCloseAction = "tray" | "quit";
@@ -69,7 +74,7 @@ function isTauriRuntime(): boolean {
   return "__TAURI_INTERNALS__" in window;
 }
 
-async function openExternalPage(url: string): Promise<void> {
+export async function openExternalPage(url: string): Promise<void> {
   if (isTauriRuntime()) {
     await invoke("open_url", { url });
     return;
@@ -139,6 +144,9 @@ async function browserDashboard(): Promise<DashboardPayload> {
     const raw = typeof item.key === "string" ? item.key : "";
     item.key = `sk-••••${raw.slice(-4)}`;
   }
+  const keyIds=(keyPage.items??[]).map(item=>Number(item.id)).filter(id=>Number.isSafeInteger(id)&&id>0).slice(0,100);
+  const keyStats = keyIds.length ? await browserEnvelope('/usage/dashboard/api-keys-usage', {method:'POST',body:JSON.stringify({api_key_ids:keyIds})}).catch(()=>null) as {stats?:Record<string,Record<string,unknown>>}|null : null;
+  for(const item of keyPage.items??[]) { const stats=keyStats?.stats?.[String(item.id)];item.usage={total_actual_cost:stats?.total_actual_cost??null,today_actual_cost:stats?.today_actual_cost??null}; }
   return dashboardPayloadSchema.parse({
     user,
     subscriptions,
@@ -166,10 +174,6 @@ export const desktopApi = {
     if (!isTauriRuntime()) return browserAppVersion;
     const { getVersion } = await import("@tauri-apps/api/app");
     return getVersion();
-  },
-
-  async openMoreClientDownloads(): Promise<void> {
-    await openExternalPage(moreClientDownloadsUrl);
   },
 
   async getConsoleSettings(): Promise<ConsoleSettings> {
@@ -235,6 +239,52 @@ export const desktopApi = {
       ? await invoke("fetch_account_balance")
       : await browserAccountBalance();
     return accountBalanceSchema.parse(value);
+  },
+
+  async fetchKeyGroups(): Promise<KeyGroups> {
+    if (isTauriRuntime()) {
+      // A directory can contain many keys: share only concurrent reads, never cache permissions.
+      groupRequest ??= invoke("fetch_key_groups").then(value=>keyGroupsSchema.parse(value)).finally(()=>{groupRequest=null;});
+      return groupRequest;
+    }
+    if (isConsoleSettingsPreview()) return { rates_available: true, groups: [
+      {id:"1",name:"Molly Pro",platform:"openai",subscription:true,rate:1,custom_rate:false,description:"OpenAI 订阅专属通道",default_rate:1},
+      {id:"2",name:"Molly Standard",platform:"openai",subscription:false,rate:0.8,custom_rate:true,description:"OpenAI 标准通道",default_rate:1},
+      {id:"3",name:"Claude",platform:"anthropic",subscription:false,rate:1.2,custom_rate:false,description:"Claude 高质量模型",default_rate:1.2},
+    ] };
+    throw new Error("请在 MollyCloud 客户端中管理密钥分组。");
+  },
+
+  async changeKeyGroup(keyId: string, groupId: string): Promise<KeyGroupChanged> {
+    if (isTauriRuntime()) return keyGroupChangedSchema.parse(await invoke("change_key_group", { keyId, groupId }));
+    if (isConsoleSettingsPreview() && keyId.startsWith("demo-")) {
+      const group = (await this.fetchKeyGroups()).groups.find(group => group.id === groupId);
+      if (group) return { key_id: keyId, group };
+    }
+    throw new Error("请在 MollyCloud 客户端中修改密钥分组。");
+  },
+
+  async createApiKey(request: CreateKeyRequest): Promise<Record<string, unknown>> {
+    if (isTauriRuntime()) return await invoke("create_api_key", {request});
+    if (isConsoleSettingsPreview()) {
+      const group = (await this.fetchKeyGroups()).groups.find(g=>g.id===request.group_id);
+      return {id:`demo-${Date.now()}`,name:request.name,key:"sk-••••DEMO",status:"active",quota_used:0,group_id:group?.id,group:group?{...group,rate_multiplier:group.rate}:null};
+    }
+    throw new Error("请在 MollyCloud 客户端中创建密钥。");
+  },
+
+  async deleteApiKey(keyId: string): Promise<void> {
+    if (isTauriRuntime()) return await invoke("delete_api_key", { keyId });
+    if (isConsoleSettingsPreview() && keyId.startsWith("demo-")) return;
+    throw new Error("请在 MollyCloud 客户端中删除密钥。");
+  },
+
+  async openRechargeView(dark: boolean, viewId: string): Promise<void> {
+    if (!isTauriRuntime()) throw new Error("请在桌面客户端中打开充值页面。");
+    await invoke("open_recharge_view", { dark, viewId });
+  },
+  async closeRechargeView(viewId?: string): Promise<void> {
+    if (isTauriRuntime()) await invoke("close_recharge_view", {viewId:viewId??null});
   },
 
   async syncPetAccountBalance(account: AccountBalance): Promise<void> {
@@ -357,10 +407,6 @@ export const desktopApi = {
       return assistantConfigSchema.parse({ ...config, api_key_configured: Boolean(config.api_key) });
     }
     return assistantConfigSchema.parse(await invoke("save_assistant_config", { config }));
-  },
-
-  async openRecharge(): Promise<void> {
-    await openExternalPage("https://mollycloud.cn/purchase");
   },
 
   async openSubscriptions(): Promise<void> {

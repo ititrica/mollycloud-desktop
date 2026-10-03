@@ -11,6 +11,16 @@ const native = process.argv.includes('--native');
 const output = resolve(import.meta.dirname, `../../artifacts/image-workbench${native ? '-native' : ''}`);
 await mkdir(output, { recursive: true });
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5V8AAAAASUVORK5CYII=';
+// Valid PNG with large ancillary metadata reproduces the multi-MB response size.
+const pngBytes = Buffer.from(png,'base64');
+const metadata = Buffer.concat([Buffer.from('Comment\0'),Buffer.alloc(3*1024*1024,88)]);
+const pngType = Buffer.from('tEXt');
+const crcTable = Array.from({length:256},(_,index)=>{let n=index;for(let bit=0;bit<8;bit++)n=n&1?0xedb88320^(n>>>1):n>>>1;return n>>>0;});
+let crc=0xffffffff;for(const byte of Buffer.concat([pngType,metadata]))crc=crcTable[(crc^byte)&255]^(crc>>>8);
+const pngLength=Buffer.alloc(4);pngLength.writeUInt32BE(metadata.length);
+const pngCrc=Buffer.alloc(4);pngCrc.writeUInt32BE((crc^0xffffffff)>>>0);
+const largePng=Buffer.concat([pngBytes.subarray(0,-12),pngLength,pngType,metadata,pngCrc,pngBytes.subarray(-12)]);
+const largeImage=largePng.toString('base64');
 const calls = [];
 let cancelledConnection = false;
 const mock = createServer(async (request, response) => {
@@ -31,7 +41,15 @@ const mock = createServer(async (request, response) => {
     response.write('data: first\n\n');
     setTimeout(() => response.end('data: second\n\n'), 500); return;
   }
+  if (request.url === '/v1/large-stream') {
+    response.setHeader('Content-Type','text/event-stream');
+    response.end('data: '+JSON.stringify({type:'image_generation.completed',b64_json:largeImage})+'\n\ndata: [DONE]\n\n'); return;
+  }
   if (request.url === '/v1/error') { response.writeHead(401).end('{"error":{"message":"Mock unauthorized"}}'); return; }
+  if (request.url === '/v1/images/generations' && JSON.parse(Buffer.concat(chunks).toString()).stream === true) {
+    response.setHeader('Content-Type','text/event-stream');
+    response.end('data: '+JSON.stringify({type:'image_generation.partial_image',partial_image_index:0,b64_json:png})+'\n\ndata: '+JSON.stringify({type:'image_generation.completed',b64_json:png})+'\n\ndata: [DONE]\n\n');return;
+  }
   response.end(JSON.stringify({ created: Math.floor(Date.now() / 1000), data: [{ b64_json: png }] }));
 });
 await new Promise(resolve => mock.listen(0, '127.0.0.1', resolve));
@@ -111,7 +129,7 @@ try {
   await page('Page.navigate', { url: native ? 'http://tauri.localhost/' : `${base}/?ui-preview=console&preview-page=images` });
   const openPage = async () => {
     await waitFor(`document.querySelectorAll('.nav-item').length===7`);
-    await evaluate(`document.querySelectorAll('.nav-item')[6].click()`);
+    await evaluate(`document.querySelector('.nav-item[data-page="images"]').click()`);
     await waitFor(`!!document.querySelector('.image-workbench-frame')`);
   };
   await openPage();
@@ -140,7 +158,8 @@ try {
   } else {
   assert.equal(settings.profiles[0].baseUrl, 'https://mollycloud.cn/v1');
   assert.equal(settings.profiles[0].apiKey, '');
-  assert.equal(settings.profiles[0].model, 'gpt-image-2');
+  assert.equal(settings.profiles[0].model, 'gpt-image-2.5');
+  assert.equal(settings.profiles[0].provider,'openai');assert.equal(settings.profiles[0].apiMode,'images');assert.equal(settings.profiles[0].streamImages,true);assert.equal(settings.profiles[0].streamPartialImages,1);
   await evaluate(`document.querySelector('button[aria-label="设置"]').click()`, child);
   await waitFor(`!!document.querySelector('input[placeholder="sk-..."]')`, child);
   const input = async (selector, value) => {
@@ -157,6 +176,8 @@ try {
   assert.equal(settings.profiles[0].apiKey, 'sk-molly-image-test-only');
   assert.equal(settings.profiles[0].baseUrl, api);
   await screenshot('manual-settings');
+  // Test the user's synchronous /v1/images mode in this temporary profile only.
+  await evaluate(`(() => {const key='molly-image-${native ? 'account-native-smoke-user' : 'preview-demo%40mollycloud.cn'}';const saved=JSON.parse(localStorage.getItem(key));saved.state.settings.profiles[0].provider='openai';saved.state.settings.profiles[0].apiMode='images';saved.state.settings.profiles[0].streamImages=true;saved.state.settings.profiles[0].streamPartialImages=1;localStorage.setItem(key,JSON.stringify(saved));})()`);
   await page('Page.reload');
   await openPage();
   await waitFor(`!!document.querySelector('.image-workbench-frame')`);
@@ -169,7 +190,7 @@ try {
   await evaluate(`window.testKeepAlive='same-frame';document.querySelector('[contenteditable="true"]').textContent='A small test image';document.querySelector('[contenteditable="true"]').dispatchEvent(new Event('input',{bubbles:true}))`, child);
   await pause(200);
   await evaluate(`[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='生成图像'&&!x.disabled).click()`, child);
-  await waitFor(`document.querySelectorAll('img').length>0`, child);
+  try { await waitFor(`document.querySelectorAll('img').length>0`, child); } catch(error) { await screenshot('generation-timeout');await writeFile(join(output,'generation-diagnostic.json'),JSON.stringify({text:await evaluate('document.body.innerText',child),calls:calls.map(call=>({url:call.url,method:call.method,type:call.type,bodyLength:call.body.length})),errors},null,2));throw error; }
   await pause(300);
   await screenshot('generated');
   const downloadDir = await mkdtemp(join(output, 'download-'));
@@ -184,6 +205,7 @@ try {
   assert.equal(calls.at(-1).url, '/v1/images/generations');
   assert.equal(calls.at(-1).auth, 'Bearer sk-molly-image-test-only');
   assert.equal(JSON.parse(calls.at(-1).body).prompt, 'A small test image');
+  assert.equal(JSON.parse(calls.at(-1).body).stream,true);assert.equal(JSON.parse(calls.at(-1).body).partial_images,1);
   const fileInput = await call('Runtime.evaluate', { expression: `document.querySelector('input[type="file"]')`, contextId: child.id }, child.session);
   await call('DOM.setFileInputFiles', { objectId: fileInput.result.objectId, files: [join(downloadDir, downloads.find(name=>name.endsWith('.png')))] }, child.session);
   await waitFor(`document.querySelectorAll('img').length>=2`, child);
@@ -193,7 +215,7 @@ try {
   assert.equal(calls.at(-1).url, '/v1/images/edits', 'uploaded reference uses original image editing flow');
   assert.ok(calls.at(-1).type.includes('multipart/form-data'));
   await evaluate(`document.querySelectorAll('.nav-item')[0].click()`);
-  await evaluate(`document.querySelectorAll('.nav-item')[6].click()`);
+  await evaluate(`document.querySelector('.nav-item[data-page="images"]').click()`);
   assert.equal(await evaluate(`window.testKeepAlive`, child), 'same-frame');
   const transport = await evaluate(`(async()=>{
     const response=await fetch('${api}/stream'); const reader=response.body.getReader();
@@ -201,15 +223,17 @@ try {
     const early=performance.now()-started<400; const second=new TextDecoder().decode((await reader.read()).value);
     const controller=new AbortController();const slow=await fetch('${api}/slow',{signal:controller.signal});const cancelled=slow.text().then(()=> 'completed',error=>error.name+':'+error.message);controller.abort();
     const error=await fetch('${api}/error');
+    const large=await fetch('${api}/large-stream');const largeText=await large.text();const largeEvent=JSON.parse(largeText.split('\\n')[0].slice(6));
     const form=new FormData();form.append('image[]',new Blob([new Uint8Array([1,2,3])],{type:'image/png'}),'reference.png');form.append('mask',new Blob([new Uint8Array([4,5])],{type:'image/png'}),'mask.png');
     await fetch('${api}/images/edits',{method:'POST',headers:{Authorization:'Bearer manual-edit-key'},body:form});
-    return {first,second,early,cancelled:await cancelled,errorStatus:error.status,errorBody:await error.json()};
+    return {first,second,early,cancelled:await cancelled,errorStatus:error.status,errorBody:await error.json(),largeChars:largeEvent.b64_json.length,largeTail:largeEvent.b64_json.slice(-16),largeDone:largeText.endsWith("data: [DONE]\\n\\n")};
   })()`, child);
   // WebView2 may normalize a cancelled Response body to TypeError; both the
   // rejected body and the closed upstream connection are required here.
   assert.ok(transport.first.includes('first') && transport.second.includes('second') && transport.early && transport.cancelled !== 'completed');
   assert.ok(cancelledConnection, 'cancel closes the in-flight request at the mock server');
   assert.equal(transport.errorStatus, 401);
+  assert.equal(transport.largeChars,largeImage.length);assert.equal(transport.largeTail,largeImage.slice(-16));assert.equal(transport.largeDone,true);
   const edit = calls.at(-1);
   assert.equal(edit.url, '/v1/images/edits');
   assert.ok(edit.type.includes('multipart/form-data') && edit.body.includes('reference.png') && edit.body.includes('mask.png'));
@@ -244,7 +268,7 @@ try {
   await screenshot('save-error');
   await evaluate(`Storage.prototype.setItem=window.imageOriginalSetItem`);
   assert.deepEqual(errors, []);
-  await writeFile(join(output, 'report.json'), JSON.stringify({ profile, passed: ['opaque sandbox isolation', 'empty manual key and default endpoint', 'manual save', 'persistent custom endpoint and key', 'real UI generation against mock', 'original image download', 'original reference upload and edit generation', 'keepalive', 'stream chunks', 'cancel', 'HTTP errors', 'multipart reference and mask', 'history restored', 'account isolation', 'save failure preserves stored key without loops'], errors, transport, requests: calls.map(({url,method,type})=>({url,method,type})) }, null, 2));
+  await writeFile(join(output, 'report.json'), JSON.stringify({ profile, passed: ['opaque sandbox isolation', 'empty manual key and default endpoint', 'manual save', 'persistent custom endpoint and key', 'real UI generation against mock', 'original image download', 'original reference upload and edit generation', 'keepalive', 'stream chunks', 'multi-megabyte SSE tail delivery', 'cancel', 'HTTP errors', 'multipart reference and mask', 'history restored', 'account isolation', 'save failure preserves stored key without loops'], errors, transport, requests: calls.map(({url,method,type})=>({url,method,type})) }, null, 2));
   console.log('PASS: image workbench integration, persistence, mock generation, streaming, cancellation and account isolation');
   }
 } finally {

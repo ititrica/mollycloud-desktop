@@ -902,14 +902,14 @@ export function ProjectDetail() {
 
   return (
     <div className="app-page">
-      <div className="app-page-header flex flex-col gap-2.5 pb-3 pr-2">
+      <div className="app-workspace-toolbar flex flex-col gap-2.5 pr-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-[1_1_260px]">
-            <h1 className="app-page-title flex items-center gap-2.5">
-              <FolderOpen className="h-5 w-5 text-accent" />
-              {project.name}
+            <div className="flex items-center gap-2.5 text-[13px] text-secondary">
+              <FolderOpen className="h-4 w-4 text-accent" />
+              <strong>{project.name}</strong>
               <span className="app-badge">{groupedSkills.length}</span>
-            </h1>
+            </div>
             <p className="mt-1 truncate text-[13px] leading-5 text-muted" title={project.path}>
               {project.path}
               {groupedSkills.length > 0 && ` \u00B7 ${enabledCount} / ${groupedSkills.length} ${t("project.enabled")}`}

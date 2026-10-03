@@ -114,6 +114,7 @@ pub async fn launch_ccswitch_cli(
     if window.label() != "console" {
         return Err("只能从控制台启动内置 CLI".into());
     }
+    crate::console_plugins::require(&app_handle, "ccswitch")?;
     let name = cli_name(&app_type)?;
     let path = std::env::var_os("PATH").unwrap_or_default();
     let executable = find_cli(name, &path)?;

@@ -19,7 +19,7 @@ export function createThemeOverrides(): GlobalThemeOverrides {
     },
     Button: {
       heightSmall: "32px", fontSizeSmall: "13px", borderRadiusSmall: token("radius-sm"),
-      heightMedium: "44px", heightLarge: "52px", fontSizeMedium: "14px", fontSizeLarge: "15px",
+      heightMedium: "40px", heightLarge: "48px", fontSizeMedium: "14px", fontSizeLarge: "15px",
       borderRadiusMedium: token("radius-md"), borderRadiusLarge: token("radius-md"),
       textColorPrimary: primaryText, textColorHoverPrimary: primaryText,
       textColorPressedPrimary: primaryText, textColorFocusPrimary: primaryText,
@@ -34,6 +34,7 @@ export function createThemeOverrides(): GlobalThemeOverrides {
       borderPressedPrimary: border("color-lime-pressed"), borderFocusPrimary: border("color-lime-deep"),
     },
     Input: {
+      caretColor: token("color-input-caret"),
       heightLarge: "56px", fontSizeLarge: "16px", paddingLarge: "0 16px",
       borderRadius: token("radius-md"), border: border("color-border-strong"),
       borderHover: border("color-lime-deep"), borderFocus: border("color-lime-deep"),
@@ -53,8 +54,9 @@ export function createThemeOverrides(): GlobalThemeOverrides {
       colorError: token("color-danger-soft"), borderError: border("color-danger-border"),
     },
     DataTable: { fontSizeMedium: "14px", thFontWeight: "600", thColor: token("color-surface-soft"), tdColor: token("color-surface") },
-    Tag: { heightSmall: "28px", heightMedium: "30px", fontSizeSmall: "12px", fontSizeMedium: "13px", borderRadius: "999px" },
+    Tag: { heightSmall: "24px", heightMedium: "28px", fontSizeSmall: "11px", fontSizeMedium: "12px", borderRadius: "6px", colorSuccess: token("color-lime-soft"), textColorSuccess: token("color-lime-deep") },
     Card: { borderRadius: token("radius-lg"), fontSizeMedium: "14px" },
+    Popover: { color: token("color-surface"), textColor: token("color-text"), borderRadius: token("radius-md"), boxShadow: token("shadow-float") },
     Dropdown: { borderRadius: token("radius-md"), fontSizeMedium: "14px" },
   };
 }

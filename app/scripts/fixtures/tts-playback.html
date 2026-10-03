@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><script type="module">
+import { SpeechPlayer } from '/src/speech.ts';
+const call=(name,args={})=>window.__TAURI_INTERNALS__.invoke(name,args);
+const NativeContext=window.AudioContext;
+let started=0;const contexts=[];
+window.AudioContext=class extends NativeContext {
+  constructor(...args){super(...args);contexts.push(this);}
+  createBufferSource(){const source=super.createBufferSource();const start=source.start.bind(source);source.start=(...args)=>{started++;return start(...args);};return source;}
+};
+(async()=>{
+  const states=[];const player=new SpeechPlayer(status=>states.push(status.phase));
+  let textVisible=false, completed=false;
+  const pendingStart=player.play('Synthetic silent streaming check',undefined,false,()=>{if(completed)throw Error('text started after audio finished');textVisible=true;});
+  if(textVisible)throw Error('text appeared before first audio');
+  await pendingStart;completed=true;if(!textVisible)throw Error('text was never revealed with audio');
+  if(started<2||!states.includes('playing')||states[states.length-1]!=='idle')throw Error('missing streamed playback');
+  if(contexts.some(c=>c.state!=='closed'))throw Error('context not released');
+  const pending=player.play('Synthetic cancellation check');
+  await new Promise(resolve=>setTimeout(resolve,30));player.stop();await pending;
+  if(states[states.length-1]!=='idle'||contexts.some(c=>c.state!=='closed'))throw Error('cancel left playback active');
+  await call('smoke_done',{error:null,started});
+})().catch(error=>call('smoke_done',{error:String(error),started}));
+</script>

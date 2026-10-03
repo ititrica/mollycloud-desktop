@@ -22,6 +22,13 @@ pub struct EndpointLatency {
 pub struct SpeedtestService;
 
 impl SpeedtestService {
+    fn probe_url(url: &Url) -> Url {
+        let mut probe = url.clone();
+        if probe.host_str() == Some("mollycloud.cn") && probe.path().trim_end_matches('/') == "/v1" {
+            probe.set_path("/");
+        }
+        probe
+    }
     /// 测试一组端点的响应延迟。
     pub async fn test_endpoints(
         urls: Vec<String>,
@@ -48,7 +55,7 @@ impl SpeedtestService {
             }
 
             match Url::parse(&trimmed) {
-                Ok(parsed_url) => valid_targets.push((idx, trimmed, parsed_url)),
+                Ok(parsed_url) => valid_targets.push((idx, trimmed, Self::probe_url(&parsed_url))),
                 Err(err) => {
                     results[idx] = Some(EndpointLatency {
                         url: trimmed,
@@ -132,6 +139,15 @@ impl SpeedtestService {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn molly_probe_uses_website_without_changing_model_endpoint() {
+        let model = Url::parse("https://mollycloud.cn/v1").unwrap();
+        assert_eq!(SpeedtestService::probe_url(&model).as_str(), "https://mollycloud.cn/");
+        assert_eq!(model.as_str(), "https://mollycloud.cn/v1");
+        let other = Url::parse("https://api.example.test/v1").unwrap();
+        assert_eq!(SpeedtestService::probe_url(&other), other);
+    }
 
     #[test]
     fn sanitize_timeout_clamps_values() {

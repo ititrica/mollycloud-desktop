@@ -24,10 +24,15 @@ if (!mollyEmbedded && 'serviceWorker' in navigator) {
 }
 
 async function start() {
-  if (mollyEmbedded) await connectMolly()
+  if (mollyEmbedded) {
+    await import('../../../app/src/scrollbars.css')
+    await connectMolly()
+  }
   const { default: App } = await import('./App')
   createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>)
 }
 void start().catch(() => {
   document.getElementById('root')!.textContent = '生图工作台加载失败，请在控制台重新加载。'
 })
+
+import '../../../app/src/console-inputs.css'

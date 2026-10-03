@@ -3,7 +3,7 @@ pub mod commands;
 pub mod core;
 pub mod embedded;
 pub mod cli;
-pub use embedded::init;
+pub use embedded::{init, init_guarded};
 pub fn refresh_tray_menu<R: tauri::Runtime>(_: &tauri::AppHandle<R>) -> Result<(), String> { Ok(()) }
 pub fn schedule_tray_refresh<R: tauri::Runtime>(_: &tauri::AppHandle<R>) {}
 pub fn set_tray_icon_enabled<R: tauri::Runtime>(_: &tauri::AppHandle<R>, _: bool) -> Result<(), String> { Err("由 Molly 控制台管理".into()) }

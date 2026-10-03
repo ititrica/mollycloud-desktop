@@ -17,4 +17,5 @@ function npm(args) {
 if (!existsSync(resolve(frontend, 'node_modules/vite/package.json'))) {
   npm(['ci', '--no-audit', '--no-fund']);
 }
+npm(['run', 'test:embedded']);
 npm(['run', 'build']);

@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="UTF-8"><title>Isolated island clock check</title></head><body><div id="app"></div>
+<script type="module">
+import { mockIPC, mockWindows } from '@tauri-apps/api/mocks';
+import { emit } from '@tauri-apps/api/event';
+if (!import.meta.env.DEV) throw new Error('This fixture is only for development tests');
+const prefix='mollycloud:netspeed:nsd_';
+localStorage.setItem(prefix+'widget_visible','true');
+for(const key of ['music_ctrl','sys_resource','fps_monitor','custom_display','clipboard','msg_notify','activity_api','taskbar_plugin'])localStorage.setItem(prefix+key,'false');
+const monitor={name:'Test',position:{x:0,y:0},size:{width:1440,height:900},workArea:{position:{x:0,y:0},size:{width:1440,height:900}},scaleFactor:1};
+const fixture={width:150,height:34,x:0,y:12,emit};
+function size(width,height){fixture.width=width;fixture.height=height;document.documentElement.style.width=width+'px';document.documentElement.style.height=height+'px';}
+mockIPC((cmd,args={})=>{
+  if(cmd==='plugin:window|inner_size'||cmd==='plugin:window|outer_size')return {width:fixture.width,height:fixture.height};
+  if(cmd==='plugin:window|inner_position'||cmd==='plugin:window|outer_position')return {x:fixture.x,y:fixture.y};
+  if(cmd==='plugin:window|scale_factor')return 1;
+  if(cmd==='plugin:window|current_monitor')return monitor;
+  if(cmd==='plugin:window|available_monitors')return [monitor];
+  if(cmd==='plugin:window|set_size'){const value=args.value.size;size(value.width,value.height);return;}
+  if(cmd==='plugin:window|set_position'){const value=args.value.position;fixture.x=value.x;fixture.y=value.y;return;}
+  if(cmd==='plugin:molly-netspeed|start_island_animation'){size(args.targetWidth,args.targetHeight);void emit('molly-netspeed:island-resize',[args.targetWidth,args.targetHeight]);return;}
+  if(cmd==='plugin:molly-netspeed|get_network_stats')return [0,0];
+  if(cmd==='plugin:molly-netspeed|get_network_latency')return 10;
+  if(cmd==='plugin:molly-netspeed|get_audio_spectrum')return [0,0,0,0,0,0,0];
+  return null;
+},{shouldMockEvents:true});
+mockWindows('netspeed-widget');
+window.isTauri=true;
+window.islandClockFixture=fixture;
+size(150,34);
+await import('/src/island.ts');
+</script></body></html>

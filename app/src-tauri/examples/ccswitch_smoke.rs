@@ -88,6 +88,45 @@ const TEST_SCRIPT: &str = r#"
       try { await cc('save_settings',{settings:{...settings,codexConfigDir:window.__smokeOutside}}); } catch { denied=true; }
       check(denied, 'Standalone manager data cannot become a tool configuration target');
       check(Array.isArray(await cc('list_sessions')), 'Session management is enabled');
+      const minimaxProviders = await cc('get_providers',{app:'mcode'});
+      const minimax = Object.values(minimaxProviders).find(item=>item.name==='Molly MiniMax Smoke');
+      check(Boolean(minimax), 'MiniMax DB-only import is available through native IPC');
+      check(!(await cc('read_live_provider_settings',{app:'mcode'}))[minimax.id], 'MiniMax import preserves live configuration');
+      frame.contentWindow.postMessage({source:'mollycloud',type:'navigate',providerId:minimax.id,app:'mcode'},location.origin);
+      await waitFor(()=>frame.contentDocument.querySelector('[data-provider-id="'+minimax.id+'"]'), 'MiniMax provider card did not render');
+      const minimaxCard = frame.contentDocument.querySelector('[data-provider-id="'+minimax.id+'"]');
+      const add = [...minimaxCard.querySelectorAll('button')].find(button=>button.textContent.trim()==='添加');
+      check(Boolean(add), 'MiniMax card exposes explicit additive activation');
+      add.click();
+      await waitFor(async()=>Boolean((await cc('read_live_provider_settings',{app:'mcode'}))[minimax.id]), 'MiniMax activation did not finish');
+      check(!(await cc('get_current_provider',{app:'mcode'})), 'MiniMax keeps native default-model selection');
+      frame.contentWindow.__themeProbe = 42;
+      for (const theme of ['dark','light']) {
+        document.documentElement.dataset.theme = theme;
+        await waitFor(()=>frame.contentDocument.documentElement.classList.contains('dark')===(theme==='dark'), 'Embedded theme did not follow '+theme);
+        check(frame.contentWindow.__themeProbe===42, 'Theme '+theme+' preserves the iframe');
+      }
+      frame.contentDocument.querySelector('button[title="设置"]').click();
+      await waitFor(()=>[...frame.contentDocument.querySelectorAll('[role="tab"]')].some(tab=>tab.textContent==='关于'), 'About tab did not render');
+      const about = [...frame.contentDocument.querySelectorAll('[role="tab"]')].find(tab=>tab.textContent==='关于');
+      about.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));
+      about.click();
+      await waitFor(()=>frame.contentDocument.body.textContent.includes('CC Switch 3.20.4 · MollyCloud 内置版'), 'Embedded About version is not 3.20.4');
+      check(true, 'About displays embedded CC Switch 3.20.4');
+      const external = await cc('parse_deeplink', {url:'ccswitch://v1/import?resource=provider&app=codex&name=External%20Mock&endpoint=https%3A%2F%2Fexample.test%2Fv1&apiKey=mock-not-real'});
+      await invoke('plugin:event|emit',{event:'deeplink-import',payload:external});
+      await waitFor(()=>Boolean(frame.contentDocument.querySelector('[role="dialog"]')), 'External import confirmation did not render');
+      check(!(Object.values(await cc('get_providers',{app:'codex'})).some(item=>item.name==='External Mock')), 'External link never writes before confirmation');
+      check(frame.contentDocument.querySelector('[role="dialog"]').textContent.includes('External Mock'), 'External import shows source data for review');
+      const secondExternal = await cc('parse_deeplink', {url:'ccswitch://v1/import?resource=provider&app=codex&name=Second%20External&endpoint=https%3A%2F%2Fexample.test%2Fv1&apiKey=mock-second'});
+      await invoke('plugin:event|emit',{event:'deeplink-import',payload:secondExternal});
+      check(frame.contentDocument.querySelector('[role="dialog"]').textContent.includes('External Mock'), 'Another incoming link does not replace the active confirmation');
+      const cancelExternal = [...frame.contentDocument.querySelector('[role="dialog"]').querySelectorAll('button')].find(button=>button.textContent.trim()==='取消');
+      check(Boolean(cancelExternal), 'External import can be cancelled');
+      cancelExternal.click();
+      await waitFor(()=>frame.contentDocument.querySelector('[role="dialog"]')?.textContent.includes('Second External'), 'Queued external import did not appear');
+      [...frame.contentDocument.querySelector('[role="dialog"]').querySelectorAll('button')].find(button=>button.textContent.trim()==='取消').click();
+      check(!(Object.values(await cc('get_providers',{app:'codex'})).some(item=>item.name==='Second External')), 'Cancelled queued link does not write');
       denied=false;
       try { await cc('restart_app'); } catch { denied=true; }
       check(denied,'Upstream lifecycle cannot restart MollyCloud');
@@ -144,6 +183,8 @@ fn main() {
         ])
         .setup(move |app| {
             if !failure_mode {
+                std::fs::create_dir_all(check_home.join(".minimax"))?;
+                std::fs::write(check_home.join(".minimax/config.yaml"), "defaultModel: minimax/native\nunknown: preserve-me\n")?;
                 molly_ccswitch::import_molly_provider(
                     app.handle(),
                     molly_ccswitch::MollyProviderImport {
@@ -161,6 +202,16 @@ fn main() {
                     !check_home.join(".codex/auth.json").exists(),
                     "first import wrote live auth"
                 );
+                molly_ccswitch::import_molly_provider(
+                    app.handle(),
+                    molly_ccswitch::MollyProviderImport {
+                        account_id: "smoke-account".into(), key_id: "smoke-key".into(),
+                        name: "Molly MiniMax Smoke".into(), app: "mcode".into(),
+                        api_key: "sk-molly-smoke-not-a-real-key".into(),
+                        base_url: "https://example.test/v1".into(), model: "test-model".into(),
+                        usage_script: None,
+                    },
+                )?;
             }
             tauri::WebviewWindowBuilder::new(
                 app,
@@ -193,25 +244,30 @@ fn main() {
         .unwrap_or_else(|| serde_json::json!({"ok":false,"error":"native watchdog timed out"}));
     let external_unchanged =
         std::fs::read(&sentinel).unwrap() == b"PROXY_MANAGED external sentinel";
-    // Upstream 3.20.3 projects third-party credentials into the provider table
+    // Upstream projects third-party credentials into the provider table
     // in config.toml; auth.json is reserved for an optional native login.
     let live_config =
         std::fs::read_to_string(private_home.join(".codex/config.toml")).unwrap_or_default();
     let private_config_written = !live_config.is_empty();
     let legacy_unchanged = !check_private_home.join(".codex/config.toml").exists();
     let custom_written = custom.join("config.toml").exists();
+    let minimax_config = std::fs::read_to_string(private_home.join(".minimax/config.yaml")).unwrap_or_default();
+    let minimax_valid = minimax_config.contains("defaultModel: minimax/native")
+        && minimax_config.contains("unknown: preserve-me")
+        && minimax_config.contains("sk-molly-smoke-not-a-real-key");
     let private_credential_valid =
         molly_ccswitch::extract_codex_experimental_bearer_token(&live_config).as_deref()
             == Some("sk-molly-smoke-not-a-real-key");
     println!(
         "{}",
-        serde_json::json!({"native":result,"custom_written":custom_written,"legacy_unchanged":legacy_unchanged,"init_failure_fixture":failure_mode,"external_unchanged":external_unchanged,"system_config_written":private_config_written,"system_credential_valid":private_credential_valid})
+        serde_json::json!({"native":result,"minimax_valid":minimax_valid,"custom_written":custom_written,"legacy_unchanged":legacy_unchanged,"init_failure_fixture":failure_mode,"external_unchanged":external_unchanged,"system_config_written":private_config_written,"system_credential_valid":private_credential_valid})
     );
     if result["ok"] != true
         || !legacy_unchanged || custom_written == failure_mode
         || !external_unchanged
         || private_config_written == failure_mode
         || private_credential_valid == failure_mode
+        || minimax_valid == failure_mode
     {
         std::process::exit(1);
     }

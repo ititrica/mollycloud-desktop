@@ -1,0 +1,16 @@
+[default]
+description = "Built-in NetSpeed services in MollyCloud's console and island only."
+permissions = ["allow-island"]
+
+[[permission]]
+identifier = "allow-island"
+description = "Operate the built-in island, monitoring, media and optional local integrations."
+commands.allow = [
+  "get_network_stats", "is_widget_visible", "get_network_latency", "fetch_latest_notification",
+  "set_window_bounds", "start_island_animation", "show_window_no_activate", "set_window_no_activate",
+  "toggle_taskbar_plugin", "sync_to_taskbar", "get_audio_spectrum", "set_target_player",
+  "fetch_netease_music_info", "control_system_media", "get_random_cover_url", "get_smtc_cover",
+  "fetch_netease_lyrics", "fetch_song_meta", "start_websocket_lyrics", "stop_websocket_lyrics",
+  "toggle_fps_plugin", "sync_tray_menu", "get_clipboard_text", "get_active_browser_tabs",
+  "open_console", "configure_activity_api"
+]

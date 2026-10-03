@@ -5,6 +5,7 @@ use std::time::Duration;
 pub const SERVICE_ORIGIN: &str = "https://mollycloud.cn";
 const API_ROOT: &str = "https://mollycloud.cn/api/v1";
 pub const MOLLY_OPENAI_ROOT: &str = "https://mollycloud.cn/v1";
+pub const MOLLY_CCSWITCH_IMPORT_ROOT: &str = "https://mollycloud.cn";
 
 #[derive(Clone)]
 pub struct Sub2ApiClient {
@@ -117,6 +118,65 @@ impl Sub2ApiClient {
             }
         }
         unreachable!("authenticated GET retry loop always returns")
+    }
+
+    pub async fn update_key_group(&self, key_id: u64, group_id: u64, access_token: &str) -> Result<Value, String> {
+        // Deliberately send only group_id; never reset quota, expiry, IP rules or the key itself.
+        // Do not retry writes after an ambiguous network failure.
+        let response = self.http.put(format!("{API_ROOT}/keys/{key_id}"))
+            .bearer_auth(access_token)
+            .json(&json!({ "group_id": group_id }))
+            .send().await.map_err(network_error)?;
+        parse_api_response(response).await
+    }
+
+    pub async fn get_authenticated_optional(&self, path: &str, token: &str) -> Result<Option<Value>, String> {
+        let response=self.http.get(format!("{API_ROOT}{path}")).bearer_auth(token).send().await.map_err(network_error)?;
+        if response.status()==StatusCode::NOT_FOUND { return Ok(None); }
+        parse_api_response(response).await.map(Some)
+    }
+
+    fn delete_key_request(&self, key_id: u64, access_token: &str) -> reqwest::RequestBuilder {
+        self.http.delete(format!("{API_ROOT}/keys/{key_id}")).bearer_auth(access_token)
+    }
+
+    pub async fn delete_key(&self, key_id: u64, access_token: &str) -> Result<(), String> {
+        // A lost response must not trigger another destructive request.
+        let response = self.delete_key_request(key_id, access_token)
+            .send().await.map_err(network_error)?;
+        let result = parse_api_response(response).await?;
+        if result.get("message").and_then(Value::as_str).is_none_or(|message| message.is_empty()) {
+            return Err("服务未确认删除结果，请刷新密钥列表后检查".into());
+        }
+        Ok(())
+    }
+
+    pub async fn post_authenticated(&self, path: &str, body: &Value, access_token: &str) -> Result<Value, String> {
+        // Writes are never automatically retried: a lost response may already
+        // have created a key/order. All paths are fixed by native commands.
+        let response = self.http.post(format!("{API_ROOT}{path}"))
+            .bearer_auth(access_token).json(body).send().await.map_err(network_error)?;
+        parse_api_response(response).await
+    }
+
+    fn subscription_reset_request(&self, id: u64, token: &str) -> reqwest::RequestBuilder {
+        self.http.post(format!("{API_ROOT}/subscriptions/{id}/reset")).bearer_auth(token)
+    }
+
+    pub async fn reset_subscription(&self, id: u64, token: &str) -> Result<Value, String> {
+        // A reset charges balance and replaces the term. Never retry a write
+        // after a timeout: the transaction may already have committed.
+        let response = self.subscription_reset_request(id, token).send().await.map_err(network_error)?;
+        parse_api_response(response).await
+    }
+
+    fn subscription_auto_renew_request(&self, id: u64, body: &Value, token: &str) -> reqwest::RequestBuilder {
+        self.http.patch(format!("{API_ROOT}/subscriptions/{id}/auto-renew")).bearer_auth(token).json(body)
+    }
+
+    pub async fn update_subscription_auto_renew(&self, id: u64, body: &Value, token: &str) -> Result<Value, String> {
+        let response = self.subscription_auto_renew_request(id, body, token).send().await.map_err(network_error)?;
+        parse_api_response(response).await
     }
 
     pub async fn list_models_at(
@@ -264,6 +324,30 @@ fn openai_error(status: StatusCode, value: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn subscription_writes_use_account_routes_and_keep_reset_body_empty() {
+        let api = Sub2ApiClient::new().unwrap();
+        let reset = api.subscription_reset_request(42, "mock-account-token").build().unwrap();
+        assert_eq!(reset.method(), reqwest::Method::POST);
+        assert_eq!(reset.url().as_str(), "https://mollycloud.cn/api/v1/subscriptions/42/reset");
+        assert!(reset.body().is_none());
+        assert_eq!(reset.headers()[reqwest::header::AUTHORIZATION], "Bearer mock-account-token");
+        let toggle = api.subscription_auto_renew_request(42, &json!({"enabled": false}), "mock-account-token").build().unwrap();
+        assert_eq!(toggle.method(), reqwest::Method::PATCH);
+        assert_eq!(toggle.url().as_str(), "https://mollycloud.cn/api/v1/subscriptions/42/auto-renew");
+        let body: Value = serde_json::from_slice(toggle.body().unwrap().as_bytes().unwrap()).unwrap();
+        assert_eq!(body, json!({"enabled": false}));
+    }
+
+    #[test]
+    fn key_deletion_uses_fixed_account_endpoint_and_no_key_material() {
+        let request = Sub2ApiClient::new().unwrap().delete_key_request(42, "mock-account-token").build().unwrap();
+        assert_eq!(request.method(), reqwest::Method::DELETE);
+        assert_eq!(request.url().as_str(), "https://mollycloud.cn/api/v1/keys/42");
+        assert_eq!(request.headers()[reqwest::header::AUTHORIZATION], "Bearer mock-account-token");
+        assert!(request.body().is_none());
+    }
 
     #[test]
     fn service_origin_is_https_and_fixed() {

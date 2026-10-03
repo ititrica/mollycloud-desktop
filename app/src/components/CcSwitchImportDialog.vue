@@ -24,6 +24,7 @@ const agentOptions: Array<{ label: string; value: CcSwitchAgent }> = [
   { label: "OpenClaw", value: "openclaw" },
   { label: "Hermes", value: "hermes" },
   { label: "Pi", value: "pi" },
+  { label: "MiniMax Code", value: "mcode" },
 ];
 
 const draftName = ref("");

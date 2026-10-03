@@ -1,3 +1,4 @@
+import { speakAssistant, stopAssistantSpeech } from "./AssistantSpeech";
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo } from "@tauri-apps/api/event";
 import { chatStream, extractCommand, stripCommand, type ChatMessage, type ToolCall, type MemoryEntry, type MemoryStore } from "./AssistantClient";
@@ -165,6 +166,16 @@ export function getDisplayHistory(): AssistantDisplayMessage[] {
       return !message.content.startsWith("[主动问候]") && !message.content.startsWith("[主动学习]");
     })
     .map((message) => ({ role: message.role, content: message.content.slice(0, 500) }));
+}
+
+export function canSendAccountReminder() { return !busy && loadSettings().assistant.enabled; }
+export function sendAccountReminder(message: string): boolean {
+  if (!canSendAccountReminder()) return false;
+  void speakAssistant(message, () => {
+    history.push({ role: "assistant", content: message, local_account: true }); saveHistory(); publishAssistantHistory();
+    const bubble=addBubble("ai",message);scheduleFade(bubble,12000);
+  });
+  return true;
 }
 
 export function publishAssistantHistory() {
@@ -366,11 +377,13 @@ export function closeAssistant() {
 
 /** 清空左上角气泡区（关闭小助手模式时用） */
 export function clearBubbles() {
+  stopAssistantSpeech();
   if (bubbles) bubbles.innerHTML = "";
 }
 
 /** 清空对话历史（保留长期记忆 memory） */
 export function clearHistory() {
+  stopAssistantSpeech();
   history = [];
   try {
     localStorage.removeItem(HIST_KEY);
@@ -394,97 +407,36 @@ function lastBubble(): HTMLElement | null {
 }
 
 async function send(text: string) {
-  if (busy) {
-    publishAssistantState(true);
-    return;
-  }
-  const s = loadSettings();
-  if (!s.assistant.enabled) {
-    publishAssistantState(false, "请先在桌宠右键菜单中开启小助手模式");
-    return;
-  }
-  const apiKey = await ensureApiKey();
-  if (!apiKey) {
-    const b = addBubble("sys", "未配置 API Key，请到「小助手设置」填写");
-    scheduleFade(b, 4000);
-    publishAssistantState(false, "未配置 API Key，请在 Molly助手右上角的设置中填写");
-    return;
-  }
-  history.push({ role: "user", content: text });
-  saveHistory();
-  busy = true;
-  publishAssistantState(true);
-  const loading = addBubble("ai", "", true);
-  let sendError = "";
+  if (busy) { publishAssistantState(true); return; }
+  const s=loadSettings();stopAssistantSpeech();
+  const userMessage: ChatMessage = {role:'user',content:text};history.push(userMessage);saveHistory();
+  busy=true;publishAssistantState(true);publishAssistantHistory();
+  const loading=addBubble('ai','',true);let sendError='';
+  const reveal = (content:string,local=false) => {
+    history.push({role:'assistant',content, ...(local?{local_account:true}:{})});saveHistory();publishAssistantHistory();
+    loading.textContent=content;loading.hidden=false;scheduleFade(loading,12000);
+  };
   try {
-    // 循环处理：每轮 chatStream → 若有工具调用则执行并继续，否则结束（最多 4 轮）
-    const MAX_ROUNDS = 4;
-    for (let round = 0; round < MAX_ROUNDS; round++) {
-      let replyText = "";
-      loading.textContent = "";
-      loading.hidden = true;
-      const res = await chatStream(
-        s.assistant.provider,
-        apiKey,
-        s.assistant.model,
-        history,
-        s.assistant.persona,
-        memory,
-        s.assistant.customBaseUrl,
-        (delta) => {
-          replyText += delta;
-          loading.textContent = replyText;
-          loading.hidden = false;
-        },
-      );
-
-      if (res.toolCalls.length) {
-        // 工具调用：执行后进入下一轮
-        loading.hidden = false;
-        loading.textContent = replyText;
-        await handleToolCalls(res.toolCalls, loading);
-        continue;
-      }
-
-      // 无工具调用：文字入历史
-      const finalText = replyText || res.text;
-      history.push({ role: "assistant", content: finalText });
-      // 记录对话事件（日记系统）：记用户说的话（tracker 内部 safeSlice 截到 80 字）
-      trackEvent({ type: "chat", summary: text });
-      // CMD 兜底（非 function calling provider）
-      const cmd = extractCommand(finalText);
-      if (cmd) {
-        loading.hidden = false;
-        loading.textContent = stripCommand(finalText) || "(执行中…)";
-        await handleToolCalls(
-          [{ id: `cmd_${Date.now()}`, name: "run_shell", args: { command: cmd } }],
-          loading,
-        );
-        continue;
-      }
-      if (loadSettings().assistant.enabled) loading.textContent = finalText;
-      else loading.remove();
+    // Local routing runs before loading a model key or calling any AI endpoint.
+    const local=await invoke<{handled:boolean;content:string|null}>('assistant_local_query',{text});
+    if(local.handled) { userMessage.local_account=true;await speakAssistant(local.content??'查询未返回结果',()=>reveal(local.content??'查询未返回结果',true));return; }
+    if(!s.assistant.enabled)throw new Error('Molly 助手已关闭，请到“设置”开启小助手模式');
+    const apiKey=await ensureApiKey();if(!apiKey)throw new Error('未配置对话 API 密钥，请到“设置”填写');
+    for(let round=0;round<4;round++) {
+      let replyText='';loading.textContent='';loading.hidden=true;
+      const result=await chatStream(s.assistant.provider,apiKey,s.assistant.model,history,s.assistant.persona,memory,s.assistant.customBaseUrl,delta=>{replyText+=delta;});
+      if(result.toolCalls.length) {loading.hidden=false;loading.textContent=replyText;await handleToolCalls(result.toolCalls,loading);continue;}
+      const finalText=replyText||result.text;
+      const command=extractCommand(finalText);
+      if(command) {history.push({role:'assistant',content:finalText});loading.hidden=false;loading.textContent=stripCommand(finalText)||'(执行中…)';await handleToolCalls([{id:`cmd_${Date.now()}`,name:'run_shell',args:{command}}],loading);continue;}
+      trackEvent({type:'chat',summary:text});
+      await speakAssistant(finalText,()=>reveal(finalText));
       break;
     }
-    saveHistory();
-
-    // P3 主动学习：每 5 条对话自动提取新记忆（后台运行，不阻塞 UI）
-    if (history.length % 5 === 0) {
-      void extractMemoriesFromChat(s, apiKey);
-    }
-    loading.hidden = false;
-    if (!loading.textContent.trim()) loading.textContent = "(空回复)";
-    scheduleFade(loading, 8000);
-  } catch (e) {
-    sendError = e instanceof Error ? e.message : String(e);
-    loading.textContent = sendError;
-    loading.hidden = false;
-    scheduleFade(loading, 6000);
-  } finally {
-    busy = false;
-    publishAssistantState(false, sendError);
-    resetTimer();
-  }
+    if(history.filter(message=>!message.local_account).length%5===0)void extractMemoriesFromChat(s,apiKey);
+    if(!loading.textContent.trim()){loading.hidden=false;loading.textContent='(空回复)';scheduleFade(loading,6000);}
+  } catch(reason) {sendError=reason instanceof Error?reason.message:String(reason);loading.textContent=sendError;loading.hidden=false;scheduleFade(loading,6000);}
+  finally {saveHistory();busy=false;publishAssistantState(false,sendError);resetTimer();}
 }
 
 export async function submitAssistantMessage(text: string): Promise<void> {
@@ -518,29 +470,6 @@ async function handleToolCalls(calls: ToolCall[], loading: HTMLElement) {
     }
   };
 
-  const accountTool = async (tcItem: ToolCall) => {
-    try {
-      const dashboard = await invoke<Record<string, unknown>>("fetch_dashboard");
-      const source = tcItem.name === "get_account_overview"
-        ? dashboard.user
-        : tcItem.name === "get_subscription_status"
-          ? { subscriptions: dashboard.subscriptions, progress: dashboard.subscription_progress }
-          : tcItem.name === "get_usage_summary"
-            ? dashboard.usage
-            : dashboard.keys;
-      history.push({
-        role: "tool",
-        tool_call_id: tcItem.id,
-        content: JSON.stringify({ ok: true, data: source }),
-      });
-    } catch (e) {
-      history.push({
-        role: "tool",
-        tool_call_id: tcItem.id,
-        content: JSON.stringify({ ok: false, error: `请先登录 MollyCloud 控制台：${e}` }),
-      });
-    }
-  };
 
   for (const tc of calls) {
     if (tc.name === "get_floating_window_info") {
@@ -548,7 +477,7 @@ async function handleToolCalls(calls: ToolCall[], loading: HTMLElement) {
       continue;
     }
     if (["get_account_overview", "get_subscription_status", "get_usage_summary", "get_api_key_status"].includes(tc.name)) {
-      await accountTool(tc);
+      history.push({role:"tool",tool_call_id:tc.id,content:"账户查询由本机直接处理，请使用查询余额、查询订阅或查询用量。"});
       continue;
     }
     if (tc.name === "remember") {
@@ -783,7 +712,7 @@ function recallRelevantMemories(context: {
 /** P3 主动学习：从最近对话中提取用户信息，后台轻量调用 */
 async function extractMemoriesFromChat(s: any, apiKey: string) {
   if (memory.length > 80) return; // 记忆已满，不再提取
-  const recentMsgs = history.slice(-10).filter(m => m.role === "user" || m.role === "assistant");
+  const recentMsgs = history.filter(m => !m.local_account && (m.role === "user" || m.role === "assistant")).slice(-10);
   if (recentMsgs.length < 3) return;
   const transcript = recentMsgs.map(m => `${m.role}: ${m.content}`).join("\n");
   const extractPrompt: ChatMessage[] = [
@@ -882,11 +811,8 @@ export async function triggerProactive() {
   lifecycleOnOpen?.();
   const bubble = addBubble("ai", "");
   try {
-    await chatStream(s.assistant.provider, apiKey, s.assistant.model, history, s.assistant.persona, memory, s.assistant.customBaseUrl, (d) => {
-      bubble.textContent += d;
-    });
-    history.push({ role: "assistant", content: bubble.textContent });
-    saveHistory();
+    const reply=await chatStream(s.assistant.provider, apiKey, s.assistant.model, history, s.assistant.persona, memory, s.assistant.customBaseUrl, () => {});
+    await speakAssistant(reply.text, () => {bubble.textContent=reply.text;history.push({role:"assistant",content:reply.text});saveHistory();publishAssistantHistory();});
     for (const m of relevantMemories) {
       const orig = memory.find(e => e.id === m.id);
       if (orig) orig.lastUsedAt = Date.now();
@@ -920,9 +846,8 @@ export async function triggerCardCommentary(card: { rarity: string; theme: strin
   lifecycleOnOpen?.();
   const bubble = addBubble("ai", "");
   try {
-    await chatStream(s.assistant.provider, apiKey, s.assistant.model, tmpHistory, s.assistant.persona, memory, s.assistant.customBaseUrl, (d) => {
-      bubble.textContent += d;
-    });
+    const reply=await chatStream(s.assistant.provider, apiKey, s.assistant.model, tmpHistory, s.assistant.persona, memory, s.assistant.customBaseUrl, () => {});
+    await speakAssistant(reply.text,()=>{bubble.textContent=reply.text;});
     // 不保存到主 history，避免影响主动问候
     scheduleFade(bubble, 8000);
   } catch {

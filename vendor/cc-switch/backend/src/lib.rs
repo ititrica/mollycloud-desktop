@@ -20,6 +20,7 @@ mod init_status;
 mod lightweight;
 #[cfg(target_os = "linux")]
 mod linux_fix;
+mod mcode_config;
 mod mcp;
 pub mod mcp_market;
 mod model_capabilities;
@@ -59,7 +60,7 @@ pub use mcp::{
     sync_single_server_to_gemini, sync_single_server_to_grokbuild,
 };
 pub use prompt::Prompt;
-pub use provider::{Provider, ProviderMeta};
+pub use provider::{Provider, ProviderMeta, UsageData, UsageResult};
 pub use services::{
     profile::{ProfilePayload, ProfileScope, ProfileService},
     provider::reapply_current_codex_official_live,
@@ -74,7 +75,7 @@ mod embedded;
 mod allowed_commands;
 mod isolation;
 mod proxy_ownership;
-pub use embedded::{init, import_molly_provider, cli_system_home, cli_config_dir, cli_launch_environment, prepare_cli_launch, MollyProviderImport};
+pub use embedded::{init_guarded, init, import_molly_provider, is_molly_imported_provider, cli_system_home, cli_config_dir, cli_launch_environment, prepare_cli_launch, MollyProviderImport};
 #[cfg(feature = "test-hooks")]
 pub use embedded::init_for_test;
 use std::fmt;

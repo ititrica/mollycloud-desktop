@@ -1,0 +1,12 @@
+/* Shared by console documents, including embedded tools. Never imported by Petra. */
+input, textarea, [contenteditable]:not([contenteditable="false"]) {
+  caret-color: var(--color-input-caret, #000000) !important;
+}
+
+/* CodeMirror draws its own caret; keep one visible caret instead of two. */
+.cm-editor:has(.cm-cursorLayer) .cm-content {
+  caret-color: transparent !important;
+}
+.cm-editor :is(.cm-cursor, .cm-dropCursor) {
+  border-left-color: var(--color-input-caret, #000000) !important;
+}

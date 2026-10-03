@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { DeepLinkImportRequest, deeplinkApi } from "@/lib/api/deeplink";
 import { parseDeepLinkConfigPreview } from "@/utils/deepLinkConfigPreview";
@@ -38,6 +38,28 @@ export function DeepLinkImportDialog() {
   const [request, setRequest] = useState<DeepLinkImportRequest | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const waiting = useRef<DeepLinkImportRequest[]>([]);
+  const showing = useRef(false);
+
+  const showNext = () => {
+    const next = waiting.current.shift();
+    if (next) {
+      setRequest(next);
+      setIsOpen(true);
+    } else {
+      showing.current = false;
+      setRequest(null);
+      setIsOpen(false);
+    }
+  };
+
+  const enqueue = (next: DeepLinkImportRequest) => {
+    waiting.current.push(next);
+    if (!showing.current) {
+      showing.current = true;
+      showNext();
+    }
+  };
 
   // 容错判断：MCP 导入结果可能缺少 type 字段
   const isMcpImportResult = (
@@ -68,7 +90,7 @@ export function DeepLinkImportDialog() {
             const mergedRequest = await deeplinkApi.mergeDeeplinkConfig(
               event.payload,
             );
-            setRequest(mergedRequest);
+            enqueue(mergedRequest);
           } catch (error) {
             console.error("Failed to merge config:", error);
             toast.error(t("deeplink.configMergeError"), {
@@ -76,15 +98,19 @@ export function DeepLinkImportDialog() {
                 error instanceof Error ? error.message : String(error),
             });
             // Fall back to original request
-            setRequest(event.payload);
+            enqueue(event.payload);
           }
         } else {
-          setRequest(event.payload);
+          enqueue(event.payload);
         }
 
-        setIsOpen(true);
       },
     );
+    // Tell the parent that the confirmation listener is actually installed,
+    // so a startup link cannot be drained before this dialog can receive it.
+    void unlistenImport.then(() => {
+      window.parent.postMessage({ source: "molly-ccswitch", type: "import-ready" }, window.location.origin);
+    }).catch(() => undefined);
 
     // Listen for deep link error events
     const unlistenError = listen<DeeplinkError>("deeplink-error", (event) => {
@@ -200,7 +226,7 @@ export function DeepLinkImportDialog() {
       }
 
       // Close dialog after all refreshes complete
-      setIsOpen(false);
+      showNext();
     } catch (error) {
       console.error("Failed to import from deep link:", error);
       toast.error(t("deeplink.importError"), {
@@ -212,7 +238,7 @@ export function DeepLinkImportDialog() {
   };
 
   const handleCancel = () => {
-    setIsOpen(false);
+    showNext();
   };
 
   // Mask API key for display (show first 4 chars + ***)
@@ -287,7 +313,7 @@ export function DeepLinkImportDialog() {
   };
 
   return (
-    <Dialog open={isOpen && !!request} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen && !!request} onOpenChange={(open) => { if (!open && !isImporting) showNext(); }}>
       <DialogContent className="sm:max-w-[500px]" zIndex="top">
         {request && (
           <>

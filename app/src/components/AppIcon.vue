@@ -1,10 +1,14 @@
 <script setup lang="ts">
-defineProps<{ name: "overview" | "subscription" | "key" | "usage" | "assistant" | "pet" | "refresh" | "logout" | "shield" | "copy" | "chevron" | "arrow" | "wallet" | "spend" | "code" | "token" | "request" | "spark" | "database" | "edit" | "upload" | "document" | "settings" | "power" | "tray" | "image" | "update" | "sidebar" | "sun" | "moon" | "monitor" | "mcp" | "skills" }>();
+defineProps<{ name: "search" | "project-key" | "island" | "download" | "clock" | "overview" | "subscription" | "key" | "usage" | "assistant" | "pet" | "refresh" | "logout" | "shield" | "copy" | "chevron" | "arrow" | "wallet" | "spend" | "code" | "token" | "request" | "spark" | "database" | "edit" | "upload" | "document" | "settings" | "power" | "tray" | "image" | "update" | "sidebar" | "sun" | "moon" | "monitor" | "mcp" | "skills" }>();
 </script>
 
 <template>
-  <svg :viewBox="name === 'settings' ? '0 0 128 128' : '0 0 24 24'" aria-hidden="true" class="app-icon">
-    <template v-if="name === 'skills'"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></template>
+  <svg :viewBox="name === 'settings' ? '0 0 128 128' : name === 'project-key' ? '-128 -128 1280 1280' : '0 0 24 24'" aria-hidden="true" class="app-icon">
+    <template v-if="name === 'search'"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></template>
+    <template v-else-if="name === 'island'"><rect x="3" y="7" width="18" height="10" rx="5"/><path d="M7 12h2l2-2 2 4 2-2h2"/></template>
+    <template v-else-if="name === 'download'"><path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/></template>
+    <template v-else-if="name === 'clock'"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></template>
+    <template v-else-if="name === 'skills'"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></template>
     <template v-else-if="name === 'sun'">
       <circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
     </template>
@@ -44,6 +48,12 @@ defineProps<{ name: "overview" | "subscription" | "key" | "usage" | "assistant" 
     </template>
     <template v-else-if="name === 'subscription'">
       <path d="M4 7h16M7 3v4m10-4v4M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm3 7h8m-8 4h5" />
+    </template>
+    <template v-else-if="name === 'project-key'">
+      <g fill="currentColor" stroke="none">
+      <path d="M579.2 264.5c-24.1 24-37.4 56-37.4 90.2 0 34 13.3 66 37.4 90.1 24 24.1 56 37.4 90.2 37.4 34 0 66-13.3 90.2-37.4 49.7-49.7 49.7-130.6 0-180.2-48.3-48.3-132.3-48.2-180.4-0.1z m133.9 133.9c-23.4 23.3-64.2 23.2-87.5 0-11.7-11.7-18.1-27.2-18.1-43.7 0-16.5 6.5-32.1 18.1-43.7 11.7-11.7 27.2-18.1 43.7-18.1 16.5 0 32.1 6.5 43.7 18.1 24.2 24.1 24.2 63.3 0.1 87.4z"/>
+      <path d="M920.2 103.8c-138.4-138.4-363.4-138.3-501.8 0-97.9 98-129.5 241.1-83.2 370.2l-41 40.9H187.4c-18.1 0-32.8 14.7-32.8 32.8v82.5H72c-18.1 0-32.8 14.7-32.8 32.8v107L9.6 799.5C3.5 805.7 0 814 0 822.7v168.4c0 18.1 14.7 32.8 32.8 32.8h168.4c8.7 0 17.1-3.5 23.2-9.6L550 688.7c129 46.2 272.1 14.7 370.1-83.2 138.5-138.3 138.5-363.4 0.1-501.7z m-46.4 455.3c-84.2 84.1-209.3 108-318.8 61.1-12.3-5.3-26.7-2.6-36.2 6.9L187.7 958.3h-122v-122l30.5-30.4c7.6-7.6 10.6-18.5 8.7-28.9v-81.2h82.5c18.1 0 32.8-14.7 32.8-32.8v-82.5h79.4c10.9 2.6 22.5-0.7 30.6-8.8l66.6-66.6c9.5-9.5 12.2-23.9 6.9-36.2-47-109.5-23-234.6 61.1-318.8 112.7-112.7 296.1-112.8 408.9 0 112.8 112.8 112.8 296.3 0.1 409z"/>
+      </g>
     </template>
     <template v-else-if="name === 'key'">
       <path d="M15 7a5 5 0 1 0-3.7 8.4L14 18h3v-3h3v-3l-2-2m-8 1h.01" />

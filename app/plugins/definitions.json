@@ -1,0 +1,5 @@
+[
+  {"id":"ccswitch","name":"CC Switch","version":"3.20.4-molly.1","upstreamVersion":"3.20.4","repository":"farion1231/cc-switch","assetDir":"ccswitch","adapterApi":"ccswitch-3.20.4-molly-2","hostVersion":">=0.1.6","description":"管理供应商、Agent 配置和本机工具。"},
+  {"id":"images","name":"生图工作台","version":"0.7.12-molly.1","upstreamVersion":"0.7.12","repository":"CookSleep/gpt_image_playground","assetDir":"image-workbench","adapterApi":"image-message-channel-1","hostVersion":">=0.1.6","description":"生成与编辑图片，保留原版工作台体验。"},
+  {"id":"skills","name":"Skill 管理器","version":"1.40.0-molly.1","upstreamVersion":"1.40.0","repository":"xingkongliang/skills-manager","assetDir":"skills-manager","adapterApi":"skills-1.40.0-molly-1","hostVersion":">=0.1.6","description":"发现、整理和部署 Agent 技能。"}
+]

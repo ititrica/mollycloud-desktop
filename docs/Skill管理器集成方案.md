@@ -16,6 +16,10 @@
 
 Molly 只管理技能文件和部署，不作为 Agent 的执行代理。首次打开才初始化模块；新库默认复制部署，启动不会自动部署默认预设。定时更新与备份依照用户保存的设置执行。
 
+## 横向菜单标准
+
+内嵌菜单复用概览的 `app/src/subnav.css` 和 `app/src/navigationMotion.ts`，保持透明底、字体、荧光绿滑动下划线及内容淡入淡出一致。快速切换取消旧导航请求；结束后移除动画 transform，避免影响弹层定位。窄窗口只滚动横向菜单本身，减少动态效果设置下直接切换。后续新增分类继续使用共享规则。
+
 ## 数据与调用边界
 
 默认私有根为 `%APPDATA%/cn.mollycloud.client/skills-manager`；`library` 包含数据库和技能，`repo-config.json` 记录库位置，`bundled` 仅存放管理技能说明。库迁移先保存意图，下次启动迁移，本次会话仍使用原库。拒绝把新旧库设置成父子目录，并保护独立版 `.skills-manager`、`.agent-skills` 和配置目录及其父子目录，不自动搬迁独立版数据。
@@ -44,7 +48,7 @@ Cargo 的 `target/debug/deps` 测试文件不会作为 Tauri 安装资源发布�
 
 回归使用临时 Agent home、私有库、WebView 配置和本地 Git remote，不操作用户真实 Agent 文件或凭据。只运行显式隔离的后端测试，避免运行可能假定真实 home 的上游测试。原生 smoke 覆盖导入、标签、预设、部署保护、本地更新、项目、备份恢复、CLI 文档生成、卸载与迁移。
 
-浏览器检查覆盖 MCP 首次提示、九个控制台页面、七个 Skill 子页面、主题、三种窗口尺寸及弹窗焦点。浏览器几何断言不替代实际 WebView IPC 测试；本地 Git fixture 不代表 GitHub 授权或真实网络导入已经验证。安全软件信任区中的成功执行不代表清除误报，需独立复扫。
+浏览器检查覆盖八个控制台内容页面（概览含订阅、用量二级菜单）、七个 Skill 子页面、主题、三种窗口尺寸及弹窗焦点。独立 MCP 市场及首次提示已于 2026-10-02 移除。浏览器几何断言不替代实际 WebView IPC 测试；本地 Git fixture 不代表 GitHub 授权或真实网络导入已经验证。安全软件信任区中的成功执行不代表清除误报，需独立复扫。
 
 
 ### 本次验证记录（2026-09-18）
@@ -58,3 +62,6 @@ Cargo 的 `target/debug/deps` 测试文件不会作为 Tauri 安装资源发布�
 日志位于 `artifacts/skills-manager-research/`；界面报告位于 `artifacts/design-review/{light,dark,appearance}/`。
 
 正式版主程序已使用 `cargo build --release --bin mollycloud --features tauri/custom-protocol` 构建成功；Windows GUI 子系统下通过管道捕获 CLI 的版本、帮助和 JSON 错误输出，退出码分别为 0、0、2，未启动桌面 UI。产物为 `app/src-tauri/target/release/mollycloud.exe`（41,733,120 字节），SHA-256：`a714f2a62d96fb7286488f3bf6fdbe8434fcf139bab654415dd10cfcf5ba45c8`。Authenticode 状态为 `NotSigned`，本轮未生成安装器。构建与 CLI 验证通过不代表独立安全软件复扫通过，详细记录见 `artifacts/skills-manager-research/release-validation.json`。
+
+
+2026-10-02 更新：工作台资源现支持独立插件包的安装、卸载、更新和回退；此前“只随主应用发布”的描述已由 [功能插件方案](功能插件方案.md) 中的版本兼容边界取代。原生适配、私有目录和生图隔离要求保持有效。

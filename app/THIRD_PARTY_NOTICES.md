@@ -3,7 +3,7 @@
 ## CC Switch
 
 The embedded provider manager includes adapted frontend and backend source from
-CC Switch 3.20.3, commit `d695a2d77fd9081eafd3e9eedcbf2a97b3410928`:
+CC Switch 3.20.4, commit `43e1d99084ed9b2f5dc252fd35c5adaf29d6876e`:
 
 https://github.com/farion1231/cc-switch
 
@@ -94,41 +94,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## Awesome MCP Servers
-
-The browse-only MCP community catalog is derived from the server implementations
-section of [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers/blob/main/README-zh.md).
-MollyCloud extracts project names, descriptions, categories and source links;
-these entries do not contain executable installation recipes. Snapshot metadata
-is recorded in `src/mcp/community-source.json`.
-
-The MIT License (MIT)
-=====================
-
-Copyright © 2024 Frank Fiegel (frank@glama.ai)
-
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation
-files (the “Software”), to deal in the Software without
-restriction, including without limitation the rights to use,
-copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
-
-
 ## Skills Manager
 
 Source: https://github.com/xingkongliang/skills-manager
@@ -158,3 +123,95 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+## NetSpeed Dynamic
+
+Source: https://github.com/GEORGEWWWU/NetSpeed-Dynamic
+
+Version: 2.4.6, commit `422931fbd4927a98e242bbd1d1d144b3dab2dffa`.
+
+MollyCloud statically integrates the island and adapts its console. The standalone launcher, autostart and tray are not used. Optional upstream taskbar/FPS helpers are bundled at fixed, SHA-256-verified paths and follow the host lifecycle.
+
+MIT License
+
+Copyright (c) 2026 GEORGEWU
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Sub2API brand icons
+
+`src/components/ProviderIcon.vue` adapts `frontend/src/components/common/PlatformIcon.vue` from https://github.com/Wei-Shaw/sub2api at commit 458b92abd4b0b09d123d4c6727dd8d59060bd883 (LGPL-3.0). Changes: standalone string platform prop and Molly CSS sizing. Source is shipped in this repository; the license is bundled at `licenses/sub2api-LICENSE.txt`. The surrounding key/payment components were implemented for Molly against the documented API.
+
+## Anime2.5DRig
+
+PSD rigging and 2.5D runtime source is included via the pinned Petra snapshot.
+
+Source: https://github.com/852wa/Anime2.5DRig
+
+MIT License
+
+Copyright (c) 2026 hakoniwa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Live2D Cubism Core (proprietary runtime)
+
+The bundled `public/vendor/live2dcubismcore.min.js` retains its original notice:
+Live2D Cubism Core, (C) 2019 Live2D Inc. All rights reserved.
+This redistributable code is governed by the Live2D proprietary software license
+agreement, not the MIT licenses of Petra or pixi-live2d-display:
+
+https://www.live2d.com/eula/live2d-proprietary-software-license-agreement_en.html
+
+Model artwork and PSD/model resources have separate permissions and are not
+covered by the third-party code licenses in this document.
+
+## Frameworks and package dependencies
+
+The console uses Tauri/Wry, Vue, Pinia, Naive UI, PixiJS,
+pixi-live2d-display and ag-psd. Embedded tools also use React, Radix UI,
+TanStack, CodeMirror, dnd-kit, i18next and other upstream packages.
+Build tools include Vite, TypeScript and Vitest. Each package retains its own
+license; the lockfiles pin exact dependency versions.
+
+Source repository: https://github.com/ititrica/mollycloud-desktop
+
+See `docs/开源项目与许可证.md` and `docs/opensource-dependencies.json` in that
+repository for direct package inventories, resolved versions, SPDX license
+metadata and upstream references. The inventory includes development and
+optional/platform-specific packages; it is not a list of every file shipped
+in the Windows installer. Original upstream license files remain in the
+corresponding source trees and package distributions.

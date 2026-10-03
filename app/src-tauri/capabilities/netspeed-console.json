@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "netspeed-console",
+  "description": "Configure the permanently built-in island from the Molly console.",
+  "windows": ["console"],
+  "permissions": ["molly-netspeed:default"]
+}
