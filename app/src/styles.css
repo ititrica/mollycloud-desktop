@@ -52,10 +52,13 @@ code,
   font-variant-numeric: tabular-nums;
 }
 
-.console-window { width: 100%; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: var(--color-chrome); }
-.window-titlebar { position: relative; z-index: 100; height: 32px; flex: none; display: flex; align-items: center; justify-content: flex-end; background: var(--color-chrome); color: var(--color-text-soft); user-select: none; }
+.console-window { --titlebar-height: 32px; width: 100%; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: var(--color-chrome); }
+.console-window--macos { --titlebar-height: 44px; }
+.window-titlebar { position: relative; z-index: 100; height: var(--titlebar-height); flex: none; display: flex; align-items: center; justify-content: flex-end; background: var(--color-chrome); color: var(--color-text-soft); user-select: none; }
 .window-titlebar__drag { position: absolute; inset: 0 138px 0 40px; }
 .window-titlebar__sidebar-toggle { position: absolute; z-index: 2; top: 0; left: 4px; }
+.console-window--macos .window-titlebar__sidebar-toggle { top: 6px; left: 92px; }
+.console-window--macos .window-titlebar__drag { inset: 0 0 0 132px; }
 .window-titlebar__controls { position: relative; z-index: 2; height: 32px; display: flex; align-items: stretch; }
 .window-titlebar__controls button { width: 46px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; color: var(--color-text-soft); background: transparent; line-height: 0; }
 .window-titlebar__controls button:hover { background: var(--color-control-hover); }
@@ -69,7 +72,7 @@ code,
 .window-control-icon--close::after { transform: rotate(-45deg); }
 .console-window > .splash-shell,
 .console-window > .auth-shell,
-.console-window > .app-shell { height: calc(100dvh - 32px); min-height: 0; }
+.console-window > .app-shell { height: calc(100dvh - var(--titlebar-height)); min-height: 0; }
 
 .app-icon {
   width: 20px;
@@ -234,7 +237,7 @@ code,
 .nav-item.active .app-icon { color: var(--color-on-lime); }
 .nav-item:focus-visible { outline: 2px solid var(--color-lime-deep); outline-offset: 2px; }
 /* The shared frame clips every page, including iframes, to the same upper corners. */
-.workspace { position: relative; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; border-radius: var(--workspace-radius) var(--workspace-radius) 0 0; background: var(--color-bg); scrollbar-width: thin; scrollbar-gutter: stable; }
+.workspace { position: relative; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; border-radius: var(--workspace-radius) var(--workspace-radius) 0 0; background: var(--color-bg); box-shadow: var(--shadow-workspace); scrollbar-width: thin; scrollbar-gutter: stable; }
 .workspace--assistant,
 .workspace--embedded { display: flex; flex-direction: column; overflow: hidden; }
 .workspace--embedded { scrollbar-gutter: auto; }

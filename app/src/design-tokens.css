@@ -53,6 +53,7 @@
   --radius-lg: 20px;
   --radius-xl: 24px;
   --shadow-card: 0 8px 28px rgba(35, 40, 28, 0.055);
+  --shadow-workspace: -3px 0 12px rgba(35, 40, 28, 0.045);
   --shadow-float: 0 18px 48px rgba(47, 75, 98, 0.12);
   --shadow-dialog: 0 24px 80px rgba(47, 75, 98, 0.18);
   --focus-ring: 0 0 0 3px rgba(66, 122, 32, 0.2);
@@ -112,6 +113,7 @@
   --color-glass: rgba(34, 37, 31, 0.98);
   --color-glass-border: #454d3b;
   --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --shadow-workspace: -3px 0 12px rgba(0, 0, 0, 0.14);
   --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.32);
   --shadow-dialog: 0 24px 80px rgba(0, 0, 0, 0.4);
   --focus-ring: 0 0 0 3px rgba(180, 233, 118, 0.24);

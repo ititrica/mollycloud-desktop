@@ -64,6 +64,7 @@ npm run check:design -- --dark
 | Windows 功能 | macOS 实现 |
 | --- | --- |
 | 系统托盘、窗口显示 / 隐藏 | 菜单栏状态菜单；保留控制台关闭策略、桌宠显隐与退出 |
+| 控制台窗口外观 | 原生圆角与系统阴影、红黄绿按钮；44px Overlay 标题栏，侧栏切换按钮位于绿色按钮右侧 |
 | 开机自启动 | 用户登录后的 LaunchAgent；在 MollyCloud 设置中启用 |
 | 登录令牌 | macOS 钥匙串；不保存登录密码 |
 | 助手与语音密钥 DPAPI | 钥匙串保存本机随机密钥，AES-GCM 加密私有配置 |
@@ -111,3 +112,9 @@ Mac 更新分别读取 `https://desktop.veriolink.com/latest-macos-aarch64.json`
 安装包归档位于 `output/release/macos-aarch64/`，包含 `.app`、`.dmg`、SHA-256 和本地更新清单。原生验证日志位于 `artifacts/macos-port/`，界面回归报告位于 `artifacts/design-review/`。
 
 真实 MollyCloud 登录、付费 API、付款、TTS 音色、系统音频授权、Intel / universal 运行与签名发行仍需各自环境验收。UI mock 和单元测试不代表这些实际服务已经验证。
+
+### 2026-10-03 原生窗口与菜单外观调整
+
+控制台启用原生窗口装饰及 Overlay 标题栏，以系统圆角、阴影与红黄绿按钮替代 Mac 的 HTML 窗口控制。菜单栏切换按钮与原生按钮垂直居中，并位于绿色按钮右侧。公共工作区增加低对比度阴影；共享横向菜单移除底部分割线和可见滚动条，保留选中下划线、触控板和键盘滚动。
+
+深浅色各 84 组完整界面检查通过，覆盖登录、六项 Mac 导航及全部子页、960×640 / 1180×760 / 1440×900；导航动画专项通过。已查看助手、概览和登录截图。隔离原生窗口使用实际系统关闭按钮，确认按钮位置、Overlay 与阴影，以及已登录隐藏 / 退出、登录页退出和偏好持久化。证据在 `artifacts/window-chrome-20261003/`。验证使用临时窗口与模拟数据，保留 `/Applications/MollyCloud.app` 中正在运行的用户桌宠。

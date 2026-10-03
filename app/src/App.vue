@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, KeepAlive, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { isWindows, credentialStoreName } from "./platform";
+import { isWindows, isMacOS, credentialStoreName } from "./platform";
 import {
   NAlert,
   NButton,
@@ -818,13 +818,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="console-window" :class="{ 'console-window--sidebar-collapsed': sidebarCollapsed }">
+  <div class="console-window" :class="{ 'console-window--macos': isMacOS, 'console-window--sidebar-collapsed': sidebarCollapsed }">
     <header :inert="skillsModalOpen" class="window-titlebar" data-tauri-drag-region @dblclick="toggleConsoleMaximize">
       <button v-if="phase === 'dashboard'" class="sidebar-toggle window-titlebar__sidebar-toggle" type="button" :aria-label="sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'" :aria-pressed="sidebarCollapsed" :title="sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'" @mousedown.stop @dblclick.stop @click="toggleSidebar">
         <AppIcon name="sidebar" />
       </button>
       <div class="window-titlebar__drag" data-tauri-drag-region />
-      <div class="window-titlebar__controls">
+      <div v-if="!isMacOS" class="window-titlebar__controls">
         <button type="button" aria-label="最小化窗口" title="最小化" @mousedown.stop @dblclick.stop @click="minimizeConsoleWindow"><span class="window-control-icon window-control-icon--minimize" /></button>
         <button type="button" aria-label="最大化或还原窗口" title="最大化或还原" @mousedown.stop @dblclick.stop @click="toggleConsoleMaximize"><span class="window-control-icon window-control-icon--maximize" /></button>
         <button class="window-titlebar__close" type="button" aria-label="关闭窗口" title="关闭" @mousedown.stop @dblclick.stop @click="closeConsoleWindow"><span class="window-control-icon window-control-icon--close" /></button>

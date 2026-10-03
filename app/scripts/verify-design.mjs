@@ -411,7 +411,7 @@ async function verifyCompactSidebar(width, height) {
     };
   })()`);
   check(compact.classApplied && compact.sidebar.width === 68 && compact.togglePressed === 'true' && compact.toggleLabel === '展开菜单栏', `Compact sidebar state ${width}`);
-  check(expanded.titlebar.height === 32 && expanded.titlebarText === '' && expanded.windowControls === 3 && compact.titlebarText === '' && compact.windowControls === 3 && expanded.toggle.y >= expanded.titlebar.y && expanded.toggle.bottom <= expanded.titlebar.bottom, `Custom titlebar controls and content ${width}`);
+  check(expanded.titlebar.height === (isWindows ? 32 : 44) && expanded.titlebarText === '' && expanded.windowControls === (isWindows ? 3 : 0) && compact.titlebarText === '' && compact.windowControls === (isWindows ? 3 : 0) && expanded.toggle.y >= expanded.titlebar.y && expanded.toggle.bottom <= expanded.titlebar.bottom && (isWindows || expanded.toggle.x === 92), `Platform titlebar controls and sidebar position ${width}`);
   check(expanded.projectBarText === 'MollyCloud' && expanded.brand.display === 'flex' && expanded.brand.text === 'MollyCloud' && expanded.brand.textDisplay !== 'none' && compact.brand.display === 'flex' && compact.brand.textDisplay === 'none' && expanded.toggleBackground === 'rgba(0, 0, 0, 0)' && compact.toggleBackground === 'rgba(0, 0, 0, 0)', `Sidebar project bar content ${width}`);
   check(compact.nav.length === navCount && compact.nav.every((item, index) => item.rect.height === 42 && item.label && item.textHidden && item.iconVisible && Math.abs(item.rect.y - expanded.nav[index].rect.y) < 0.1) && Math.abs(compact.settings.rect.y - expanded.settings.y) < 0.1 && compact.settings.label === '设置' && compact.settings.textHidden && compact.settings.rect.bottom <= height && !compact.horizontalOverflow, `Compact sidebar icons, fixed vertical positions, and bounds ${width}`);
   const expandedIconCenter = expanded.nav[0].icon.x + expanded.nav[0].icon.width / 2;
@@ -458,7 +458,7 @@ const readShell = `(() => {
       navStyle: css(active, ['fontFamily','fontSize','fontWeight','borderRadius','padding','backgroundColor','boxShadow','borderLeftWidth']),
       titlebarStyle: css(document.querySelector('.window-titlebar'), ['backgroundColor','borderBottomWidth']),
       sidebarStyle: css(document.querySelector('.sidebar'), ['padding','backgroundColor','borderRightWidth']),
-      workspaceStyle: css(workspace, ['backgroundColor','borderTopLeftRadius','borderTopRightRadius']),
+      workspaceStyle: css(workspace, ['backgroundColor','borderTopLeftRadius','borderTopRightRadius','boxShadow']),
     },
     header: topbar ? rect(topbar) : null,
     headerTitlesAbsent: !heading && !document.querySelector('.topbar h1,.topbar p'),
@@ -1133,6 +1133,7 @@ try {
       check(JSON.stringify(metrics.shell) === JSON.stringify(baseline), `Shared shell differs: ${names[index]} ${width}`);
       check(metrics.shell.titlebarStyle.backgroundColor === metrics.shell.sidebarStyle.backgroundColor && metrics.shell.titlebarStyle.borderBottomWidth === '0px' && metrics.shell.sidebarStyle.borderRightWidth === '0px', `Continuous titlebar and sidebar frame: ${names[index]} ${width}`);
       check(metrics.shell.workspaceStyle.borderTopLeftRadius === '16px' && metrics.shell.workspaceStyle.borderTopRightRadius === '16px' && metrics.workspace[0] + metrics.workspace[2] === width - 6, `Rounded workspace and shared outer inset: ${names[index]} ${width}`);
+      check(metrics.shell.workspaceStyle.boxShadow !== 'none', `Soft outer workspace shadow: ${names[index]} ${width}`);
       check(metrics.headerTitlesAbsent, `Page title and greeting removed: ${names[index]} ${width}`);
       check(!metrics.horizontalOverflow && !metrics.valueOverflows && !metrics.headerClipped, `Content clipped: ${names[index]} ${width}`);
       if (['assistant', 'ccswitch', 'images'].includes(names[index])) {
@@ -1151,7 +1152,7 @@ try {
       check(await evaluate(`document.documentElement.dataset.theme === '${darkMode ? 'dark' : 'light'}'`), `Resolved theme: ${names[index]} ${width}`);
       check(metrics.shell.themeButtonAbsent, `Theme shortcut removed: ${names[index]} ${width}`);
       if (names[index] === 'assistant') {
-        check(await evaluate(`!document.querySelector('.assistant-chat__toolbar h2,.assistant-settings-button')&&document.querySelectorAll('.assistant-tabs button').length===2&&getComputedStyle(document.querySelector('.assistant-chat__toolbar')).borderBottomWidth==='0px'`), `Molly chat heading ${width}`);
+        check(await evaluate(`!document.querySelector('.assistant-chat__toolbar h2,.assistant-settings-button')&&document.querySelectorAll('.assistant-tabs button').length===2&&getComputedStyle(document.querySelector('.assistant-chat__toolbar')).borderBottomWidth==='0px'&&getComputedStyle(document.querySelector('.assistant-tabs')).borderBottomWidth==='0px'&&getComputedStyle(document.querySelector('.assistant-tabs'),'::-webkit-scrollbar').display==='none'`), `Molly chat tabs have no divider or scrollbar ${width}`);
       }
       if (names[index] === 'keys') {
         check(!metrics.keyOverflow, `API key list has no horizontal scroll ${width}`);

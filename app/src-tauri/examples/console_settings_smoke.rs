@@ -12,6 +12,46 @@ fn log_line(message: &str) {
     println!("[console-settings-smoke] {message}");
 }
 
+#[cfg(target_os = "macos")]
+fn verify_native_chrome(window: &tauri::WebviewWindow) -> Result<(), String> {
+    use objc2_app_kit::{NSWindow, NSWindowButton, NSWindowStyleMask};
+    let native = unsafe { &*window.ns_window().map_err(|e| e.to_string())?.cast::<NSWindow>() };
+    let style = native.styleMask();
+    if !style.contains(NSWindowStyleMask::Titled | NSWindowStyleMask::FullSizeContentView) || !native.hasShadow() {
+        return Err("Native titled overlay or system window shadow is missing".into());
+    }
+    for button_type in [NSWindowButton::CloseButton, NSWindowButton::MiniaturizeButton, NSWindowButton::ZoomButton] {
+        let button = native.standardWindowButton(button_type).ok_or("Native window button is missing")?;
+        if button.isHidden() || !button.isEnabled() {
+            return Err("Native window button is hidden or disabled".into());
+        }
+        let rect = button.convertRect_toView(button.bounds(), None);
+        let center_y = native.frame().size.height - rect.origin.y - rect.size.height / 2.0;
+        println!("[native-chrome] button {:?}: x={} centerY={}", button_type, rect.origin.x, center_y);
+        if (center_y - 22.0).abs() > 1.0 || rect.origin.x < 15.0 || rect.origin.x >= 92.0 {
+            return Err("Native button does not fit before the sidebar toggle in the 44px header".into());
+        }
+    }
+    println!("PASS: macOS native traffic lights, full-size overlay, system rounded frame and shadow configured");
+    Ok(())
+}
+
+fn request_close(window: &tauri::WebviewWindow) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let target = window.clone();
+        window.app_handle().run_on_main_thread(move || {
+            let native = unsafe { &*target.ns_window().unwrap().cast::<objc2_app_kit::NSWindow>() };
+            // Exercise the actual system close button and its native event path.
+            // The button belongs to this live fixture and the callback runs on
+            // AppKit's main thread; its action is NSWindow's standard close.
+            unsafe { native.standardWindowButton(objc2_app_kit::NSWindowButton::CloseButton).unwrap().performClick(None) };
+        }).map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "macos"))]
+    window.close().map_err(|e| e.to_string())
+}
+
 fn main() {
     let login_mode = std::env::args().any(|argument| argument == "--login");
     let temporary = tempfile::tempdir().expect("temporary settings directory");
@@ -31,6 +71,9 @@ fn main() {
     let (closed_tx, closed_rx) = mpsc::channel();
     let mut context = tauri::generate_context!();
     context.config_mut().identifier = "cn.mollycloud.console-settings-smoke".into();
+    let mut console_config = context.config().app.windows.iter().find(|window| window.label == "console").unwrap().clone();
+    console_config.url = tauri::WebviewUrl::External("about:blank".parse().unwrap());
+    console_config.visible = cfg!(target_os = "macos");
     context.config_mut().app.windows.clear();
     let app = tauri::Builder::default()
         .manage(state)
@@ -41,13 +84,9 @@ fn main() {
             }
         })
         .setup(move |app| {
-            let console = tauri::WebviewWindowBuilder::new(
-                app,
-                "console",
-                tauri::WebviewUrl::External("about:blank".parse().unwrap()),
-            )
+            let console = tauri::WebviewWindowBuilder::from_config(app, &console_config)?
             .title("MollyCloud isolated close verification")
-            .visible(false)
+            .focused(false)
             .skip_taskbar(true)
             .data_directory(webview_data.clone())
             .build()?;
@@ -64,7 +103,17 @@ fn main() {
             });
             std::thread::spawn(move || {
                 let verify = || -> Result<(), String> {
-                    console.close().map_err(|error| error.to_string())?;
+                    #[cfg(target_os = "macos")]
+                    {
+                        // The inset is reapplied by Wry's drawRect; inspect it
+                        // after the fixture has painted instead of during setup.
+                        std::thread::sleep(std::time::Duration::from_millis(400));
+                        let target = console.clone();
+                        let (sender, receiver) = mpsc::channel();
+                        handle.run_on_main_thread(move || { let _ = sender.send(verify_native_chrome(&target)); }).map_err(|e| e.to_string())?;
+                        receiver.recv_timeout(std::time::Duration::from_secs(3)).map_err(|e| e.to_string())??;
+                    }
+                    request_close(&console)?;
                     let label = closed_rx
                         .recv_timeout(std::time::Duration::from_secs(5))
                         .map_err(|_| "Missing tray CloseRequested event")?;
@@ -85,7 +134,7 @@ fn main() {
                             autostart: false,
                             autostart_minimized: false,
                         })?;
-                    console.close().map_err(|error| error.to_string())?;
+                    request_close(&console)?;
                     closed_rx
                         .recv_timeout(std::time::Duration::from_secs(5))
                         .map_err(|_| "Missing quit CloseRequested event")?;

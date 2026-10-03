@@ -5,7 +5,43 @@
     "security": {
       "csp": "default-src 'self' customprotocol: asset:; frame-src 'self' molly-image://localhost; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost https:",
       "devCsp": "default-src 'self' http://localhost:24320; frame-src 'self' molly-image://localhost; img-src 'self' http://localhost:24320 asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' http://localhost:24320; connect-src 'self' ipc: http://ipc.localhost http://localhost:24320 ws://localhost:24321 https:"
-    }
+    },
+    "windows": [
+      {
+        "label": "console",
+        "create": false,
+        "title": "MollyCloud",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 960,
+        "minHeight": 640,
+        "decorations": true,
+        "dragDropEnabled": false,
+        "center": true,
+        "shadow": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 24
+        }
+      },
+      {
+        "label": "main",
+        "title": "MollyCloud 助手",
+        "url": "overlay.html",
+        "width": 700,
+        "height": 700,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "dragDropEnabled": true,
+        "center": true
+      }
+    ]
   },
   "bundle": {
     "targets": [
