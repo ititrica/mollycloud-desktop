@@ -18,6 +18,6 @@ macOS 是先行开发版，功能、业务规则和共享视觉改动先在 `cod
 
 `docs/Windows更新记录.md` 是持续维护的逐次更新记录，`docs/Windows功能同步交接.md` 是完整功能目标、平台差异和验收清单。每次推送 Mac 源码或上传安装包前，都必须同步更新这两份文档：记录版本 / 更新批次、源码分支或 tag、改动、Windows 移植要求、验证结果和未验证项；没有 Windows 相关行为变化也必须注明。保留历史批次，不能仅用新的快照覆盖记录。
 
-同一次发布须提交最新文档、在 GitHub Release 说明中链接它们，并附上两份 Markdown 供 Windows 端下载。Release tag 应指向对应源码，附件哈希应与最终安装包一致。Windows 同步状态默认“待 Windows 实机验证”；只有 Windows 端提供实际编译和运行结果后才能标记完成。
+同一次发布须提交最新文档、在 GitHub Release 说明中链接它们，并附上两份 Markdown 供 Windows 端下载。附件使用便于跨平台下载的英文文件名：`WINDOWS_SYNC_CHANGELOG.md` 对应更新记录，`WINDOWS_SYNC_HANDOFF.md` 对应完整交接；内容必须与仓库中文文档一致。Release tag 应指向对应源码，附件哈希应与最终安装包一致。Windows 同步状态默认“待 Windows 实机验证”；只有 Windows 端提供实际编译和运行结果后才能标记完成。
 
 Mac 使用独立 `v<版本>-macos` tag 和 `latest-macos-<架构>.json`，不覆盖 Windows tag、安装包或 `latest.json`。新版本原则上保留历史；用户明确要求同版本覆盖时，先备份被替换的 Mac tag / Release 附件，更新源码、安装包、清单、校验和及同步文档，并注明同版本不会触发自动更新。GitHub 与更新域名分开发布，不能将 GitHub 上传成功记为更新服务器已部署。

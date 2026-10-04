@@ -53,7 +53,7 @@ DMG 完成校验、只读挂载、应用签名、常驻声明、导入 URL、已
 
 Windows 要独立证明：原生窗口 / 自定义关闭按钮均进入同一策略，各登录阶段连续收起和恢复不退出，托盘和可见 / 隐藏桌宠状态不变，“退出”及明确退出正常清理。测试在临时用户目录执行，填写实际 Windows 系统、MSVC / WebView2、提交和通过项。Mac 的上述通过结果不能直接替 Windows 勾选。
 
-本轮 GitHub 发行替换 Mac 安装包、更新清单、校验和与说明，并提供两份 Windows 文档。Windows `v0.2.0` 及 `latest.json` 独立。`latest-macos-aarch64.json` 仍使用客户端信任的 `desktop.veriolink.com` 下载域名，是更新域名的部署文件；GitHub 上传不代表该域名已部署。本轮没有上传 R2，已安装 Mac 0.2.0 用户需要手动下载覆盖安装。
+本轮 GitHub 发行替换 Mac 安装包、更新清单、校验和与说明，并提供两份 Windows 文档。文档附件使用英文名：`WINDOWS_SYNC_CHANGELOG.md` 对应本文，`WINDOWS_SYNC_HANDOFF.md` 对应完整交接，内容保持一致；仓库保留中文名。Windows `v0.2.0` 及 `latest.json` 独立。`latest-macos-aarch64.json` 仍使用客户端信任的 `desktop.veriolink.com` 下载域名，是更新域名的部署文件；GitHub 上传不代表该域名已部署。本轮没有上传 R2，已安装 Mac 0.2.0 用户需要手动下载覆盖安装。
 
 ## MAC-20261004-01：Windows 首次功能追平清单
 
@@ -96,7 +96,7 @@ Windows 要独立证明：原生窗口 / 自定义关闭按钮均进入同一策
 
 Mac 每次推送源码或上传安装包前，添加新的批次，更新本文“当前状态”和完整交接中的目标行为；每条说明须包含具体变化、源码分支 / tag、Windows 移植要求、Mac 验证和 Windows 状态。仅改 Mac 平台时写明无需移植的部分，以及 Windows 仍需检查的共享行为；不能跳过记录。
 
-同一发布提交包含两份最新文档，Release tag 指向该源码。Release 说明链接本分支上的最新记录，并上传 `Windows更新记录.md` 和 `Windows功能同步交接.md` 作为当次快照。GitHub 上传后核对远端源码、tag、DMG 哈希、清单和文档附件一致；更新服务器的部署状态另行记录。
+同一发布提交包含两份最新文档，Release tag 指向该源码。Release 说明链接本分支上的最新记录，并将 `Windows更新记录.md` 和 `Windows功能同步交接.md` 分别以 `WINDOWS_SYNC_CHANGELOG.md`、`WINDOWS_SYNC_HANDOFF.md` 附件名上传，作为内容一致的当次快照。GitHub 上传后核对远端源码、tag、DMG 哈希、清单和文档附件一致；更新服务器的部署状态另行记录。
 
 新版本保留历史；用户明确要求同版本覆盖时，先备份旧 Mac tag、Release 元数据与附件，新增批次并记录新包哈希，注明同版本不会自动提示升级。Windows 发行、EXE 和 `latest.json` 保持独立。
 

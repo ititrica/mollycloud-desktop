@@ -381,3 +381,5 @@ npm.cmd run check:design -- --netspeed
 ## 15. 持续同步记录
 
 Windows 每轮升级先查看 [Windows 更新记录](./Windows更新记录.md)，选择尚未同步的批次；完成后回填 Windows 提交、系统 / 工具链、编译结果、实机结果与剩余问题。Mac 每次推送或上传也同时维护该记录及本文中的目标行为。历史记录与完整目标结合使用，不能仅按两端版本号判断一致，也不能将 Mac 通过的测试勾选为 Windows 已通过。
+
+GitHub Release 提供内容一致的英文名附件：`WINDOWS_SYNC_CHANGELOG.md` 是更新记录，`WINDOWS_SYNC_HANDOFF.md` 是本文完整交接。仓库内继续使用中文文件名；仅下载附件时，可在 Windows 将它们分别重命名为 `Windows更新记录.md`、`Windows功能同步交接.md`，放入同一目录以使用两份文档间的链接；源码相对链接需在仓库或 GitHub 查看。
