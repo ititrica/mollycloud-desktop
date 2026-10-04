@@ -202,11 +202,39 @@ pub fn apply_startup_visibility(app: &AppHandle) {
     let arguments = std::env::args().collect::<Vec<_>>();
     if should_start_minimized(settings, &arguments) {
         if let Some(window) = app.get_webview_window("console") {
-            if window.hide().is_err() {
-                crate::log_line("autostart console window could not be hidden");
+            if let Err(error) = hide_console(&window.as_ref().window()) {
+                crate::log_line(&format!("autostart console window could not be hidden: {error}"));
             }
         }
     }
+}
+
+/// Restore the foreground role whenever the console is opened from the tray,
+/// Dock reopen, import URL, or the pet. The packaged app remains an agent app.
+pub fn show_console(app: &AppHandle) -> Result<(), String> {
+    let window = app.get_webview_window("console")
+        .ok_or("控制台窗口不可用")?;
+    #[cfg(target_os = "macos")]
+    app.set_activation_policy(tauri::ActivationPolicy::Regular)
+        .map_err(|error| error.to_string())?;
+    window.show().map_err(|error| error.to_string())?;
+    window.unminimize().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())
+}
+
+fn hide_console(window: &Window) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    if window.app_handle().tray_by_id("pet-tray").is_none() {
+        return Err("菜单栏入口不可用，保留控制台窗口".into());
+    }
+    window.hide().map_err(|error| error.to_string())?;
+    #[cfg(target_os = "macos")]
+    if let Err(error) = window.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory) {
+        // Never leave the UI hidden after a failed role transition.
+        let _ = window.show();
+        return Err(error.to_string());
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -242,11 +270,17 @@ fn close_action_for_window(
 /// Only automatic last-window teardown has no exit code. Explicit quit/restart
 /// must always reach the normal proxy and service cleanup lifecycle.
 pub fn handle_run_event(app: &AppHandle, event: &tauri::RunEvent) {
+    if let tauri::RunEvent::ExitRequested { code, .. } = event {
+        crate::log_line(&format!("application exit requested: code={code:?}"));
+    } else if matches!(event, tauri::RunEvent::Exit) {
+        crate::log_line("application exit: cleaning up background services");
+    }
     #[cfg(target_os = "macos")]
     if let tauri::RunEvent::ExitRequested { code: None, api, .. } = event {
         if app.try_state::<ConsoleSettingsState>()
             .is_some_and(|state| state.get().is_ok_and(|settings| settings.close_action == CloseAction::Tray)) {
             api.prevent_exit();
+            crate::log_line("automatic exit prevented: console stays in menu bar");
         }
     }
     #[cfg(not(target_os = "macos"))]
@@ -270,8 +304,10 @@ pub fn handle_window_event(window: &Window, event: &WindowEvent) {
     crate::log_line(&format!("console close action: {action:?}; dashboard: {dashboard_active}"));
     match action {
         CloseAction::Tray => {
-            if window.hide().is_err() {
-                crate::log_line("console window could not be hidden");
+            if let Err(error) = hide_console(window) {
+                crate::log_line(&format!("console window could not be hidden: {error}"));
+            } else {
+                crate::log_line("console hidden: application continues running");
             }
         }
         // This follows Tauri's normal exit lifecycle, including CC Switch's

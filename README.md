@@ -2,14 +2,21 @@
 
 MollyCloud 桌面客户端，将账户控制台、Molly AI 助手、透明桌宠和开发工具工作台整合到一个应用中。仓库包含 Windows 与 macOS 平台实现；macOS 版按平台边界移除了 NetSpeed Dynamic 灵动岛。
 
-[下载安装包](https://github.com/ititrica/mollycloud-desktop/releases/latest) · [更新日志](./CHANGELOG.md) · [开源项目与许可证](./docs/开源项目与许可证.md) · [反馈问题](https://github.com/ititrica/mollycloud-desktop/issues) · [MollyCloud 官网](https://mollycloud.cn)
+[Mac 安装包](https://github.com/ititrica/mollycloud-desktop/releases/tag/v0.2.0-macos) · [Windows 安装包](https://github.com/ititrica/mollycloud-desktop/releases/tag/v0.2.0) · [Windows 更新同步记录](./docs/Windows更新记录.md) · [更新日志](./CHANGELOG.md) · [开源项目与许可证](./docs/开源项目与许可证.md) · [反馈问题](https://github.com/ititrica/mollycloud-desktop/issues)
+
+## 开发与同步约定
+
+**macOS 是先行开发版。** 新功能和共享界面先在 `codex/macos-port` 开发、验证和发布，Windows 按 [持续更新记录](./docs/Windows更新记录.md) 与 [完整功能交接](./docs/Windows功能同步交接.md) 在可运行的 Windows 基线上逐项升级。每次推送源码或上传安装包同步更新文档，Release 也提供两份 Markdown 附件。Windows 同步完成情况以 Windows 实际编译和运行记录为准。
+
+`master` / Windows `v0.2.0` 保留原 Windows 基线；`codex/macos-port` / `v0.2.0-macos` 是当前 Mac 参考。两个平台同为 0.2.0 不表示功能已同步。用户反馈不可用的 `codex/windows-parity` 分支不作为 Windows 升级基础。
 
 ## 下载与安装
 
-当前源码版本：**v0.2.0**。以下已发布安装包适用于 **Windows 10/11 x64**；macOS 13 及以上版本可按 [macOS 开发与打包说明](./docs/macOS开发.md) 构建 `.app` / `.dmg`。macOS 未发布的构建不能由本表的 Windows 安装包替代。
+当前 Mac 源码版本：**v0.2.0**。Mac 安装包适用于 **macOS 13+、Apple Silicon（M 系列芯片）**；Intel / universal 尚未提供经实机验证的安装包。Windows 下载仍为原 Windows 0.2.0 发行。
 
 | 安装包 | 用途 |
 | --- | --- |
+| [MollyCloud_0.2.0_aarch64.dmg](https://github.com/ititrica/mollycloud-desktop/releases/download/v0.2.0-macos/MollyCloud_0.2.0_aarch64.dmg) | Mac Apple Silicon，含关闭控制台后菜单栏常驻修复 |
 | [MollyCloud_0.2.0_x64-setup.exe](https://github.com/ititrica/mollycloud-desktop/releases/download/v0.2.0/MollyCloud_0.2.0_x64-setup.exe) | 推荐，NSIS 安装器 |
 | [MollyCloud_0.2.0_x64_en-US.msi](https://github.com/ititrica/mollycloud-desktop/releases/download/v0.2.0/MollyCloud_0.2.0_x64_en-US.msi) | MSI 安装包，适合集中部署 |
 
@@ -21,7 +28,7 @@ Windows 下载后运行安装器，需要 Microsoft Edge WebView2 Runtime；如�
 Get-FileHash .\MollyCloud_0.2.0_x64-setup.exe -Algorithm SHA256
 ```
 
-0.2.0 安装包未进行代码签名。历史版本保留在 [Releases](https://github.com/ititrica/mollycloud-desktop/releases)。
+Windows 0.2.0 安装包未进行代码签名；Mac 使用 ad-hoc 签名，尚未进行 Developer ID 签名与公证。此次按要求覆盖 Mac 0.2.0；已有 Mac 0.2.0 用户需手动下载安装，相同版本号不会触发自动更新。历史发行见 [Releases](https://github.com/ititrica/mollycloud-desktop/releases)。
 
 ## 功能
 
@@ -30,6 +37,7 @@ Get-FileHash .\MollyCloud_0.2.0_x64-setup.exe -Algorithm SHA256
 | 账户概览 | 查询余额、订阅额度、到期时间和用量；订阅卡片支持重置与自动续杯 |
 | 充值与订单 | 余额充值、购买订阅、付款方式与费用预估、订单详情及待支付取消；付款在独立窗口中完成 |
 | API 密钥 | 创建、复制、删除、分组切换、配置额度与有效期，查看实际累计 / 今日消费，导入内置 CC Switch |
+| 提示词与 MCP | Mac 提供独立导航页面，复用内置 CC Switch 并随其更新 |
 | Molly 助手 | “对话 / 设置”横向菜单，自定义 OpenAI 兼容对话端点和模型、在线朗读、本地账户查询与主动提醒 |
 | 透明桌宠 | Molly 模型、拖动和互动、对话气泡、显示 / 隐藏、托盘与启动设置 |
 | 灵动岛（仅 Windows） | 网速、流量、系统资源、时间、媒体与通知展示，随主应用启停；macOS 不编译或打包此模块 |
@@ -56,7 +64,7 @@ Get-FileHash .\MollyCloud_0.2.0_x64-setup.exe -Algorithm SHA256
 
 **生图**：首次打开工作台后手动填写 API Key。默认 Base URL 为 `https://mollycloud.cn/v1`；端点、模型和流式参数均可修改。工作台不会自动读取 MollyCloud 账户 API 密钥。
 
-**CC Switch**：API 密钥“导入到内置 CC Switch”只将供应商写入私有库；在内置管理器中点击“启用”后才会修改对应本机工具配置。可继续管理工具的 MCP、Skills 和会话。
+**API 密钥 / CC Switch**：Mac 在“API 密钥”中统一管理账户密钥与供应商，自动同步只入私有库，点击“启用 / 应用配置”后才写本机工具；完整编辑器保存当前已启用供应商沿用 CC Switch 的即时应用行为。Codex 支持逐密钥“原生 / 映射”和 MollyCloud 1M 上下文默认值，Official 保留官方登录。OpenCode 等累加供应商工具由用户手动选择添加。提示词和 MCP 使用独立导航，共用 CC Switch 插件；Skill 管理器紧跟 API 密钥。Windows 的移植要求见同步文档。
 
 **更新**：GitHub Releases 提供源码与安装包。Windows 更新检查使用 `https://desktop.veriolink.com/latest.json`；macOS 使用对应架构的 `latest-macos-aarch64.json` / `latest-macos-x86_64.json`，仅接受匹配架构的 DMG。GitHub Release 发布与这些更新源独立，发布到 GitHub 不会自动更新 R2。详见 [桌面端更新发布](./docs/桌面端更新发布.md) 和 [macOS 本地归档](./docs/macOS开发.md#本地发行归档)。
 
@@ -72,6 +80,8 @@ Get-FileHash .\MollyCloud_0.2.0_x64-setup.exe -Algorithm SHA256
 - Git；首次安装 npm / Cargo 依赖及获取安装器工具时需要网络。
 
 ### Windows 获取源码并启动
+
+以下默认分支为原 Windows 基线。同步 Mac 功能前先确认该版本在 Windows 可运行，再按 [交接文档](./docs/Windows功能同步交接.md) 分阶段升级。
 
 ```powershell
 git clone https://github.com/ititrica/mollycloud-desktop.git
@@ -101,7 +111,7 @@ app/src-tauri/target/release/bundle/nsis/
 app/src-tauri/target/release/bundle/msi/
 ```
 
-UI 开发服务运行时，执行 `npm run check:design`。检查覆盖登录、Windows 七个 / macOS 六个控制台入口、960×640 / 1180×760 / 1440×900，截图输出到 `artifacts/design-review/`。设计规范见 [MASTER.md](./design-system/molly-desktop/MASTER.md)。回归测试使用临时用户目录和模拟凭据。macOS 的构建和安装命令见 [macOS 开发](./docs/macOS开发.md)。
+UI 开发服务运行时，执行 `npm run check:design`。当前 Mac 检查覆盖登录、七个控制台入口及子页、960×640 / 1180×760 / 1440×900；Windows 功能同步后需覆盖八项入口（含灵动岛）。截图输出到 `artifacts/design-review/`。设计规范见 [MASTER.md](./design-system/molly-desktop/MASTER.md)。回归测试使用临时用户目录和模拟凭据。macOS 的构建和安装命令见 [macOS 开发](./docs/macOS开发.md)。
 
 模型导入脚本也在 `app` 目录执行：
 
@@ -134,7 +144,7 @@ docs/                    集成、开发、发布和开源归属文档
 
 ### 数据与权限边界
 
-- 账户令牌留在原生层；Refresh Token 按登录偏好保存到 Windows 凭据管理器或 macOS 钥匙串。对话与 TTS 使用独立配置；密钥在 Windows 使用 DPAPI，在 macOS 使用钥匙串保护的 AES-GCM 本机加密存储。
+- 账户令牌留在原生层；Mac 的自动登录资料、刷新令牌及应用管理的密钥使用私有目录中的 AES-GCM 加密存储，不再调用钥匙串。原 Windows 基线使用凭据管理器 / DPAPI，升级需保留旧数据并按同步文档实现同样的保存体验。对话与 TTS 使用独立配置。
 - 生图 API Key 由用户手动填写，工作台使用独立存储，不共享账户 Cookie、令牌或通用 Tauri IPC。
 - CC Switch 的供应商库、设备设置、备份及代理归属保持私有；用户明确操作的工具配置、MCP、Skills、会话和环境变量管理作用于本机真实工具。
 - 支付验证使用订单专属隔离 WebView（Windows WebView2 / macOS WKWebView），会话退出时清理；金额、可购状态与支付结果以服务端确认为准。
@@ -171,6 +181,8 @@ Live2D Cubism Core 是 **Live2D 专有运行时**，并非 MIT 开源组件，�
 
 - [CC Switch 内置方案](./docs/CCSwitch内置方案.md)
 - [macOS 开发与验证](./docs/macOS开发.md)
+- [Windows 持续更新同步记录](./docs/Windows更新记录.md)
+- [Windows 完整功能同步交接与验收](./docs/Windows功能同步交接.md)
 - [生图工作台集成方案](./docs/GPTImagePlayground集成方案.md)
 - [Skill 管理器集成方案](./docs/Skill管理器集成方案.md)
 - [灵动岛内置方案](./docs/灵动岛内置方案.md)

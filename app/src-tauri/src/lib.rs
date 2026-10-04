@@ -1476,10 +1476,8 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
 }
 
 fn show_console(app: &AppHandle) {
-    if let Some(win) = app.get_webview_window("console") {
-        let _ = win.show();
-        let _ = win.unminimize();
-        let _ = win.set_focus();
+    if let Err(error) = console_settings::show_console(app) {
+        log_line(&format!("console could not be opened: {error}"));
     }
 }
 
@@ -1832,6 +1830,11 @@ pub fn run() {
             LOG_START_OFFSET.get_or_init(|| offset);
             log_line("=== pet started ===");
             log_line("startup: initializing console modules");
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Regular);
+            // Window callbacks can run while WebView creation pumps AppKit.
+            // Publish the persisted close preference before creating the UI.
+            console_settings::initialize(app.handle());
             let plugins = console_plugins::initialize(app.handle())?;
             let cc = plugins.clone();
             app.handle().plugin(molly_ccswitch::init_guarded(move || cc.enabled("ccswitch")))?;
@@ -1847,7 +1850,6 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             screen::initialize(app.handle());
             log_environment();
-            console_settings::initialize(app.handle());
             codex_activity::initialize(app.handle());
             ccswitch_deeplink::accept_arguments(app.handle(), std::env::args());
             ccswitch_deeplink::ensure_ccswitch_web_import();
